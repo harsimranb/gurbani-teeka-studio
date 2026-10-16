@@ -15,7 +15,7 @@ Built by Team BJ13 for Sarbat Build Day, problem statement [sikhri-1](https://sa
 | UI mockups | Eight supplied screens mapped to P0/P1 tasks: [`_docs/09-ui-mockups.md`](_docs/09-ui-mockups.md) |
 | Feature plan | Task breakdown and acceptance criteria: [`_docs/10-feature-breakdown.md`](_docs/10-feature-breakdown.md) |
 | Kickoff readiness | Decisions and external inputs before workstream split: [`_docs/11-execution-readiness.md`](_docs/11-execution-readiness.md) |
-| Code | Not started. Scaffold is task C-01 in [`WORKING_LOG.md`](WORKING_LOG.md) |
+| Code | C-01 minimal scaffold complete; product features begin with C-02 in [`WORKING_LOG.md`](WORKING_LOG.md) |
 
 ## Start here
 
@@ -48,22 +48,21 @@ BaniDB (local copy) ──ingest──▶ eko.db ◀── rules.resolved.json
                                        publish (blocked while a must-fix is open)
 ```
 
-## Planned stack
+## Stack
 
 TypeScript, Next.js, SQLite with Drizzle, Vercel AI SDK (any LLM provider), Transformers.js for local embeddings, Vitest. Gurbani text comes from BaniDB's database image run locally in Docker. Details and reasons are in [`_docs/03-architecture.md`](_docs/03-architecture.md).
 
 ## Getting started
 
-The app isn't scaffolded yet. Once task C-01 lands, these commands will work (see [`CLAUDE.md`](CLAUDE.md) for the current list):
+The minimal app scaffold is available. Product data, checks and evaluation arrive in later tasks (see [`CLAUDE.md`](CLAUDE.md) for the current command list):
 
 ```bash
-# prerequisites: Node 20+, pnpm, Docker
-docker compose -f data/banidb/docker-compose.yml up -d   # local BaniDB database
+# prerequisites: Node 20.9+, pnpm
 pnpm install
-cp .env.example .env.local                               # add LLM API keys
-pnpm ingest                                              # BaniDB → eko.db
 pnpm dev                                                 # http://localhost:3000
-pnpm test                                                # tests
+pnpm typecheck
+pnpm test                                                # no feature tests until C-02
+pnpm build
 ```
 
 One-time setup per clone so the ownership hook runs (see [`CLAUDE.md`](CLAUDE.md)):

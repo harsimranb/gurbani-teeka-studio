@@ -114,18 +114,19 @@ _docs/                  documentation; rules/ holds the ruleset          DOCS
 
 ## Commands
 
-Planned; update this list when the scaffold (C-01) lands.
+The scaffold commands run now. Scripts for ingest, evaluation and bake-off are reserved for their later workstreams; their target files do not exist yet.
 
 | Command | Does |
 |---|---|
-| `docker compose -f data/banidb/docker-compose.yml up -d` | Start the local BaniDB database (MariaDB) |
-| `pnpm ingest` | Read BaniDB → `eko.db` (lines, metadata) and seed rules |
+| `docker compose -f data/banidb/docker-compose.yml up -d` | Planned C-03: start the local BaniDB database (MariaDB) |
+| `pnpm ingest` | Planned DATA-03: read BaniDB → `eko.db` and seed rules |
 | `pnpm dev` | Run the app at http://localhost:3000 |
-| `NEXT_PUBLIC_USE_MOCKS=1 pnpm dev` | Run the UI against fixtures, no backend needed |
-| `pnpm test` | Vitest (tests next to code) |
-| `pnpm typecheck` | `tsc --noEmit` |
-| `pnpm eval` | Backtest held-back drafts → `data/eval/latest.json` |
-| `pnpm bakeoff` | Compare LLMs on minimal pairs |
+| `NEXT_PUBLIC_USE_MOCKS=1 pnpm dev` | Planned FE-02: run the UI against fixtures |
+| `pnpm test` | Vitest; exits cleanly with no tests until feature tests land |
+| `pnpm typecheck` | Generate Next route types, then run `tsc --noEmit` |
+| `pnpm build` | Production build using webpack |
+| `pnpm eval` | Planned EVAL-02: backtest held-back drafts → `data/eval/latest.json` |
+| `pnpm bakeoff` | Planned LLM-02: compare LLMs on minimal pairs |
 | `python3 _docs/rules/resolve.py` | Regenerate `rules.resolved.json` from the seed and decisions |
 | `node scripts/dev/check-ownership.mjs --whoami` | Show your person and streams |
 

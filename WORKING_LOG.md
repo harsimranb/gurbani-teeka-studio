@@ -13,7 +13,7 @@ Before the two builders split, review the decision gates and M0 contract checkli
 - Finished a task: tick it and record any follow-ups in the task commit. Report that commit's final hash to the user after pushing; a commit cannot contain its own hash.
 - Checkpoints M0–M3 are in [`_docs/06-team-workflow.md`](_docs/06-team-workflow.md#checkpoints).
 
-**Person A** (CHECKS, LLM, EVAL) = _(name)_ · **Person B** (DATA, API, FE, PLATFORM) = _(name)_
+**Person A** (CHECKS, LLM, EVAL) = _(name)_ · **Person B** (DATA, API, FE, PLATFORM) = Harsimran
 
 ---
 
@@ -75,7 +75,7 @@ Append-only. Format: `- YYYY-MM-DD HH:MM · name · decision (why)`. Contract ch
 
 The private-data ignore patterns and executable hook are committed. Verify the ignore rules before C-03 exports source data; configure `core.hooksPath` and `eko.person` in each clone at M0.
 
-- [ ] **C-01** PLATFORM scaffold: Next.js (App Router, TS strict), Tailwind, shadcn (utils alias → `lib/utils.ts`), pnpm, Vitest, tsx. Install the **full package list** from `_docs/06`. Scripts: dev, test, typecheck, ingest, eval, bakeoff. `.env.example`. Empty stream folders with `.gitkeep`
+- [x] **C-01** PLATFORM scaffold (Harsimran/Person B): Next.js (App Router, TS strict), Tailwind, shadcn (utils alias → `lib/utils.ts`), pnpm, Vitest, tsx. Full package list pinned; dev/build/typecheck/test verified, later scripts wired; `.env.example` and B-owned folder placeholders added. A-owned folders wait for their tasks
 - [ ] **C-02** CONTRACTS v1: `domain.ts`, `api.ts` (every route), `ports.ts` (`Engine`). Include grouped line IDs, draft/check phase versions, exact English span offsets, `FindingBatch`/`DriftAssessment` review schemas, engine `CheckResult`, persisted `CheckRun`, current-vs-cleared findings, decision history, reference snapshot and exception marks, and ruleset version. Plus the `lib/engine/index.ts` stub (returns fixtures) and the `lib/client` mock-mode skeleton
 - [ ] **C-03** BaniDB up (`data/banidb/docker-compose.yml`); export the demo Sabads to a local, git-ignored `lib/contracts/fixtures/sabad.demo.json`. **Critical path.** Fallback after 30 min: export from the BaniDB API once. Never hand-type Gurmukhi or commit the export without permission
 - [ ] **C-04** Fixtures: `check-result.json` and `findings.json` (spans from the SYNTHETIC cases), `references.json` and `corrections.json` (labelled test data), `eval-run.json`. All validate against `domain.ts`

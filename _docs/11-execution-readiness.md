@@ -5,7 +5,7 @@ Critical pass on 2026-10-16 over [requirements](02-requirements.md), [architectu
 ## Current status
 
 - **Guardrail files are present.** `.ownership.json`, `.githooks/pre-commit` and private-data ignore rules are committed. Each builder must still configure the hook path and their `eko.person` in their own clone, and confirm the current planning docs are on `main` before splitting work.
-- **No application code exists.** Node 22, pnpm 11 and the Docker CLI are present on this Mac; the Docker daemon, `banidb-dev` image contents and LLM credentials have not been verified. C-01/P-05/P-08 remain preflight work.
+- **The minimal C-01 app scaffold is complete.** Node 22, pnpm 11 and the Docker CLI are present on this Mac; the Docker daemon, `banidb-dev` image contents and LLM credentials have not been verified. P-05/P-08 remain preflight work, and no product workflow exists yet.
 - **Neither SikhRI dataset has arrived** (Harsimran, 2026-10-16). Eko-published references may exercise citation mechanics, but they do not prove consistency against SikhRI's earlier approved corpus. The real-corrections backtest and video beat 6 cannot be accepted without pre-edit drafts.
 - **Rules are internally consistent at this point:** 66 total, eight active text checks, CONS-02 suppressor and CONS-03 by design. Rule text is unchanged. CONS-01 remains a warning with `publish_requires_reason: true` (D-56).
 

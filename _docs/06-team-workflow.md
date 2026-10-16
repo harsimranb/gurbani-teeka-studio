@@ -232,7 +232,7 @@ So nobody touches the lockfile later. Pin exact versions at install time.
 | Purpose | Packages |
 |---|---|
 | App | next, react, react-dom, typescript, @types/node, @types/react |
-| UI | tailwindcss, postcss, autoprefixer, shadcn/ui and its peers (class-variance-authority, clsx, tailwind-merge, lucide-react) |
+| UI | tailwindcss, @tailwindcss/postcss, postcss, shadcn CLI and component peers (class-variance-authority, clsx, tailwind-merge, lucide-react, tw-animate-css) |
 | Data | drizzle-orm, drizzle-kit, better-sqlite3, @types/better-sqlite3, mysql2 |
 | Contracts | zod |
 | LLM | ai (Vercel AI SDK) and the provider packages for the bake-off (e.g. @ai-sdk/anthropic, @ai-sdk/openai), p-limit |
