@@ -12,25 +12,18 @@ The canonical private fixture therefore uses the **explicit one-time API fallbac
 
 ## Reproduce privately
 
-Run from the repository root with Docker Desktop running and the pinned project dependencies installed. Create credentials once; this refuses to overwrite an existing env file. Keep the env file with its existing initialized volume, because changing its password does not change an initialized MariaDB password.
+Run from the repository root with Node 22, Docker Desktop running and the pinned project dependencies installed separately on this machine. The recorded verification above ran on macOS; Windows runtime verification remains outstanding. On Windows, Docker Desktop must use Linux containers. The pinned Linux/amd64 image runs natively on x64 hosts and through emulation on ARM hosts where Docker supports it.
 
-```bash
-python3 - <<'PYSETUP'
-from pathlib import Path
-import secrets
-path = Path("data/banidb/.env")
-path.parent.mkdir(parents=True, exist_ok=True)
-with path.open("x") as env:
-    path.chmod(0o600)
-    env.write("BANIDB_ROOT_PASSWORD=" + secrets.token_hex(24) + "\nBANIDB_PORT=3307\n")
-PYSETUP
+Create credentials once with this command, which works in macOS shells and Windows PowerShell and refuses to overwrite an existing env file. Unix mode bits apply on macOS; Windows file permissions follow its ACLs. Keep this private file in the local clone. Keep the env file with its initialized volume, because changing its password does not change an initialized MariaDB password. Do not copy Docker storage or `node_modules` across operating systems.
 
+```text
+node --input-type=module -e "import { mkdirSync, writeFileSync } from 'node:fs'; import { randomBytes } from 'node:crypto'; mkdirSync('data/banidb', { recursive: true }); writeFileSync('data/banidb/.env', 'BANIDB_ROOT_PASSWORD=' + randomBytes(24).toString('hex') + '\nBANIDB_PORT=3307\n', { flag: 'wx', mode: 0o600 });"
 docker compose --env-file data/banidb/.env -f data/banidb/docker-compose.yml up -d --wait
 ```
 
 The local exporter reads only source text/metadata, records corpus and missing-map evidence, and checks every Sabad mapping before writing. It prefers a complete compact Sabad, with Rahao when available. With the verified partial seed, the default fails clearly and writes only the ignored coverage report; requesting 55 rejects its 5/15 line mismatch without overwriting the fixture.
 
-```bash
+```text
 node --env-file=data/banidb/.env --import tsx scripts/app/export-banidb-demo.ts
 # For a fuller database, optionally pass a BaniDB Sabad ID:
 node --env-file=data/banidb/.env --import tsx scripts/app/export-banidb-demo.ts 55
@@ -38,9 +31,10 @@ node --env-file=data/banidb/.env --import tsx scripts/app/export-banidb-demo.ts 
 
 Use the fallback deliberately for this partial seed. It makes one request to the official endpoint, validates the source ID, response count, Sabad ID, line IDs and metadata, then copies Unicode and normalizes NFC. Writer and raag come from BaniDB's Sabad metadata. Rahao is detected from the standalone legacy source marker in BaniDB's unmodified source field, without generating or converting Gurmukhi.
 
-```bash
+```text
 node --import tsx scripts/app/export-banidb-api-demo.ts 55
-pnpm typecheck && pnpm test
+pnpm typecheck
+pnpm test
 ```
 
 Ignored private artifacts:
@@ -53,7 +47,7 @@ Ignored private artifacts:
 
 Only `data/banidb/docker-compose.yml` may be tracked under `data/banidb/`. Both exporters verify Git ignores before writing. Database data stays in Docker's volume outside Git. Stop the service without deleting its volume:
 
-```bash
+```text
 docker compose --env-file data/banidb/.env -f data/banidb/docker-compose.yml down
 ```
 

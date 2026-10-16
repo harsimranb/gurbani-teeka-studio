@@ -6,7 +6,7 @@ The ordered task breakdown and acceptance checks for these screens are in [10-fe
 
 ## Screen map
 
-| PDF page | Screen and interaction to build | Priority and owner |
+| PDF page | Screen and interaction to build | Priority and workstream |
 |---|---|---|
 | 1 | First-visit name prompt; name persists in this browser and can be changed from the top bar. Shared navigation shows Workspace, Review, Rules, Evaluation, current ruleset version and BaniDB attribution/logo. | P0 · FE-01, FR-20/21 |
 | 2 | Sabad workspace: list of the 1–3 demo Sabads with status; selected Sabad metadata; BaniDB Gurmukhi read-only; English transcreation per tukk or grouped tukks; save feedback shows which lines changed, then code and model check progress independently; report-card and ready-for-review actions. | P0 · FE-03/04, API-02/03, FR-01/02/03/06. Full browse and word lookup are P1 · FE-10/11, FR-04/05. Grammar hints remain P1 · FR-10. |

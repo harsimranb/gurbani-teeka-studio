@@ -116,7 +116,7 @@ Prefilter patterns for each active rule are proposals in `rules.seed.json` (`pre
 ## How to change a rule decision
 
 1. Edit the decision in `_docs/rules/resolve.py`. Never edit rule text in `rules.seed.json`.
-2. Run `python3 _docs/rules/resolve.py`. It prints the active rules; check the list is what you expect.
+2. With Python 3 installed, run `python3 _docs/rules/resolve.py` on macOS or `py -3 _docs/rules/resolve.py` on Windows. It prints the active rules; check the list is what you expect.
 3. Nothing to copy: the DATA seed and engine tests read `_docs/rules/rules.resolved.json` in place. Re-run the seed so the app's rules table picks up the change.
 4. Update this file's tables if the active set or a severity changed.
 5. Add a line to [07-decisions.md](07-decisions.md).

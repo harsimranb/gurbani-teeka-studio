@@ -46,7 +46,7 @@ Two loops run at different speeds. The **edit loop** (edit → re-check) runs ma
 
 ## Runtime architecture
 
-One Next.js process and one shared SQLite file. BaniDB is read only by the ingest script, never at request time. The **engine** (`lib/engine/`) is pure: it receives everything it needs from the API, never touches the shared database, and reaches the LLM only through its adapter. The **app** (`lib/server/`, `app/`) owns all storage and HTTP. This boundary is also how the two people split the work; see [06-team-workflow.md](06-team-workflow.md).
+One Next.js process and one shared SQLite file. BaniDB is read only by the ingest script, never at request time. The **engine** (`lib/engine/`) is pure: it receives everything it needs from the API, never touches the shared database, and reaches the LLM only through its adapter. The **app** (`lib/server/`, `app/`) owns all storage and HTTP. This boundary separates runtime responsibilities, while every contributor may work on either side; see [06-team-workflow.md](06-team-workflow.md).
 
 The four UI destinations (Workspace, Review, Rules, Evaluation) and the report-card/published states are mapped from the supplied eight-page PDF in [09-ui-mockups.md](09-ui-mockups.md). The PDF guides layout and interaction; contracts and resolved rules supply the live values and behavior.
 
@@ -99,7 +99,7 @@ flowchart TB
 | Boundary | Rule | Why |
 |---|---|---|
 | App → engine | Import only `lib/engine/index.ts` (the `Engine` port in `lib/contracts/ports.ts`) | Engine internals can change without touching app code |
-| Engine → app | Never import `lib/server/` or the database. Everything arrives in `CheckInput` / `DriftContext` | Keeps checks pure, testable, and owned by one person |
+| Engine → app | Never import `lib/server/` or the database. Everything arrives in `CheckInput` / `DriftContext` | Keeps checks pure, testable, and independent of app storage |
 | Engine storage | LLM cache and embeddings in `data/cache/`; eval output in `data/eval/latest.json` | Nobody else reads them, so they stay out of the shared schema |
 | FE → API | Only through `lib/client`, typed by `lib/contracts/api.ts`; mock mode serves fixtures | The UI can be built before the API exists |
 | Rules | `_docs/rules/rules.resolved.json` seeds the rules table (DATA) and feeds engine tests directly | One source, no copies |
@@ -204,7 +204,7 @@ The check adapter returns a strict `FindingBatch`: zero or more `Finding` values
 
 ## Core records
 
-Shared app data lives in one SQLite file owned by DATA; the shapes are defined in `lib/contracts/domain.ts`. Engine-private data (LLM cache, embeddings, eval output) lives in files under `data/`. Shapes carry over to Postgres later.
+Shared app data lives in one SQLite file accessed through the DATA repository; the shapes are defined in `lib/contracts/domain.ts`. Engine-private data (LLM cache, embeddings, eval output) lives in files under `data/`. Shapes carry over to Postgres later.
 
 | Record | Key fields | Written by |
 |---|---|---|

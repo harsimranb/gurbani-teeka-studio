@@ -9,7 +9,7 @@ Everything Team BJ13 decided before the build, in reading order. Each file stand
 | [03-architecture.md](03-architecture.md) | Logical flow, runtime architecture, stack, records, LLM boundary, drift check | How it fits together |
 | [04-ruleset.md](04-ruleset.md) | Active rules, severities, judgment calls, how to change a rule | How rules are applied |
 | [05-data-sources.md](05-data-sources.md) | BaniDB (offline), SikhRI sample, what isn't available and why | Where data comes from, terms |
-| [06-team-workflow.md](06-team-workflow.md) | Workstreams, folder ownership, contracts, dependency map, checkpoints, one-day plan | Who owns what, what depends on what |
+| [06-team-workflow.md](06-team-workflow.md) | Open workstreams, contracts, dependency map, checkpoints, one-day plan | How tasks coordinate and what depends on what |
 | [07-decisions.md](07-decisions.md) | Dated decision log with reasons | Why |
 | [08-open-questions.md](08-open-questions.md) | Unanswered questions, owners, what each blocks | What's unknown |
 | [09-ui-mockups.md](09-ui-mockups.md) | Eight-page UI reference mapped to requirements, workstreams and P0/P1 priorities; corrections to illustrative labels | How the supplied screens guide the build |
@@ -25,12 +25,12 @@ Everything Team BJ13 decided before the build, in reading order. Each file stand
 | [rules/ruleset-v0.1-draft.txt](rules/ruleset-v0.1-draft.txt) | The team's original ruleset draft, from SikhRI's public Approach and Methodology pages | No: historical source |
 | [rules/rules.seed.json](rules/rules.seed.json) | All 66 rules, verbatim, with structure (category, check type, prefilter proposals) | Rarely |
 | [rules/resolve.py](rules/resolve.py) | Every judgment call: scope, severity, layers, decision | **Yes: change decisions here** |
-| [rules/rules.resolved.json](rules/rules.resolved.json) | Generated. What the app loads | No: regenerate with `python3 _docs/rules/resolve.py` |
+| [rules/rules.resolved.json](rules/rules.resolved.json) | Generated. What the app loads | No: regenerate with `python3 _docs/rules/resolve.py` (macOS) or `py -3 _docs/rules/resolve.py` (Windows) |
 | [rules/RULES_NOTES.md](rules/RULES_NOTES.md) | Analysis: tensions, precision, synthetic test cases (§10) | Reference |
 
-## Ownership
+## Contribution and platforms
 
-Folder ownership per workstream is machine-readable in [`../.ownership.json`](../.ownership.json) and enforced by the pre-commit hook in [`../.githooks/`](../.githooks/pre-commit) via [`../scripts/dev/check-ownership.mjs`](../scripts/dev/check-ownership.mjs). Each clone must configure `core.hooksPath` and its `eko.person` identity.
+Anyone may work on any task or folder. Workstreams describe related code, not permissions. [`CLAUDE.md`](../CLAUDE.md) defines the agent model policy, macOS/Windows setup, contract protocol and coordination rules. Private source data, credentials, databases and caches remain ignored in every clone.
 
 ## Shared links
 

@@ -14,8 +14,8 @@ What's still unknown, who's chasing it, and what it blocks. Close a question by 
 | OQ-08 | Should the 4 additions in the reviewer doc stay (Q1 option B, Q10, Q11, TERM-02 split)? | Harsimran | Sending the reviewer doc | Open (P-01) |
 | OQ-13 | What source defines a preferred rendering for glossary-collision blocking: a supplied SikhRI glossary/style guide, references with explicit preference, or neither until available? | SikhRI team and Harsimran | LLM-10 drift check | Open; a missing source must be shown as unavailable, not pass |
 | OQ-14 | Which reviewer edits count in the backtest denominator, and how are changed spans matched to findings when the review history lacks explicit span annotations? | SikhRI team and Harsimran | EVAL-01/02, video beat 6 | Open; decide before reporting a real rate |
-| OQ-16 | Who is Person A and Person B, do they have separate configured clones, and how will both access the local UI PDF and private BaniDB fixture? | Harsimran | C-05 ownership setup, P-10, M0 | Open; settle before the builders split |
-| OQ-17 | Does the reference sample include explicit term-to-rendering alignments or a preferred-rendering glossary? Line-level English alone cannot prove which English word renders a specific Gurmukhi stem. | SikhRI team; Person A checks sample | CHK-12 deterministic CONS-01 | Open; keep CHK-12 silent without an explicit mapping and use only cited English-reference style comparisons |
+| OQ-16 | How will every macOS/Windows clone access the private UI PDF and BaniDB fixture and verify its local setup? | Contributors | C-05 privacy verification, P-10, M0 | Open for private provisioning/platform verification; fixed person assignments removed by D-71 |
+| OQ-17 | Does the reference sample include explicit term-to-rendering alignments or a preferred-rendering glossary? Line-level English alone cannot prove which English word renders a specific Gurmukhi stem. | SikhRI team; CHECKS contributor checks sample | CHK-12 deterministic CONS-01 | Open; keep CHK-12 silent without an explicit mapping and use only cited English-reference style comparisons |
 
 ## Answered
 

@@ -4,7 +4,7 @@
 
 **Goal:** Build the eight-screen Eko demo flow with checkable completion criteria for each feature, without expanding the one-day P0 scope.
 
-**Architecture:** Person A owns the engine (CHECKS, LLM, EVAL); Person B owns the app (DATA, API, FE, PLATFORM). They agree on Zod contracts at M0. The app loads BaniDB text and rules, passes a `CheckInput` through the engine port, stores validated findings and human decisions, and renders the current state. See [03-architecture.md](03-architecture.md) and [06-team-workflow.md](06-team-workflow.md).
+**Architecture:** Engine (CHECKS, LLM, EVAL) and app (DATA, API, FE, PLATFORM) are workstreams open to every contributor on macOS or Windows. They share Zod contracts agreed at M0. The app loads BaniDB text and rules, passes a `CheckInput` through the engine port, stores validated findings and human decisions, and renders the current state. See [03-architecture.md](03-architecture.md) and [06-team-workflow.md](06-team-workflow.md).
 
 **Tech stack:** Next.js App Router, TypeScript strict, SQLite/Drizzle, Vercel AI SDK structured output with Zod (`generateText` + `Output.object` in current docs), Transformers.js, Vitest, BaniDB MariaDB at ingest. Pin compatible versions in C-01.
 
@@ -20,7 +20,7 @@
 - Every human decision, including acceptance, override, waiver and rule approval, needs a stored written reason. No sign-in or roles; store the entered name.
 - Open errors and flags, an incomplete current check phase, or a CONS-01 departure without a recorded reason block publishing. Other warnings do not block, but dismissing one needs a reason. Rule text remains verbatim and resolved decisions govern severity.
 - SikhRI sample data stays outside Git under `data/sikhri-sample/`. BaniDB data, including a locally exported demo fixture, and local databases stay uncommitted unless Khalis Foundation expressly permits redistribution. Use labelled synthetic English cases only for stand-ins.
-- Work only in owned folders, never bypass the ownership hook, and use `lib/engine/index.ts` as the app's only engine import.
+- Anyone may work in any folder. Coordinate overlapping edits and use `lib/engine/index.ts` as the app's only engine import.
 
 ## Review focus
 
@@ -39,7 +39,7 @@ The hour labels below are estimates, not hard stop times; pass each milestone's 
 
 | Checkpoint | Feature slice to demonstrate | Dependency |
 |---|---|---|
-| M0 · hour 1 | Scaffold, contracts, BaniDB fixture, mocks and ownership guardrails work | C-01 to C-05; P-05 for full-source validation |
+| M0 · hour 1 | Scaffold, contracts, BaniDB fixture, mocks and private-data ignore checks work | C-01 to C-05; P-05 for full-source validation |
 | M1 · hour 3 | Save a human transcreation; real code findings appear with exact highlights | F1, F2 code phase; S1/S2 |
 | M2 · hour 6 | Model findings, reference findings where an applicable source exists, reasoned review and publish gate work; decide cuts | F2 model phase, F3 with SikhRI or Eko-published references, F4 |
 | M3 · hour 8 | Proposal passes drift/approval, next check uses the new rule; backtest output is shown | F5, F6, F7; S3/S4/S5/S7 |
@@ -59,7 +59,7 @@ The hour labels below are estimates, not hard stop times; pass each milestone's 
 
 ## F0 · Foundation, contracts and source data
 
-**Owner:** Both at hour 0; Person B for PLATFORM and DATA thereafter. **Needs:** BaniDB image and P-05 check. **Paths:** root config, `lib/contracts/`, `lib/server/db/`, `lib/server/ingest/`, `scripts/app/`, `data/banidb/`, `.ownership.json`, `.githooks/`, `.gitignore`.
+**Workstreams:** CONTRACTS, PLATFORM, DATA and API; anyone may contribute. **Needs:** BaniDB image and P-05 check. **Paths:** root config, `lib/contracts/`, `lib/server/db/`, `lib/server/ingest/`, `scripts/app/`, `data/banidb/`, `.gitignore`.
 
 | Task | Independently reviewable deliverable |
 |---|---|
@@ -67,7 +67,7 @@ The hour labels below are estimates, not hard stop times; pass each milestone's 
 | C-02 | `domain.ts`, `api.ts` and `ports.ts` validate every cross-stream shape, including grouped line IDs, draft/check versions and phase states, exact English span offsets, current reference snapshot, finding state, decision/reason, exception marks, strict `FindingBatch`/`DriftAssessment` outputs, engine `CheckResult`, persisted `CheckRun` and integer ruleset version (`1` displays as `v1`). Stub engine and mock client return schema-valid fixtures; the route inventory is explicit in `api.ts`. |
 | C-03 | Local BaniDB starts; an ignored local fixture is exported from its database with source IDs and NFC text. No Gurmukhi is typed or generated. Record whether the image contains the full Guru Granth Sahib (P-05). |
 | C-04 | Check-result, findings, references, corrections and eval fixtures validate against contracts and are clearly labelled test data. Fake metrics and references cannot be mistaken for SikhRI evidence. |
-| C-05 | The committed ownership map, executable hook and private-data ignores are verified; both builders configure their clones. Cross-owner and unmapped staged paths are blocked while SikhRI samples, BaniDB data (including the exported demo fixture), caches, eval output and SQLite databases stay ignored. |
+| C-05 | Each macOS/Windows clone verifies private-data ignores: SikhRI samples, BaniDB exports (including the demo fixture), credentials, caches, eval output and local databases stay ignored. No person identity or folder ownership restriction applies. |
 | DATA-01 | A migration creates the records in [03](03-architecture.md#core-records), including durable `CheckRun` phase state; a temporary SQLite file can apply it from empty state. |
 | DATA-02 | Repository functions save/load the contract records without engine imports; a temporary SQLite file exercises draft, finding, decision, rule and reference operations. |
 | DATA-03 | Ingest creates BaniDB-backed lines and metadata with NFC text; re-running does not duplicate rows. |
@@ -79,7 +79,7 @@ The hour labels below are estimates, not hard stop times; pass each milestone's 
 
 ## F1 · Name, navigation and transcreation workspace
 
-**Owner:** Person B. **Needs:** C-02/C-04, DATA-02/03, API-02. **Paths:** `app/(studio)/`, `app/layout.tsx`, `components/`, `lib/client/`, `app/api/`, `lib/server/services/`.
+**Workstreams:** App; anyone may contribute. **Needs:** C-02/C-04, DATA-02/03, API-02. **Paths:** `app/(studio)/`, `app/layout.tsx`, `components/`, `lib/client/`, `app/api/`, `lib/server/services/`.
 
 | Task | Independently reviewable deliverable |
 |---|---|
@@ -92,7 +92,7 @@ The hour labels below are estimates, not hard stop times; pass each milestone's 
 
 ## F2 · Rules engine, checks and report card
 
-**Owner:** Person A for engine; Person B for API/UI. **Needs:** C-02/C-03, S2, P-08 for model bake-off. **Paths:** `lib/engine/checks/`, `lib/engine/gurmukhi/`, `lib/engine/rules/`, `lib/engine/llm/`, `lib/engine/index.ts`, `app/api/`, `components/`.
+**Workstreams:** CHECKS, LLM, API and FE; anyone may contribute. **Needs:** C-02/C-03, S2, P-08 for model bake-off. **Paths:** `lib/engine/checks/`, `lib/engine/gurmukhi/`, `lib/engine/rules/`, `lib/engine/llm/`, `lib/engine/index.ts`, `app/api/`, `components/`.
 
 | Task | Independently reviewable deliverable |
 |---|---|
@@ -119,7 +119,7 @@ The hour labels below are estimates, not hard stop times; pass each milestone's 
 
 ## F3 · Reference and style evidence
 
-**Owner:** Person B imports/stores; Person A indexes/checks. **Needs:** an applicable SikhRI-supplied or Eko-published reference. P-04/S3 are needed for claims about SikhRI's existing corpus. **Paths:** `data/sikhri-sample/`, `lib/server/ingest/`, `lib/engine/retrieval/`, `lib/engine/llm/`, `lib/engine/checks/`.
+**Workstreams:** DATA, LLM and CHECKS; anyone may contribute. **Needs:** an applicable SikhRI-supplied or Eko-published reference. P-04/S3 are needed for claims about SikhRI's existing corpus. **Paths:** `data/sikhri-sample/`, `lib/server/ingest/`, `lib/engine/retrieval/`, `lib/engine/llm/`, `lib/engine/checks/`.
 
 | Task | Independently reviewable deliverable |
 |---|---|
@@ -133,7 +133,7 @@ The hour labels below are estimates, not hard stop times; pass each milestone's 
 
 ## F4 · Human review, reasons and publishing
 
-**Owner:** Person B; Person A provides `indexReferences`. **Needs:** F1/F2, S6. **Paths:** `lib/server/services/`, `app/api/`, `app/(studio)/`, `components/`.
+**Workstreams:** API and FE, with LLM providing `indexReferences`; anyone may contribute. **Needs:** F1/F2, S6. **Paths:** `lib/server/services/`, `app/api/`, `app/(studio)/`, `components/`.
 
 | Task | Independently reviewable deliverable |
 |---|---|
@@ -146,7 +146,7 @@ The hour labels below are estimates, not hard stop times; pass each milestone's 
 
 ## F5 · Rules catalog
 
-**Owner:** Person B. **Needs:** DATA-04, API-06. **Paths:** `lib/server/services/`, `app/api/`, `app/(studio)/`.
+**Workstreams:** App; anyone may contribute. **Needs:** DATA-04, API-06. **Paths:** `lib/server/services/`, `app/api/`, `app/(studio)/`.
 
 | Task | Independently reviewable deliverable |
 |---|---|
@@ -157,7 +157,7 @@ The hour labels below are estimates, not hard stop times; pass each milestone's 
 
 ## F6 · Proposals, drift guard and ruleset activation
 
-**Owner:** Person A for rule judge/drift; Person B for API/UI. **Needs:** F5, S4, S7, published references for replay. **Paths:** `lib/engine/drift/`, `lib/engine/llm/`, `lib/server/services/`, `app/api/`, `app/(studio)/`.
+**Workstreams:** LLM, API and FE; anyone may contribute. **Needs:** F5, S4, S7, published references for replay. **Paths:** `lib/engine/drift/`, `lib/engine/llm/`, `lib/server/services/`, `app/api/`, `app/(studio)/`.
 
 | Task | Independently reviewable deliverable |
 |---|---|
@@ -171,7 +171,7 @@ The hour labels below are estimates, not hard stop times; pass each milestone's 
 
 ## F7 · Backtest and evaluation view
 
-**Owner:** Person A for EVAL; Person B for API/UI. **Needs:** SikhRI pre-edit drafts via DATA-06, F2 pipeline, S5. **Paths:** `lib/engine/eval/`, `scripts/engine/eval.ts`, `data/eval/`, `app/api/`, `app/(studio)/`.
+**Workstreams:** EVAL, API and FE; anyone may contribute. **Needs:** SikhRI pre-edit drafts via DATA-06, F2 pipeline, S5. **Paths:** `lib/engine/eval/`, `scripts/engine/eval.ts`, `data/eval/`, `app/api/`, `app/(studio)/`.
 
 | Task | Independently reviewable deliverable |
 |---|---|
@@ -197,7 +197,7 @@ The hour labels below are estimates, not hard stop times; pass each milestone's 
 
 ## Final integration acceptance
 
-- [ ] `pnpm typecheck && pnpm test` pass; the ownership hook remains enabled and private data paths remain ignored.
+- [ ] `pnpm typecheck && pnpm test` pass; private data paths remain ignored in each clone.
 - [ ] INT-02 runs the six-screen path against real BaniDB text, with code checks first, validated model/reference evidence, reasoned review, publish, rule activation and evaluation.
 - [ ] Every visible rule count, ruleset version, reference ID, timing and rate comes from live data; no PDF placeholder is presented as a measurement.
 - [ ] The six review-focus cases above have task-owned tests or a recorded manual verification at their named boundary.

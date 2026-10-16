@@ -11,7 +11,7 @@ Built by Team BJ13 for Sarbat Build Day, problem statement [sikhri-1](https://sa
 | Problem, scope, requirements | Done: [`_docs/02-requirements.md`](_docs/02-requirements.md) |
 | Architecture and stack | Done: [`_docs/03-architecture.md`](_docs/03-architecture.md) |
 | Ruleset v0.1 (66 rules, 10 active) | Done, pending reviewer answers: [`_docs/04-ruleset.md`](_docs/04-ruleset.md) |
-| Team workflow | 8 workstreams and contract protocol; ownership map/hook installed, per-clone identity setup pending: [`_docs/06-team-workflow.md`](_docs/06-team-workflow.md) |
+| Team workflow | Open contribution across all workstreams, model policy and macOS/Windows setup: [`_docs/06-team-workflow.md`](_docs/06-team-workflow.md) |
 | UI mockups | Eight supplied screens mapped to P0/P1 tasks: [`_docs/09-ui-mockups.md`](_docs/09-ui-mockups.md) |
 | Feature plan | Task breakdown and acceptance criteria: [`_docs/10-feature-breakdown.md`](_docs/10-feature-breakdown.md) |
 | Kickoff readiness | Decisions and external inputs before workstream split: [`_docs/11-execution-readiness.md`](_docs/11-execution-readiness.md) |
@@ -27,7 +27,7 @@ Built by Team BJ13 for Sarbat Build Day, problem statement [sikhri-1](https://sa
 | See how it fits together | [`_docs/03-architecture.md`](_docs/03-architecture.md) |
 | Understand the rules | [`_docs/04-ruleset.md`](_docs/04-ruleset.md) |
 | Know where data comes from | [`_docs/05-data-sources.md`](_docs/05-data-sources.md) |
-| Know who owns what, and how streams depend on each other | [`_docs/06-team-workflow.md`](_docs/06-team-workflow.md) |
+| Understand workstreams and their dependencies | [`_docs/06-team-workflow.md`](_docs/06-team-workflow.md) |
 | Know why something was decided | [`_docs/07-decisions.md`](_docs/07-decisions.md) |
 | Build the supplied screens | [`_docs/09-ui-mockups.md`](_docs/09-ui-mockups.md) |
 | Check feature tasks and acceptance | [`_docs/10-feature-breakdown.md`](_docs/10-feature-breakdown.md) |
@@ -57,7 +57,7 @@ TypeScript, Next.js, SQLite with Drizzle, Vercel AI SDK (any LLM provider), Tran
 The minimal app scaffold is available. Product data, checks and evaluation arrive in later tasks (see [`CLAUDE.md`](CLAUDE.md) for the current command list):
 
 ```bash
-# prerequisites: Node 20.9+, pnpm
+# prerequisites: Node 22 (.nvmrc), pinned pnpm version from package.json
 pnpm install
 pnpm dev                                                 # http://localhost:3000
 pnpm typecheck
@@ -67,18 +67,14 @@ pnpm build
 
 C-02 supplies review-only schemas, 18 P0 API contracts, and explicitly synthetic engine/client stubs. Real review workflows arrive in later tasks. For local BaniDB setup and the private complete demo fixture, follow [C-03 setup](_docs/c03-banidb.md); the pinned development database is partial, so its documented API fallback is needed for the demo.
 
-One-time setup per clone so the ownership hook runs (see [`CLAUDE.md`](CLAUDE.md)):
+Development runs on macOS and Windows. Install dependencies independently on each machine; do not share `node_modules`, `.next`, Docker volumes or credentials. Anyone can work on any task or folder; person identity and ownership hooks are no longer required. See [`CLAUDE.md`](CLAUDE.md#development-on-macos-and-windows) for shell-specific mock mode and shared setup guidance.
 
-```bash
-git config core.hooksPath .githooks
-chmod +x .githooks/pre-commit
-git config eko.person A        # or B
-```
+For agents, planning uses **Opus 5.5 or GPT 6 Sol High**; implementation uses **Sonnet 5.5 High or Luna High**. This is separate from Eko's application-model bake-off.
 
 To regenerate the resolved ruleset after editing a decision:
 
 ```bash
-python3 _docs/rules/resolve.py
+python3 _docs/rules/resolve.py   # macOS; Windows: py -3 _docs/rules/resolve.py
 ```
 
 ## Licence and attribution

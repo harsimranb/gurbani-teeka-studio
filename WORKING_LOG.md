@@ -4,16 +4,16 @@ The complete task plan by workstream, plus what's done and what's pending. How t
 
 The eight supplied UI mockup pages are mapped to tasks and priorities in [`_docs/09-ui-mockups.md`](_docs/09-ui-mockups.md). Use their layout and flow as the FE reference; use the requirements and resolved rules for behavior and counts.
 
-Each feature's ordered tasks and acceptance checks are in [`_docs/10-feature-breakdown.md`](_docs/10-feature-breakdown.md). Use this log for status and ownership, and the breakdown for what proves a task is done.
+Each feature's ordered tasks and acceptance checks are in [`_docs/10-feature-breakdown.md`](_docs/10-feature-breakdown.md). Use this log for status and dependencies, and the breakdown for what proves a task is done.
 
 Before the two builders split, review the decision gates and M0 contract checklist in [`_docs/11-execution-readiness.md`](_docs/11-execution-readiness.md). It records which work can proceed while external data is absent.
 
-- **Edit only your own stream's task section**. *Feature status* is shared and updated by the person completing a related task; *Decisions* is append-only and anyone may add. In *Seams*, only the provider ticks its row.
+- **Anyone may work on any task or folder.** Coordinate overlapping edits. Update the relevant task and feature status; *Decisions* is append-only. Tick a seam only when its real implementation is verified on `main`.
 - Each task: `ID · what · FR · Needs`. *Needs* names the task or seam it depends on, and the stub to use until then.
 - Before committing a finished task: tick it, update the feature status below, record follow-ups and mirror any plan-changing decision in *Decisions*. Report that commit's final hash to the user after pushing; a commit cannot contain its own hash. Add a known hash to the log in a later commit only if useful.
 - Checkpoints M0–M3 are in [`_docs/06-team-workflow.md`](_docs/06-team-workflow.md#checkpoints).
 
-**Person A** (CHECKS, LLM, EVAL) = _(name)_ · **Person B** (DATA, API, FE, PLATFORM) = Harsimran
+**Contribution policy:** all workstreams are open to everyone, on macOS and Windows. Model and setup guidance lives in `CLAUDE.md`.
 
 ---
 
@@ -23,7 +23,7 @@ Mark a feature complete only when its acceptance paragraph in [`_docs/10-feature
 
 | Feature | Status | Evidence / next dependency |
 |---|---|---|
-| **F0 · Foundation, contracts and source data** | In progress | C-01/C-02 complete; C-03 service and private API fallback delivered, local export blocked by partial source. C-05 Person A clone setup, C-04 fixtures and DATA/API foundation remain. |
+| **F0 · Foundation, contracts and source data** | In progress | C-01/C-02 complete; C-03 service and private API fallback delivered, local export blocked by partial source. C-05 per-clone privacy checks, C-04 fixtures and DATA/API foundation remain. |
 | **F1 · Workspace** | Not started | Needs F0 contracts, data and API. |
 | **F2 · Checks and report card** | Not started | Needs C-02 contracts and C-03 BaniDB fixture. |
 | **F3 · Reference and style evidence** | Not started | Eko-published references can exercise mechanics; SikhRI sample and term mappings remain pending. |
@@ -36,19 +36,19 @@ Mark a feature complete only when its acceptance paragraph in [`_docs/10-feature
 
 ## Seams
 
-Cross-person dependencies. The provider ticks a row when the real implementation is on `main`.
+Cross-workstream dependencies. The provider ticks a row when the real implementation is on `main`.
 
 | Ready | Seam | Provider → consumer | Real by | Stub until then |
 |---|---|---|---|---|
-| [ ] | **S1** `engine.runChecks` (code phase) | A: CHK-10 → B: API-03 | M1 | engine stub returns fixture `CheckResult` |
-| [ ] | **S1** `engine.runChecks` (LLM phase) | A: CHK-11 → B: API-03 | M2 | code phase only |
-| [ ] | **S2** `CheckInput` from real data | B: DATA-03, API-03 → A | M1 | `fixtures/sabad.demo.json` |
-| [ ] | **S3** SikhRI references (normalized JSON) | B: DATA-06 → A: LLM-07 | M2 | `fixtures/references.json` |
-| [ ] | **S3** SikhRI corrections (normalized JSON) | B: DATA-06 → A: EVAL-02 | M3 | `fixtures/corrections.json` |
-| [ ] | **S4** `engine.runDriftCheck` | A: LLM-10 → B: API-07 | M3 | stub returns `pass` |
-| [ ] | **S5** `data/eval/latest.json` | A: EVAL-02 → B: API-09 | M3 | `fixtures/eval-run.json` |
-| [ ] | **S6** `engine.indexReferences` | A: LLM-07 → B: API-05 | M2 | no-op |
-| [ ] | **S7** Free-text rules checked | A: LLM-06 ← B: API-08 | M3 | rule listed but not checked |
+| [ ] | **S1** `engine.runChecks` (code phase) | CHK-10 → API-03 | M1 | engine stub returns fixture `CheckResult` |
+| [ ] | **S1** `engine.runChecks` (LLM phase) | CHK-11 → API-03 | M2 | code phase only |
+| [ ] | **S2** `CheckInput` from real data | DATA-03, API-03 → CHECKS | M1 | `fixtures/sabad.demo.json` |
+| [ ] | **S3** SikhRI references (normalized JSON) | DATA-06 → LLM-07 | M2 | `fixtures/references.json` |
+| [ ] | **S3** SikhRI corrections (normalized JSON) | DATA-06 → EVAL-02 | M3 | `fixtures/corrections.json` |
+| [ ] | **S4** `engine.runDriftCheck` | LLM-10 → API-07 | M3 | stub reports `not_evaluable` |
+| [ ] | **S5** `data/eval/latest.json` | EVAL-02 → API-09 | M3 | `fixtures/eval-run.json` |
+| [ ] | **S6** `engine.indexReferences` | LLM-07 → API-05 | M2 | no-op |
+| [ ] | **S7** Free-text rules checked | LLM-06 ← API-08 | M3 | rule listed but not checked |
 
 ---
 
@@ -78,6 +78,9 @@ Append-only. Record decisions that add, remove or change planned behavior here *
 | D-68 | C-02 includes the current Sabad authored-unit snapshot in `CheckInput.sabadDrafts`, so Sabad-scoped checks can inspect other drafts without engine database access. Rule contracts retain source prefilter metadata. |
 | D-69 | Drift `affected_count` counts unique source lines; per-source unique-line counts may overlap. C-02 exposes reference lookup for cited evidence, and affected-unit phase results retain their own draft versions. |
 | D-70 | C-03 verified the dev database is partial and cannot export a complete metadata-valid Sabad. Keep local-export acceptance open; use the documented explicit API fallback for private demo development, with separate provenance. |
+| D-71 | Anyone may work on any task or folder; remove person-based ownership enforcement and identity setup. Workstreams remain organizational labels. |
+| D-72 | Planning uses Opus 5.5 or GPT 6 Sol High; implementation uses Sonnet 5.5 High or Luna High, resolved to available harness IDs without silent substitutions. |
+| D-73 | Support macOS and Windows development with shared Node/pnpm versions, LF text, platform-appropriate commands and per-machine dependencies/private data; verify each OS separately. |
 
 ---
 
@@ -89,9 +92,10 @@ Append-only. Record decisions that add, remove or change planned behavior here *
 - [x] Ruleset v0.1 structured (66 rules) and resolved (10 active) → `_docs/rules/`
 - [x] Reviewer questions document drafted → `_docs/reviewer-questions.md`
 - [x] Data source research → `_docs/05`
-- [x] Workstream design and guardrail files → `_docs/06`, `.ownership.json`, `.githooks/`, `.gitignore`
+- [x] Workstream design and private-data ignore rules → `_docs/06`, `.gitignore`; fixed-owner enforcement removed by P-13
 - [x] **P-11** Consolidate the UI mockups, feature acceptance, readiness decisions and end-to-end agent workflow into the planning docs
 - [x] **P-12** Add feature-level status and require plan-changing decisions in this work log before commit/push
+- [x] **P-13** Update agent model guidance, reconcile macOS/Windows development and remove fixed-person ownership enforcement · Typecheck and 34 tests pass; credential setup verified on macOS; fresh Luna High review completed and findings fixed. Windows runtime verification remains pending under C-05
 
 ### Next
 - [ ] **P-01** Review the 4 flagged additions in the reviewer doc (Q1 option B, Q10, Q11, TERM-02 split), then send it
@@ -113,22 +117,22 @@ Append-only. Record decisions that add, remove or change planned behavior here *
 
 ## Hour 0–1 · together (pairing on one machine)
 
-The private-data ignore patterns and executable hook are committed. Verify the ignore rules before C-03 exports source data; configure `core.hooksPath` and `eko.person` in each clone at M0.
+Private-data ignore patterns are committed. Verify them before source exports in each clone. No ownership hook or person identity setup is required (D-71).
 
-- [x] **C-01** PLATFORM scaffold (Harsimran/Person B; `9adc8f0`): Next.js (App Router, TS strict), Tailwind, shadcn (utils alias → `lib/utils.ts`), pnpm, Vitest, tsx. Full package list pinned; dev/build/typecheck/test verified, later scripts wired; `.env.example` and B-owned folder placeholders added. A-owned folders wait for their tasks
+- [x] **C-01** PLATFORM scaffold (Harsimran; `9adc8f0`): Next.js (App Router, TS strict), Tailwind, shadcn (utils alias → `lib/utils.ts`), pnpm, Vitest, tsx. Full package list pinned; dev/build/typecheck/test verified, later scripts wired; `.env.example` and app folder placeholders added; engine folders arrive with their tasks
 - [x] **C-02** CONTRACTS v1: `domain.ts`, `api.ts` (every route), `ports.ts` (`Engine`). Include grouped line IDs, draft/check phase versions, exact English span offsets, `FindingBatch`/`DriftAssessment` review schemas, engine `CheckResult`, persisted `CheckRun`, current-vs-cleared findings, decision history, reference snapshot and exception marks, and ruleset version. Plus the `lib/engine/index.ts` stub (returns fixtures) and the `lib/client` mock-mode skeleton
   - Complete (2026-10-16): 18 P0 route contracts, current Sabad authored-unit snapshot, source-labelled evidence, minimal labelled fixtures and explicit synthetic engine/client stubs. Fresh subagent correctness review completed; substantiated issues fixed. Integrated typecheck and all 34 tests pass (29 C-02, five C-03). C-04's broader scenarios remain separate; no real checks or backtest are claimed.
 - [ ] **C-03** BaniDB up (`data/banidb/docker-compose.yml`); export the demo Sabads to a local, git-ignored `lib/contracts/fixtures/sabad.demo.json`. **Critical path.** Fallback after 30 min: export from the BaniDB API once. Never hand-type Gurmukhi or commit the export without permission
   - Partial delivery (2026-10-16): healthy pinned local database, strict exporters and complete private API-fallback Sabad 55 (15 lines, NFC) delivered and independently reviewed. The dev seed is missing verses, and its three complete one-line Sabads lack writer metadata, so local-export acceptance remains blocked. Reproduction and evidence: `_docs/c03-banidb.md`. Private source, provenance and credentials remain ignored.
 - [ ] **C-04** Fixtures: `check-result.json` and `findings.json` (spans from the SYNTHETIC cases), `references.json` and `corrections.json` (labelled test data), `eval-run.json`. All validate against `domain.ts`
-- [ ] **C-05** Guardrails: map, executable hook and private-data ignores landed in `690f614` and `257c0c3`. Each person still runs the clone setup in `CLAUDE.md`; fill in names above before marking complete
+- [ ] **C-05** Verify private-data ignores in each macOS/Windows clone: source exports, credentials, caches, eval output and local databases stay uncommitted. Fixed-owner enforcement and identity setup were removed by D-71; cross-platform clone verification remains pending
 - [ ] **M0** checkpoint: `pnpm dev` and `pnpm test` pass; contracts v1 on `main`
 
 ---
 
-## CHECKS · Person A
+## CHECKS
 
-Owns `lib/engine/checks/`, `lib/engine/gurmukhi/`, `lib/engine/rules/`, `lib/engine/index.ts`.
+Related folders: `lib/engine/checks/`, `lib/engine/gurmukhi/`, `lib/engine/rules/`, `lib/engine/index.ts`.
 
 ### In progress
 - _(none)_
@@ -152,9 +156,9 @@ Owns `lib/engine/checks/`, `lib/engine/gurmukhi/`, `lib/engine/rules/`, `lib/eng
 
 ---
 
-## LLM · Person A
+## LLM
 
-Owns `lib/engine/llm/`, `lib/engine/retrieval/`, `lib/engine/drift/`, `data/cache/`, `scripts/engine/bakeoff.ts`.
+Related folders: `lib/engine/llm/`, `lib/engine/retrieval/`, `lib/engine/drift/`, `data/cache/`, `scripts/engine/bakeoff.ts`.
 
 ### In progress
 - _(none)_
@@ -180,9 +184,9 @@ Owns `lib/engine/llm/`, `lib/engine/retrieval/`, `lib/engine/drift/`, `data/cach
 
 ---
 
-## EVAL · Person A
+## EVAL
 
-Owns `lib/engine/eval/`, `scripts/engine/eval.ts`, `data/eval/`.
+Related folders: `lib/engine/eval/`, `scripts/engine/eval.ts`, `data/eval/`.
 
 ### Next
 - [ ] **EVAL-01** Metrics: catch rate, false-flag rate, sample size, per rule; tag typo and out-of-scope corrections separately · FR-19
@@ -190,9 +194,9 @@ Owns `lib/engine/eval/`, `scripts/engine/eval.ts`, `data/eval/`.
 
 ---
 
-## DATA · Person B
+## DATA
 
-Owns `lib/server/db/`, `lib/server/ingest/`, `scripts/app/`, `data/banidb/`, `data/sikhri-sample/`.
+Related folders: `lib/server/db/`, `lib/server/ingest/`, `scripts/app/`, `data/banidb/`, `data/sikhri-sample/`.
 
 ### In progress
 - _(none)_
@@ -210,9 +214,9 @@ Owns `lib/server/db/`, `lib/server/ingest/`, `scripts/app/`, `data/banidb/`, `da
 
 ---
 
-## API · Person B
+## API
 
-Owns `app/api/`, `lib/server/services/`.
+Related folders: `app/api/`, `lib/server/services/`.
 
 ### In progress
 - _(none)_
@@ -233,9 +237,9 @@ Owns `app/api/`, `lib/server/services/`.
 
 ---
 
-## FE · Person B
+## FE
 
-Owns `app/(studio)/`, `app/layout.tsx`, `app/page.tsx`, `app/globals.css`, `components/`, `lib/client/`, `lib/utils.ts`, `public/`.
+Related folders: `app/(studio)/`, `app/layout.tsx`, `app/page.tsx`, `app/globals.css`, `components/`, `lib/client/`, `lib/utils.ts`, `public/`.
 
 ### In progress
 - _(none)_
@@ -288,8 +292,8 @@ Owns `app/(studio)/`, `app/layout.tsx`, `app/page.tsx`, `app/globals.css`, `comp
 
 ---
 
-## Requests between people
+## Coordination requests
 
-Format: `- from → to · what's needed · task it blocks`. The owner ticks it when done.
+Format: `- from → to · what's needed · task it blocks`. Whoever completes the request ticks it when verified.
 
 - _(none)_
