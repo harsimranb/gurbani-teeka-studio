@@ -1,0 +1,23 @@
+name: eko-banidb
+
+services:
+  database:
+    image: khalisfoundation/banidb-dev@sha256:a4198a3c66f6bdfa3dedf77e53f5f90923205f5630353e5cafe757e52c02ef0f
+    platform: linux/amd64
+    environment:
+      MYSQL_ROOT_PASSWORD: ${BANIDB_ROOT_PASSWORD:?Set BANIDB_ROOT_PASSWORD in the ignored data/banidb/.env}
+      MYSQL_DATABASE: khajana_dev_khajana
+    ports:
+      - "127.0.0.1:${BANIDB_PORT:-3307}:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "MYSQL_PWD=\"$$MYSQL_ROOT_PASSWORD\" mysql --protocol=tcp -h 127.0.0.1 -uroot -Nse \"SELECT 1\""]
+      interval: 5s
+      timeout: 5s
+      retries: 24
+      start_period: 60s
+
+# Docker-managed storage stays outside Git and survives compose down.
+volumes:
+  mysql-data:

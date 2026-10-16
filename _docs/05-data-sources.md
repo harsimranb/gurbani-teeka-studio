@@ -6,7 +6,7 @@ What Eko reads, where it comes from, and the terms attached. Researched Oct 16, 
 
 | Asset | Status | Used for |
 |---|---|---|
-| **BaniDB** (Khalis Foundation) | Available; use a **local copy of the database** | Gurmukhi, ang, raag, writer, line and Sabad IDs |
+| **BaniDB** (Khalis Foundation) | Local dev seed verified partial; complete private demo fixture from the documented API fallback | Gurmukhi, ang, raag, writer, line and Sabad IDs |
 | **SikhRI sample** (reference transcreations, review history) | Promised by the brief; arrives on build day | Style and consistency checks, published-line replay, backtest |
 | **SikhRI style guide** | Coming separately from SikhRI's team | Settling pronouns, capitalization, loaded words, register |
 | **SikhRI Guru Granth Sahib Dictionary** | Web only, all rights reserved, no API | Not used. Link out at most |
@@ -18,7 +18,7 @@ What Eko reads, where it comes from, and the terms attached. Researched Oct 16, 
 Ingest reads a local database rather than the hosted API: no rate limits, no network dependency during ingest.
 
 - **How:** BaniDB's own repository ships a development database image, `khalisfoundation/banidb-dev` (MariaDB). Its compose file exposes port 3306 with database `khajana_dev_khajana`. Eko's `data/banidb/docker-compose.yml` runs it; `scripts/app/ingest.ts` reads it with mysql2 and writes lines (NFC Gurmukhi plus metadata) into `eko.db`. The engine computes words and stems in memory.
-- **Check first (task P-05):** it's a development image, and it isn't confirmed that it holds the full Guru Granth Sahib (*unverified*). Count the lines for the Guru Granth Sahib source. If it's partial, request a database copy from Khalis Foundation (https://www.banidb.com/request-access/); they co-host the event.
+- **Verified partial (task P-05, 2026-10-16):** the pinned development image has 20,134 Guru Granth Sahib verses and 39,977 missing mapped verses. Covering all 1430 angs does not establish completeness. Its only three complete one-line Sabads lack writer metadata, so local fixture-export acceptance remains blocked. The private canonical demo fixture uses the documented API fallback for complete Sabad 55 (15 lines). Reproduction and evidence: [C-03 setup](c03-banidb.md). A fuller database copy is still needed from Khalis Foundation (https://www.banidb.com/request-access/); no request has been sent.
 - **Schema:** read the table names from the image, or from BaniDB-API's source (`api/controllers`, `api/lib/getJSON.js`). The API's per-verse fields include verse ID, Sabad ID, Gurmukhi (Unicode), page (ang) number, line number, writer, raag and source. Map these to Eko's `Line` record.
 - **Translations in BaniDB:** English by Sant Singh Khalsa, Manmohan Singh and BaniDB volunteers. **No SikhRI translation is included.** These aren't SikhRI's voice, so never use them as references for style checks. They're fine as filler text for testing the pipeline, clearly labelled.
 - **Normalize** all Gurmukhi to Unicode NFC at ingest. Watch for nukta forms, bindi vs. tippi, and adhak.
