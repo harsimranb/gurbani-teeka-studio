@@ -1,0 +1,3 @@
+#!/bin/sh
+# Enforces workstream folder ownership. Setup: git config core.hooksPath .githooks
+exec node "$(git rev-parse --show-toplevel)/scripts/dev/check-ownership.mjs"

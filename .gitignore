@@ -145,5 +145,17 @@ vite.config.ts.timestamp-*
 # Astro generated types
 .astro/
 
+# Private source data and local Eko state
+eko.db
+eko.db-*
+*.sqlite
+*.sqlite-*
+data/sikhri-sample/
+data/cache/
+data/eval/
+data/banidb/*
+!data/banidb/docker-compose.yml
+lib/contracts/fixtures/sabad.demo.json
+
 # Turbo Repo
 .turbo
