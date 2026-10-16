@@ -1,0 +1,11 @@
+{
+  "id": "synthetic-draft-1",
+  "shabad_id": "synthetic-sabad-1",
+  "line_ids": ["synthetic-line-1", "synthetic-line-2"],
+  "layer": "transcreation",
+  "text": "SYNTHETIC TEST: [sample]",
+  "author": "Synthetic test author",
+  "status": "draft",
+  "version": 1,
+  "updated_at": "2026-10-16T12:00:00.000Z"
+}

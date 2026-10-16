@@ -1,0 +1,11 @@
+{
+  "findings": [{
+    "id": "synthetic-finding-1", "draft_id": "synthetic-draft-1", "draft_version": 1,
+    "ruleset_version": 1, "rule_id": "LAYER-07", "rule_version": 1, "layer": "L1", "severity": "error",
+    "quoted_span": "[", "start": 16, "end": 17,
+    "explanation": "Synthetic test evidence: an opening square bracket occurs in this test marker.",
+    "reference_ids": [], "model": "synthetic-fixture-stub", "prompt_version": "synthetic-fixture-v1",
+    "state": "current", "cleared_at": null
+  }],
+  "notEvaluable": [{ "ruleId": "TERM-02", "reason": "Synthetic fixture only; no model check or source interpretation was performed." }]
+}
