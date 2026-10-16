@@ -1,0 +1,1120 @@
+<title>Eko Architecture</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&family=Noto+Sans+Gurmukhi:wght@400;500;600&display=swap">
+<style>
+/* Layout: one reading column for prose, full-width figures that scroll sideways on phones.
+   Color encodes node role: ink = deterministic code, kesri = calls an LLM, blue = human decision, grey = data. */
+:root {
+  --bg: #F3F4F7;
+  --surface: #FFFFFF;
+  --panel: #E9ECF2;
+  --band: #ECEEF3;
+  --ink: #141C2E;
+  --muted: #586179;
+  --line: #C9CFDB;
+  --accent: #B8640A;
+  --on-accent: #FFFFFF;
+  --llm-tint: #FBEBD6;
+  --human: #2443A3;
+  --human-tint: #E2E8F8;
+  --store: #E3E7EE;
+  --code-bg: #E9ECF2;
+  --block: #B42318;
+  --warn: #7A6100;
+  --f-display: "Archivo", "Helvetica Neue", Arial, sans-serif;
+  --f-body: "IBM Plex Sans", "Segoe UI", Roboto, sans-serif;
+  --f-mono: "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
+  --f-gk: "Noto Sans Gurmukhi", "Mukta Mahee", "Raavi", sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0F141F; --surface: #171E2D; --panel: #141B29; --band: #141A27;
+    --ink: #E6E9F0; --muted: #9AA3B8; --line: #2E384C;
+    --accent: #F0A54A; --on-accent: #1A1206; --llm-tint: #3A2A14;
+    --human: #8FA8F0; --human-tint: #1C2747; --store: #1F2738; --code-bg: #141B29;
+    --block: #F07167; --warn: #D9B44A;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0F141F; --surface: #171E2D; --panel: #141B29; --band: #141A27;
+  --ink: #E6E9F0; --muted: #9AA3B8; --line: #2E384C;
+  --accent: #F0A54A; --on-accent: #1A1206; --llm-tint: #3A2A14;
+  --human: #8FA8F0; --human-tint: #1C2747; --store: #1F2738; --code-bg: #141B29;
+  --block: #F07167; --warn: #D9B44A;
+  color-scheme: dark;
+}
+
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--f-body);
+  font-size: 15px;
+  line-height: 1.55;
+}
+.page {
+  max-width: 1240px;
+  margin: 0 auto;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 40px 72px;
+  display: grid;
+  gap: 56px;
+}
+.prose { max-width: 68ch; }
+
+header.top { display: grid; gap: 14px; }
+.eyebrow {
+  font-family: var(--f-mono);
+  font-size: 12px;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+h1 {
+  font-family: var(--f-display);
+  font-weight: 700;
+  font-size: clamp(34px, 5vw, 52px);
+  line-height: 1.02;
+  letter-spacing: -.02em;
+  margin: 0;
+  text-wrap: balance;
+}
+.dek { font-size: 17px; color: var(--muted); margin: 0; max-width: 62ch; }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip {
+  font-family: var(--f-mono);
+  font-size: 12px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  border-radius: 999px;
+  padding: 3px 10px;
+}
+.chip.flag { border-color: var(--accent); color: var(--accent); }
+
+section { display: grid; gap: 18px; }
+h2 {
+  font-family: var(--f-display);
+  font-weight: 700;
+  font-size: 26px;
+  letter-spacing: -.01em;
+  margin: 0;
+  text-wrap: balance;
+}
+h3 { font-size: 15px; font-weight: 600; margin: 0; }
+p { margin: 0; }
+.lead { color: var(--muted); max-width: 70ch; }
+
+.legend { display: flex; flex-wrap: wrap; gap: 10px 22px; font-size: 13px; color: var(--muted); }
+.legend span { display: inline-flex; align-items: center; gap: 8px; }
+.sw { width: 22px; height: 14px; border-radius: 4px; border: 1.4px solid; display: inline-block; }
+.sw.det { background: var(--surface); border-color: var(--ink); }
+.sw.llm { background: var(--llm-tint); border-color: var(--accent); }
+.sw.human { background: var(--human-tint); border-color: var(--human); }
+.sw.store { background: var(--store); border-color: var(--muted); border-radius: 1px; }
+.sw.loop { width: 28px; height: 0; border: 0; border-top: 2px dashed var(--accent); border-radius: 0; }
+
+figure { margin: 0; display: grid; gap: 10px; }
+.scroll {
+  overflow-x: auto;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 16px;
+}
+.scroll svg { display: block; width: 100%; min-width: 1000px; height: auto; }
+figcaption { font-size: 13px; color: var(--muted); max-width: 80ch; }
+.swipe { display: none; font-size: 12px; color: var(--muted); font-family: var(--f-mono); }
+@media (max-width: 760px) { .swipe { display: block; } }
+
+/* SVG styling */
+svg .box { fill: var(--surface); stroke: var(--ink); stroke-width: 1.2; }
+svg .box.llm { fill: var(--llm-tint); stroke: var(--accent); }
+svg .box.human { fill: var(--human-tint); stroke: var(--human); }
+svg .box.store { fill: var(--store); stroke: var(--muted); }
+svg .box.out { stroke-width: 2.2; }
+svg .box.note { fill: none; stroke: var(--accent); stroke-dasharray: 5 4; }
+svg .panel { fill: var(--panel); stroke: var(--line); }
+svg .t { font: 600 12.5px var(--f-body); fill: var(--ink); }
+svg .s { font: 400 10.5px var(--f-body); fill: var(--muted); }
+svg .m { font: 400 10.5px var(--f-mono); fill: var(--ink); }
+svg .gk { font: 500 13px var(--f-gk); fill: var(--ink); }
+svg .el { font: 500 9.5px var(--f-body); fill: var(--muted); }
+svg .el.acc { fill: var(--accent); font-weight: 600; }
+svg .zone { font: 600 10px var(--f-mono); letter-spacing: .08em; fill: var(--muted); }
+svg .e { fill: none; stroke: var(--muted); stroke-width: 1.3; }
+svg .e.loop { stroke: var(--accent); stroke-dasharray: 6 4; stroke-width: 1.6; }
+svg .ah { fill: var(--muted); }
+svg .ah.acc { fill: var(--accent); }
+svg .co { fill: var(--ink); }
+svg .cot { font: 700 11px var(--f-body); fill: var(--bg); }
+svg .pill { fill: var(--accent); }
+svg .pillt { font: 600 9px var(--f-mono); fill: var(--on-accent); }
+svg .lane { fill: var(--band); }
+svg .laneline { stroke: var(--line); stroke-width: 1; }
+svg .lanel { font: 600 10px var(--f-mono); letter-spacing: .06em; }
+svg .lanel.h { fill: var(--human); }
+svg .lanel.a { fill: var(--accent); }
+svg .lanel.m { fill: var(--muted); }
+
+/* Annotation notes */
+.notes {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 18px 28px;
+}
+.notes li { display: grid; grid-template-columns: 26px 1fr; gap: 10px; min-width: 0; }
+.num {
+  width: 22px; height: 22px; border-radius: 50%;
+  background: var(--ink); color: var(--bg);
+  font: 700 12px var(--f-body);
+  display: grid; place-items: center;
+  margin-top: 1px;
+}
+.notes p { font-size: 14px; color: var(--muted); }
+.notes h3 { margin-bottom: 3px; }
+.gkw { font-family: var(--f-gk); color: var(--ink); }
+
+.twocol { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 18px; }
+.twocol > div { min-width: 0; display: grid; gap: 8px; align-content: start; }
+pre {
+  margin: 0;
+  background: var(--code-bg);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 14px 16px;
+  overflow-x: auto;
+  font: 400 12.5px/1.55 var(--f-mono);
+  color: var(--ink);
+}
+pre .k { color: var(--human); }
+pre .c { color: var(--muted); }
+pre .g { font-family: var(--f-gk); }
+.small { font-size: 13px; color: var(--muted); }
+
+.tablewrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
+table { border-collapse: collapse; width: 100%; min-width: 620px; font-size: 14px; }
+th, td { text-align: left; padding: 10px 14px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th {
+  font: 600 11px var(--f-mono);
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--muted);
+  background: var(--panel);
+}
+tr:last-child td { border-bottom: 0; }
+td code, p code, li code { font-family: var(--f-mono); font-size: 12.5px; }
+.badge {
+  display: inline-block;
+  font: 600 11px var(--f-mono);
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid currentColor;
+  white-space: nowrap;
+}
+.badge.block, .badge.err { color: var(--block); }
+.badge.warn, .badge.wrn { color: var(--warn); }
+.badge.flg { color: var(--accent); }
+.badge.hnt { color: var(--muted); }
+.badge.ok { color: var(--human); }
+.rid { font-family: var(--f-mono); font-size: 12.5px; font-weight: 600; white-space: nowrap; }
+td.dim { color: var(--muted); }
+.sev { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 12px; }
+.sev > div { border: 1px solid var(--line); background: var(--surface); border-radius: 10px; padding: 12px 14px; display: grid; gap: 6px; align-content: start; min-width: 0; }
+.sev p { font-size: 13.5px; color: var(--muted); }
+.counts { display: flex; flex-wrap: wrap; gap: 8px 18px; font-size: 13.5px; color: var(--muted); }
+.counts b { color: var(--ink); font-variant-numeric: tabular-nums; }
+.hero { margin: 0; padding-left: 20px; display: grid; gap: 6px; max-width: 75ch; color: var(--muted); }
+.hero strong { color: var(--ink); }
+tr.grp td {
+  background: var(--panel);
+  font: 600 11px var(--f-mono);
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--muted);
+  padding-block: 7px;
+}
+.pri { display: inline-block; font: 600 11px var(--f-mono); padding: 2px 7px; border-radius: 6px; border: 1px solid var(--line); white-space: nowrap; }
+.pri.p0 { color: var(--ink); background: var(--surface); border-color: var(--ink); }
+.pri.p1 { color: var(--muted); }
+.beat { font: 600 11px var(--f-mono); color: var(--accent); white-space: nowrap; }
+.sched td:first-child { white-space: nowrap; font-family: var(--f-mono); font-size: 12.5px; }
+.sched td { font-size: 13.5px; }
+.cut { margin: 0; padding-left: 20px; display: grid; gap: 4px; color: var(--muted); max-width: 75ch; }
+
+.open { margin: 0; padding-left: 20px; display: grid; gap: 8px; max-width: 75ch; }
+.open li { color: var(--muted); }
+.open strong { color: var(--ink); font-weight: 600; }
+footer { font-size: 12px; color: var(--muted); font-family: var(--f-mono); }
+</style>
+
+<div class="page">
+
+<header class="top">
+  <div class="eyebrow">Sarbat Build Day · sikhri-1 · Team BJ13</div>
+  <h1>Eko Architecture</h1>
+  <p class="dek">How a teeka draft moves through Eko: verified Gurmukhi in, layered checks that cite their evidence, human decisions with reasons, and a rule loop that can't quietly drift from SikhRI's approved work.</p>
+  <div class="chips">
+    <span class="chip">Working draft · Oct 16, 2026</span>
+    <span class="chip flag">Ruleset v0.1: 66 rules from SikhRI's public pages, 10 active on the transcreation</span>
+    <span class="chip">Gurmukhi from BaniDB</span>
+    <span class="chip">Reviews transcreations only; never writes translation</span>
+  </div>
+</header>
+
+<section aria-labelledby="fr">
+  <h2 id="fr">Functional requirements</h2>
+  <p class="lead">What Eko must do for the demo build (P0) and what waits (P1). Each P0 requirement has a check the team can run before calling it done. Demo tags match the six beats the submission video has to show.</p>
+  <div class="tablewrap">
+    <table>
+      <thead><tr><th>ID</th><th>Requirement</th><th>Priority</th><th>Done when</th><th>Demo</th></tr></thead>
+      <tbody>
+        <tr class="grp"><td colspan="5">Workspace</td></tr>
+        <tr><td class="rid">FR-01</td><td>Load a Sabad from BaniDB and show its Gurmukhi read-only, with ang, raag, writer and the Rahao line marked</td><td><span class="pri p0">P0</span></td><td>Text matches the cached BaniDB record character for character; no edit control exists on Gurmukhi</td><td></td></tr>
+        <tr><td class="rid">FR-02</td><td>A person enters or pastes a transcreation under each tukk, or under a group of tukks. Eko never writes or suggests translation text</td><td><span class="pri p0">P0</span></td><td>Each save stores line IDs, author and time; no control anywhere generates text</td><td><span class="beat">1</span></td></tr>
+        <tr><td class="rid">FR-03</td><td>Mark a draft ready for review</td><td><span class="pri p0">P0</span></td><td>Draft appears in the review queue</td><td><span class="beat">1</span></td></tr>
+        <tr><td class="rid">FR-04</td><td>Browse the full Guru Granth Sahib by ang, raag, writer and Sabad, with status at a glance</td><td><span class="pri p1">P1</span></td><td>Data model already supports it; demo covers 1–3 Sabads</td><td></td></tr>
+        <tr><td class="rid">FR-05</td><td>Translator utilities: every occurrence of a word, prior renderings, similar lines</td><td><span class="pri p1">P1</span></td><td>Return to if time allows</td><td></td></tr>
+
+        <tr class="grp"><td colspan="5">Checks and report card</td></tr>
+        <tr><td class="rid">FR-06</td><td>Every save checks only the changed tukks. Code checks return first; LLM checks follow</td><td><span class="pri p0">P0</span></td><td>Code findings under 1 s; LLM findings under about 15 s per tukk (target)</td><td><span class="beat">2</span></td></tr>
+        <tr><td class="rid">FR-07</td><td>Each finding shows rule ID, rule text, severity, layer, the exact words highlighted, an explanation, and any cited reference renderings</td><td><span class="pri p0">P0</span></td><td>Validator drops any finding whose quoted words or cited IDs don't exist</td><td><span class="beat">2</span> <span class="beat">3</span></td></tr>
+        <tr><td class="rid">FR-08</td><td>Only the 10 rules active on the transcreation run, at the severity set in <code>rules.resolved.json</code></td><td><span class="pri p0">P0</span></td><td>Golden tests from the synthetic sentences pass for every active rule</td><td></td></tr>
+        <tr><td class="rid">FR-09</td><td>Style check cites the reference renderings it draws on</td><td><span class="pri p0">P0</span></td><td>Every style finding lists at least one reference ID; active once SikhRI's sample is loaded</td><td><span class="beat">3</span></td></tr>
+        <tr><td class="rid">FR-10</td><td>Grammar hints from the ending matra, only where it is unambiguous, labelled as hints</td><td><span class="pri p1">P1</span></td><td>Deferred: a free transcreation doesn't map word for word onto the line</td><td></td></tr>
+
+        <tr class="grp"><td colspan="5">Review and publishing</td></tr>
+        <tr><td class="rid">FR-11</td><td>Anyone reviewing accepts, overrides or waives each finding, always with a written reason, visible to every later reviewer</td><td><span class="pri p0">P0</span></td><td>Override and waive buttons stay disabled until a reason is entered</td><td><span class="beat">4</span></td></tr>
+        <tr><td class="rid">FR-12</td><td>Any edit re-runs the checks; findings on changed text are replaced</td><td><span class="pri p0">P0</span></td><td>No stale finding survives an edit to its span</td><td></td></tr>
+        <tr><td class="rid">FR-13</td><td>Publishing is blocked while any open error or flag remains</td><td><span class="pri p0">P0</span></td><td>Publish button explains which rule blocks it</td><td><span class="beat">5</span></td></tr>
+        <tr><td class="rid">FR-14</td><td>Publishing adds the translation to the reference set and re-indexes it; waived findings stay marked on it</td><td><span class="pri p0">P0</span></td><td>The next style check can cite the newly published lines</td><td><span class="beat">5</span></td></tr>
+
+        <tr class="grp"><td colspan="5">Rules and learning loop</td></tr>
+        <tr><td class="rid">FR-15</td><td>Rules page lists every rule with level, layers, severity, decision and provenance</td><td><span class="pri p0">P0</span></td><td>All 66 rules visible; active ones marked</td><td></td></tr>
+        <tr><td class="rid">FR-16</td><td>Anyone proposes a new rule in free text, with an example and a reason</td><td><span class="pri p0">P0</span></td><td>The proposal goes straight to the drift check</td><td><span class="beat">5</span></td></tr>
+        <tr><td class="rid">FR-16b</td><td>Repeated overrides of one rule, from at least two people, produce a drafted rule proposal with its evidence</td><td><span class="pri p1">P1</span></td><td>Seeded overrides produce one proposal</td><td></td></tr>
+        <tr><td class="rid">FR-17</td><td>Drift check runs on every proposal and shows its evidence (contradictions, affected published lines)</td><td><span class="pri p0">P0</span></td><td>A deliberately contradicting proposal is blocked</td><td><span class="beat">5</span></td></tr>
+        <tr><td class="rid">FR-18</td><td>Anyone approves a rule or overrides a drift block, always with a reason; the ruleset version goes up and provenance (who, when, why) is saved</td><td><span class="pri p0">P0</span></td><td>New version is used by the very next check</td><td><span class="beat">5</span></td></tr>
+
+        <tr class="grp"><td colspan="5">Evaluation</td></tr>
+        <tr><td class="rid">FR-19</td><td>Backtest replays held-back pre-edit drafts and reports catch rate, false-flag rate and sample size, per rule and per ruleset version</td><td><span class="pri p0">P0</span></td><td>Re-running gives the same numbers (cached model responses)</td><td><span class="beat">6</span></td></tr>
+
+        <tr class="grp"><td colspan="5">Platform</td></tr>
+        <tr><td class="rid">FR-20</td><td>A person types their name once per browser; it's saved with every decision and approval. No sign-in, no roles</td><td><span class="pri p0">P0</span></td><td>Every decision and rule change shows who made it</td><td></td></tr>
+        <tr><td class="rid">FR-21</td><td>BaniDB attribution and logo shown in the app</td><td><span class="pri p0">P0</span></td><td>Visible on every page footer</td><td></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>Out of scope for this build</h3>
+  <div class="tablewrap">
+    <table>
+      <thead><tr><th>Item</th><th>Status</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Generating or suggesting translation text</strong></td><td>Never. Eko only reviews.</td></tr>
+        <tr><td><strong>Literal translation, word annotation, transcription</strong></td><td>Future. Eko reviews the transcreation only.</td></tr>
+        <tr><td><strong>Sign-in, roles, permissions</strong></td><td>Future. Anyone can write, review and approve.</td></tr>
+        <tr><td><strong>Offline demo mode</strong></td><td>Not planned. The LLM cache stays, for speed and cost.</td></tr>
+        <tr><td><strong>Fine-tuning, multi-round history, diffs, versioning UI, Panjabi teeka</strong></td><td>Future</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>Non-functional requirements</h3>
+  <div class="tablewrap">
+    <table>
+      <thead><tr><th>Area</th><th>Requirement</th></tr></thead>
+      <tbody>
+        <tr><td><strong>AI boundary</strong></td><td>No feature generates translation text or Gurmukhi. The model's only output is a finding in a fixed JSON shape.</td></tr>
+        <tr><td><strong>Traceability</strong></td><td>Every finding stores the rule version, model name and prompt version that produced it.</td></tr>
+        <tr><td><strong>Performance</strong></td><td>Speed wins over data locality: hosted models are fine. Code checks return in under a second; LLM checks run in parallel per tukk.</td></tr>
+        <tr><td><strong>Noise</strong></td><td>Precision over recall: a check that can't verify its finding reports a hint, not a flag.</td></tr>
+        <tr><td><strong>Cost</strong></td><td>LLM calls run only after a prefilter selects the line, and every response is cached by its inputs.</td></tr>
+        <tr><td><strong>Script</strong></td><td>All Gurmukhi is Unicode NFC and set in a Gurmukhi font with a real fallback.</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section aria-labelledby="arch">
+  <h2 id="arch">Logical architecture</h2>
+  <p class="lead">Five zones. Gurmukhi is analyzed by deterministic code; the LLM only judges English against structured evidence. Numbered markers match the notes below the figure.</p>
+  <div class="legend" aria-label="Legend">
+    <span><i class="sw det"></i>Deterministic code</span>
+    <span><i class="sw llm"></i>Calls an LLM</span>
+    <span><i class="sw human"></i>Human decision</span>
+    <span><i class="sw store"></i>Data</span>
+    <span><i class="sw loop"></i>Rule-change loop</span>
+  </div>
+  <figure>
+    <div class="swipe">Scroll sideways to see the full diagram →</div>
+    <div class="scroll">
+<svg viewBox="0 0 1200 848" role="img" aria-label="Eko system architecture: sources feed a normalizer, morphology analyzer, rule compiler and indexes; a layered check engine produces a cited report card for reviewers; decisions are stored, feed a learning loop where any proposed rule passes a drift check before anyone approves it with a reason, and a backtest harness measures catch and false-flag rates.">
+  <defs>
+    <marker id="a1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="ah" d="M0 0 L10 5 L0 10 z"/></marker>
+    <marker id="a1c" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="ah acc" d="M0 0 L10 5 L0 10 z"/></marker>
+  </defs>
+
+  <!-- zone headers -->
+  <text class="zone" x="20" y="44">SOURCES</text>
+  <text class="zone" x="290" y="44">INGEST &amp; INDEX</text>
+  <text class="zone" x="560" y="44">CHECK ENGINE · EVERY DRAFT AND EDIT</text>
+  <text class="zone" x="860" y="44">PEOPLE</text>
+
+  <!-- engine panel -->
+  <rect class="panel" x="546" y="58" width="268" height="532" rx="12"/>
+
+  <!-- SOURCES -->
+  <rect class="box store" x="20" y="74" width="200" height="52" rx="3"/>
+  <text class="t" x="32" y="94">Ruleset (free text)</text>
+  <text class="s" x="32" y="111">v0.1 · 10 rules active</text>
+
+  <rect class="box store" x="20" y="164" width="200" height="52" rx="3"/>
+  <text class="t" x="32" y="184">BaniDB (offline copy)</text>
+  <text class="s" x="32" y="201">Gurmukhi · ang · raag · writer</text>
+
+  <rect class="box store" x="20" y="344" width="200" height="52" rx="3"/>
+  <text class="t" x="32" y="364">Approved translations</text>
+  <text class="s" x="32" y="381">SikhRI sample, on the day</text>
+
+  <rect class="box store" x="20" y="434" width="200" height="52" rx="3"/>
+  <text class="t" x="32" y="454">Review history</text>
+  <text class="s" x="32" y="471">SikhRI sample, on the day</text>
+
+  <!-- A -> B -->
+  <path class="e" d="M220 100 H288" marker-end="url(#a1)"/>
+  <text class="el" x="254" y="94" text-anchor="middle">rules</text>
+  <path class="e" d="M220 190 H288" marker-end="url(#a1)"/>
+  <text class="el" x="254" y="184" text-anchor="middle">text</text>
+  <path class="e" d="M220 370 H288" marker-end="url(#a1)"/>
+  <text class="el" x="254" y="364" text-anchor="middle">approved</text>
+
+  <!-- INGEST & INDEX -->
+  <rect class="box llm" x="290" y="74" width="210" height="52" rx="8"/>
+  <text class="t" x="302" y="94">Rule compiler</text>
+  <text class="s" x="302" y="111">free text → check plan</text>
+
+  <rect class="box" x="290" y="164" width="210" height="52" rx="8"/>
+  <text class="t" x="302" y="184">Normalizer</text>
+  <text class="s" x="302" y="201">Unicode NFC · padched tokens</text>
+
+  <rect class="box" x="290" y="246" width="210" height="68" rx="8"/>
+  <text class="t" x="302" y="266">Morphology analyzer</text>
+  <text class="s" x="302" y="282">stem + ending matra</text>
+  <text class="gk" x="302" y="303">ਗੁਰੁ · ਗੁਰਿ · ਗੁਰ</text>
+
+  <rect class="box store" x="290" y="340" width="210" height="60" rx="3"/>
+  <text class="t" x="302" y="360">Indexes</text>
+  <text class="s" x="302" y="376">lexical: stem, stem + ending</text>
+  <text class="s" x="302" y="391">English embeddings</text>
+
+  <path class="e" d="M395 216 V244" marker-end="url(#a1)"/>
+  <text class="el" x="401" y="234">tokens</text>
+  <path class="e" d="M395 314 V338" marker-end="url(#a1)"/>
+  <text class="el" x="401" y="330">features</text>
+
+  <!-- B -> C -->
+  <path class="e" d="M500 100 H558" marker-end="url(#a1)"/>
+  <text class="el" x="529" y="94" text-anchor="middle">plans</text>
+  <path class="e" d="M500 114 H526 V190 H558" marker-end="url(#a1)"/>
+  <path class="e" d="M500 280 H558" marker-end="url(#a1)"/>
+  <text class="el" x="529" y="274" text-anchor="middle">features</text>
+  <path class="e" d="M500 370 H558" marker-end="url(#a1)"/>
+  <text class="el" x="529" y="364" text-anchor="middle">precedents</text>
+
+  <!-- CHECK ENGINE -->
+  <rect class="box" x="560" y="74" width="240" height="52" rx="8"/>
+  <text class="t" x="572" y="94">L1 · Deterministic rules</text>
+  <text class="s" x="572" y="111">TERM-01/03/07 · LAYER-06/07</text>
+
+  <rect class="box llm" x="560" y="164" width="240" height="52" rx="8"/>
+  <text class="t" x="572" y="184">L2 · LLM rule judge</text>
+  <text class="s" x="572" y="201">TERM-02 · PRIN-04 · confirmations</text>
+
+  <rect class="box" x="560" y="254" width="240" height="52" rx="8"/>
+  <text class="t" x="572" y="274">Gurmukhi matching</text>
+  <text class="s" x="572" y="291">Divine names by stem (TERM-02)</text>
+
+  <rect class="box llm" x="560" y="344" width="240" height="52" rx="8"/>
+  <text class="t" x="572" y="364">L3 · Style and voice</text>
+  <text class="s" x="572" y="381">approved precedents, cited by ID</text>
+
+  <rect class="box" x="560" y="434" width="240" height="52" rx="8"/>
+  <text class="t" x="572" y="454">Citation validator</text>
+  <text class="s" x="572" y="471">quoted span and IDs must exist</text>
+
+  <rect class="box out" x="560" y="524" width="240" height="52" rx="8"/>
+  <text class="t" x="572" y="544">Report card</text>
+  <text class="s" x="572" y="561">error · flag · warning · hint</text>
+
+  <path class="e" d="M680 126 V162" marker-end="url(#a1)"/>
+  <path class="e" d="M680 216 V252" marker-end="url(#a1)"/>
+  <path class="e" d="M680 306 V342" marker-end="url(#a1)"/>
+  <path class="e" d="M680 396 V432" marker-end="url(#a1)"/>
+  <path class="e" d="M680 486 V522" marker-end="url(#a1)"/>
+
+  <!-- PEOPLE -->
+  <rect class="box human" x="860" y="70" width="320" height="60" rx="8"/>
+  <text class="t" x="872" y="90">Workspace</text>
+  <text class="s" x="872" y="106">writes the transcreation under each tukk</text>
+  <text class="s" x="872" y="121">Gurmukhi is read-only</text>
+  <path class="e" d="M858 100 H802" marker-end="url(#a1)"/>
+  <text class="el" x="830" y="94" text-anchor="middle">draft/edit</text>
+
+  <rect class="box note" x="880" y="250" width="240" height="86" rx="8"/>
+  <text class="t" x="892" y="270">LLM provider</text>
+  <text class="s" x="892" y="288">hosted or local, per SikhRI's terms</text>
+  <text class="s" x="892" y="304">sees evidence packets only</text>
+  <text class="s" x="892" y="320">never writes Gurmukhi or teeka</text>
+
+  <path class="e" d="M1160 130 V518" marker-end="url(#a1)"/>
+  <text class="el" x="1150" y="324" text-anchor="middle" transform="rotate(-90 1150 324)">tags draft ready for review</text>
+
+  <rect class="box human" x="860" y="520" width="320" height="60" rx="8"/>
+  <text class="t" x="872" y="540">Review</text>
+  <text class="s" x="872" y="556">accept · override · waive each flag</text>
+  <text class="s" x="872" y="571">every decision needs a reason</text>
+  <path class="e" d="M800 550 H858" marker-end="url(#a1)"/>
+  <text class="el" x="829" y="544" text-anchor="middle">report card</text>
+
+  <!-- decisions to store -->
+  <path class="e" d="M900 580 V632 H450 V658" marker-end="url(#a1)"/>
+  <text class="el" x="680" y="626" text-anchor="middle">decisions · reasons · approvals</text>
+
+  <!-- SYSTEM OF RECORD -->
+  <text class="zone" x="20" y="652">SYSTEM OF RECORD</text>
+  <rect class="box store" x="20" y="660" width="480" height="148" rx="3"/>
+  <text class="t" x="32" y="682">SQLite · one file, one source of truth</text>
+  <text class="m" x="32" y="706">lines · words · matra features</text>
+  <text class="m" x="32" y="726">rules · versions · provenance</text>
+  <text class="m" x="32" y="746">drafts · flags · decisions + reasons</text>
+  <text class="m" x="32" y="766">approved set · proposals · drift results</text>
+  <text class="m" x="32" y="786">eval runs</text>
+
+  <path class="e" d="M120 486 V658" marker-end="url(#a1)"/>
+  <text class="el" x="126" y="575">seeded</text>
+  <path class="e" d="M395 658 V402" marker-end="url(#a1)"/>
+  <text class="el" x="401" y="600">re-index on approve</text>
+
+  <!-- LEARNING LOOP -->
+  <text class="zone" x="560" y="656">LEARNING LOOP</text>
+  <rect class="box" x="560" y="664" width="140" height="56" rx="8"/>
+  <text class="t" x="572" y="685">Override clusterer</text>
+  <text class="s" x="572" y="702">P1 · repeated overrides</text>
+
+  <rect class="box human" x="722" y="664" width="140" height="56" rx="8"/>
+  <text class="t" x="734" y="685">Propose a rule</text>
+  <text class="s" x="734" y="702">anyone, free text</text>
+
+  <rect class="box" x="884" y="664" width="150" height="56" rx="8"/>
+  <text class="t" x="896" y="684">Drift check</text>
+  <text class="s" x="896" y="699">contradiction · replay</text>
+  <text class="s" x="896" y="713">glossary · duplicates</text>
+
+  <rect class="box human" x="1056" y="664" width="124" height="56" rx="8"/>
+  <text class="t" x="1068" y="685">Approve rule</text>
+  <text class="s" x="1068" y="702">anyone, with reason</text>
+
+  <path class="e" d="M500 692 H558" marker-end="url(#a1)"/>
+  <text class="el" x="529" y="686" text-anchor="middle">overrides</text>
+  <path class="e" d="M700 692 H720" marker-end="url(#a1)"/>
+  <path class="e" d="M862 692 H882" marker-end="url(#a1)"/>
+  <path class="e" d="M1034 692 H1054" marker-end="url(#a1)"/>
+
+  <!-- EVALUATION -->
+  <text class="zone" x="560" y="750">EVALUATION</text>
+  <rect class="box" x="560" y="756" width="300" height="50" rx="8"/>
+  <text class="t" x="572" y="776">Backtest harness</text>
+  <text class="s" x="572" y="793">replays held-back drafts through the engine</text>
+  <rect class="box out" x="884" y="756" width="296" height="50" rx="8"/>
+  <text class="t" x="896" y="776">Eval results</text>
+  <text class="s" x="896" y="793">catch rate · false-flag rate</text>
+  <path class="e" d="M500 781 H558" marker-end="url(#a1)"/>
+  <text class="el" x="529" y="775" text-anchor="middle">held-back</text>
+  <path class="e" d="M860 781 H882" marker-end="url(#a1)"/>
+
+  <!-- ruleset return loop -->
+  <path class="e loop" d="M1180 692 H1192 V832 H8 V100 H18" marker-end="url(#a1c)"/>
+  <text class="el acc" x="790" y="826" text-anchor="middle">approved rule → ruleset vN+1 · provenance recorded</text>
+
+  <!-- callouts -->
+  <circle class="co" cx="20" cy="164" r="10"/><text class="cot" x="20" y="168" text-anchor="middle">1</text>
+  <circle class="co" cx="290" cy="246" r="10"/><text class="cot" x="290" y="250" text-anchor="middle">2</text>
+  <circle class="co" cx="290" cy="74" r="10"/><text class="cot" x="290" y="78" text-anchor="middle">3</text>
+  <circle class="co" cx="560" cy="74" r="10"/><text class="cot" x="560" y="78" text-anchor="middle">4</text>
+  <circle class="co" cx="560" cy="434" r="10"/><text class="cot" x="560" y="438" text-anchor="middle">5</text>
+  <circle class="co" cx="860" cy="520" r="10"/><text class="cot" x="860" y="524" text-anchor="middle">6</text>
+  <circle class="co" cx="884" cy="664" r="10"/><text class="cot" x="884" y="668" text-anchor="middle">7</text>
+  <circle class="co" cx="560" cy="756" r="10"/><text class="cot" x="560" y="760" text-anchor="middle">8</text>
+</svg>
+    </div>
+    <figcaption>Figure 1. Gurmukhi enters once, from a pinned source, and is analyzed by code. LLM calls (kesri) see structured evidence and judge only the English. Every decision lands in one store, which feeds both the learning loop and the backtest.</figcaption>
+  </figure>
+
+  <ol class="notes">
+    <li><span class="num">1</span><div><h3>BaniDB + normalizer</h3><p>Gurmukhi and its metadata come only from a local copy of the BaniDB database, read by the ingest script and normalized to Unicode NFC once. BaniDB's attribution and logo go in the app footer. Every line and word gets a stable ID. Nothing downstream types, edits or generates Gurmukhi.</p></div></li>
+    <li><span class="num">2</span><div><h3>Morphology analyzer</h3><p>Splits each word into stem and ending matra and emits candidate grammatical features. The matra is kept as a feature, never stripped. For now the stem key powers TERM-02's Divine-name matching. Grammar hints are P1: a free transcreation doesn't map word for word onto the line, and without a dictionary many endings stay ambiguous.</p></div></li>
+    <li><span class="num">3</span><div><h3>Rule compiler</h3><p>The free-text rule stays the source of truth. An LLM compiles it into a check plan: glossary match, prefilter + LLM confirm, grammar-conditioned, or pure style. The plan is shown beside the rule so reviewers can see how it will be enforced.</p></div></li>
+    <li><span class="num">4</span><div><h3>Layered engine, cheapest first</h3><p>L1 runs deterministic glossary and regex checks. L2 calls the LLM only for lines a prefilter or plan selects. Gurmukhi matching finds Divine names by stem for TERM-02. L3 retrieves approved precedents: lexical on the Gurmukhi side, embeddings on the English side.</p></div></li>
+    <li><span class="num">5</span><div><h3>Citation validator</h3><p>Drops any flag whose quoted span isn't literally in the draft, or whose rule or precedent IDs don't exist. This is what makes "every flag explained and cited" enforceable rather than hoped for.</p></div></li>
+    <li><span class="num">6</span><div><h3>Reviewer decisions</h3><p>Accept, override and waive each require a short reason, stored with the reviewer's name and shown to every later reviewer. Any edit sends the draft back through the engine.</p></div></li>
+    <li><span class="num">7</span><div><h3>Drift check</h3><p>Anyone can propose a rule in free text; proposals drafted from repeated overrides are P1. Contradictions, glossary collisions, and rules that would flag already-published work are blocked. Anyone can override a block, and the reason is stored with the rule.</p></div></li>
+    <li><span class="num">8</span><div><h3>Backtest harness</h3><p>Replays held-back pre-edit drafts through the same engine and compares its flags with the corrections reviewers actually made. Typos and other non-rule corrections are tagged separately so they don't distort the catch rate.</p></div></li>
+  </ol>
+</section>
+
+<section aria-labelledby="flow">
+  <h2 id="flow">Lifecycle of one shabad</h2>
+  <p class="lead">The same system, read as a sequence of who acts when. Kesri tags mark the six beats the submission video has to show.</p>
+  <figure>
+    <div class="swipe">Scroll sideways to see the full diagram →</div>
+    <div class="scroll">
+<svg viewBox="0 0 1200 520" role="img" aria-label="Swimlane workflow for one shabad: the system loads the Sabad from BaniDB; a person writes the transcreation; Eko checks and returns a report card; anyone reviewing accepts or overrides with reasons and edits are re-checked; final approval publishes into the approved set; anyone proposes a rule, which passes a drift check and is approved by anyone with a reason to become ruleset vN+1 used by the next check. A separate evaluation lane replays held-back drafts and scores catch and false-flag rates.">
+  <defs>
+    <marker id="a2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="ah" d="M0 0 L10 5 L0 10 z"/></marker>
+    <marker id="a2c" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="ah acc" d="M0 0 L10 5 L0 10 z"/></marker>
+  </defs>
+
+  <!-- lanes -->
+  <rect class="lane" x="0" y="116" width="1200" height="76"/>
+  <rect class="lane" x="0" y="268" width="1200" height="76"/>
+  <rect class="lane" x="0" y="434" width="1200" height="76"/>
+  <line class="laneline" x1="0" y1="40" x2="1200" y2="40"/>
+  <line class="laneline" x1="0" y1="420" x2="1200" y2="420"/>
+  <line class="laneline" x1="0" y1="510" x2="1200" y2="510"/>
+
+  <text class="lanel h" x="14" y="82">WRITING</text>
+  <text class="lanel a" x="14" y="158">EKO CHECKS</text>
+  <text class="lanel h" x="14" y="234">REVIEWING</text>
+  <text class="lanel h" x="14" y="310">RULE APPROVAL</text>
+  <text class="lanel m" x="14" y="386">SYSTEM OF RECORD</text>
+  <text class="lanel m" x="14" y="476">EVALUATION</text>
+
+  <!-- boxes -->
+  <rect class="box store" x="138" y="358" width="124" height="48" rx="3"/>
+  <text class="t" x="148" y="377">Load shabad</text>
+  <text class="s" x="148" y="394">pinned text + IDs</text>
+
+  <rect class="box human" x="283" y="54" width="124" height="48" rx="8"/>
+  <text class="t" x="293" y="73">Transcreate</text>
+  <text class="s" x="293" y="90">AI never writes it</text>
+
+  <rect class="box llm" x="428" y="130" width="124" height="48" rx="8"/>
+  <text class="t" x="438" y="149">Run checks</text>
+  <text class="s" x="438" y="166">report card + hints</text>
+
+  <rect class="box human" x="573" y="206" width="124" height="48" rx="8"/>
+  <text class="t" x="583" y="225">Review</text>
+  <text class="s" x="583" y="242">accept · override</text>
+
+  <rect class="box human" x="718" y="206" width="124" height="48" rx="8"/>
+  <text class="t" x="728" y="225">Final approval</text>
+  <text class="s" x="728" y="242">no open must-fix</text>
+
+  <rect class="box store" x="573" y="358" width="124" height="48" rx="3"/>
+  <text class="t" x="583" y="377">Decision log</text>
+  <text class="s" x="583" y="394">every reason kept</text>
+
+  <rect class="box store" x="718" y="358" width="124" height="48" rx="3"/>
+  <text class="t" x="728" y="377">Approved set</text>
+  <text class="s" x="728" y="394">re-indexed</text>
+
+  <rect class="box human" x="863" y="130" width="124" height="48" rx="8"/>
+  <text class="t" x="873" y="149">Propose rule</text>
+  <text class="s" x="873" y="166">anyone, free text</text>
+
+  <rect class="box" x="1008" y="130" width="124" height="48" rx="8"/>
+  <text class="t" x="1018" y="149">Drift check</text>
+  <text class="s" x="1018" y="166">pass or block</text>
+
+  <rect class="box human" x="1008" y="282" width="124" height="48" rx="8"/>
+  <text class="t" x="1018" y="301">Approve rule</text>
+  <text class="s" x="1018" y="318">or override block</text>
+
+  <rect class="box store" x="1008" y="358" width="124" height="48" rx="3"/>
+  <text class="t" x="1018" y="377">Ruleset vN+1</text>
+  <text class="s" x="1018" y="394">with provenance</text>
+
+  <rect class="box store" x="283" y="448" width="124" height="48" rx="3"/>
+  <text class="t" x="293" y="467">Held-back drafts</text>
+  <text class="s" x="293" y="484">pre-edit versions</text>
+  <rect class="box llm" x="428" y="448" width="124" height="48" rx="8"/>
+  <text class="t" x="438" y="467">Run checks</text>
+  <text class="s" x="438" y="484">same engine, rules</text>
+  <rect class="box" x="573" y="448" width="124" height="48" rx="8"/>
+  <text class="t" x="583" y="467">Compare</text>
+  <text class="s" x="583" y="484">to real corrections</text>
+  <rect class="box out" x="718" y="448" width="124" height="48" rx="8"/>
+  <text class="t" x="728" y="467">Score</text>
+  <text class="s" x="728" y="484">catch · false-flag</text>
+
+  <!-- arrows -->
+  <path class="e" d="M200 358 V78 H281" marker-end="url(#a2)"/>
+  <text class="el" x="206" y="236">open</text>
+  <path class="e" d="M407 78 H490 V128" marker-end="url(#a2)"/>
+  <text class="el" x="448" y="72" text-anchor="middle">draft / edit</text>
+  <path class="e" d="M428 162 H345 V104" marker-end="url(#a2)"/>
+  <text class="el" x="338" y="152" text-anchor="end">revise · re-check</text>
+  <path class="e" d="M552 150 H635 V204" marker-end="url(#a2)"/>
+  <text class="el" x="594" y="144" text-anchor="middle">report card</text>
+  <path class="e" d="M573 238 H490 V180" marker-end="url(#a2)"/>
+  <text class="el" x="482" y="230" text-anchor="end">edits re-checked</text>
+  <path class="e" d="M635 254 V356" marker-end="url(#a2)"/>
+  <text class="el" x="641" y="306">logged</text>
+  <path class="e" d="M697 230 H716" marker-end="url(#a2)"/>
+  <path class="e" d="M780 254 V356" marker-end="url(#a2)"/>
+  <text class="el" x="786" y="306">published</text>
+  <path class="e" d="M635 406 V426 H925 V180" marker-end="url(#a2)"/>
+  <text class="el" x="931" y="306">overrides</text>
+  <path class="e" d="M987 154 H1006" marker-end="url(#a2)"/>
+  <path class="e" d="M1070 178 V280" marker-end="url(#a2)"/>
+  <text class="el" x="1076" y="236">pass · block</text>
+  <path class="e" d="M1070 330 V356" marker-end="url(#a2)"/>
+  <path class="e loop" d="M1132 382 H1172 V22 H520 V128" marker-end="url(#a2c)"/>
+  <text class="el acc" x="846" y="16" text-anchor="middle">next check runs on ruleset vN+1</text>
+
+  <path class="e" d="M407 472 H426" marker-end="url(#a2)"/>
+  <path class="e" d="M552 472 H571" marker-end="url(#a2)"/>
+  <path class="e" d="M697 472 H716" marker-end="url(#a2)"/>
+
+  <!-- demo beat tags -->
+  <rect class="pill" x="359" y="46" width="48" height="16" rx="8"/><text class="pillt" x="383" y="57" text-anchor="middle">DEMO 1</text>
+  <rect class="pill" x="496" y="170" width="58" height="16" rx="8"/><text class="pillt" x="525" y="181" text-anchor="middle">DEMO 2·3</text>
+  <rect class="pill" x="649" y="198" width="48" height="16" rx="8"/><text class="pillt" x="673" y="209" text-anchor="middle">DEMO 4</text>
+  <rect class="pill" x="794" y="198" width="48" height="16" rx="8"/><text class="pillt" x="818" y="209" text-anchor="middle">DEMO 5</text>
+  <rect class="pill" x="939" y="122" width="48" height="16" rx="8"/><text class="pillt" x="963" y="133" text-anchor="middle">DEMO 5</text>
+  <rect class="pill" x="794" y="440" width="48" height="16" rx="8"/><text class="pillt" x="818" y="451" text-anchor="middle">DEMO 6</text>
+</svg>
+    </div>
+    <figcaption>Figure 2. Two loops run at different speeds. The edit loop (someone edits, Eko re-checks) runs many times per shabad. The rule loop (proposal, drift check, approval with a reason) changes the ruleset only after a person approves it. There are no roles in this build: anyone can write, review, or approve.</figcaption>
+  </figure>
+  <ol class="notes">
+    <li><span class="num">a</span><div><h3>Edit loop</h3><p>Every save re-runs the engine on the changed tukks only. The report card always reflects the current text, so a reviewer never approves against stale flags.</p></div></li>
+    <li><span class="num">b</span><div><h3>Approved set grows</h3><p>Final approval publishes the translation into the approved set and re-indexes it for style retrieval. Lines approved with a waived flag carry that mark, so a one-off exception isn't learned as the norm.</p></div></li>
+    <li><span class="num">c</span><div><h3>Evaluation stays offline</h3><p>The evaluation lane reads held-back history and never writes to live drafts, decisions or rules. Scores are stored per ruleset version so the demo can show the effect of a new rule.</p></div></li>
+  </ol>
+</section>
+
+<section aria-labelledby="tech">
+  <h2 id="tech">Technical architecture</h2>
+  <p class="lead">Built in one full day by two people, each working with an AI coding agent: TypeScript end to end, one Next.js process, one SQLite file, and a provider-agnostic LLM layer so the fastest good model can be picked after the bake-off.</p>
+  <figure>
+    <div class="swipe">Scroll sideways to see the full diagram →</div>
+    <div class="scroll">
+<svg viewBox="0 0 1200 545" role="img" aria-label="Runtime architecture: the browser talks to one Next.js process containing the React UI, route handlers, domain modules for checks, rules, Gurmukhi and retrieval, an LLM adapter and a Drizzle data layer. The data layer reads and writes one SQLite file. The adapter is the only path to the LLM provider. Scripts for ingest, evaluation and tests reuse the same modules; only ingest reads the local BaniDB database.">
+  <defs>
+    <marker id="a3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="ah" d="M0 0 L10 5 L0 10 z"/></marker>
+  </defs>
+  <text class="zone" x="20" y="30">BROWSER</text>
+  <text class="zone" x="230" y="30">NEXT.JS APP · ONE PROCESS</text>
+  <text class="zone" x="890" y="30">STORAGE &amp; EXTERNAL</text>
+
+  <rect class="box human" x="20" y="60" width="170" height="122" rx="8"/>
+  <text class="t" x="32" y="80">Browser</text>
+  <text class="s" x="32" y="100">Workspace</text>
+  <text class="s" x="32" y="118">Review</text>
+  <text class="s" x="32" y="136">Rules</text>
+  <text class="s" x="32" y="154">Eval results</text>
+  <text class="s" x="32" y="172">no sign-in, no roles</text>
+
+  <rect class="panel" x="230" y="44" width="620" height="388" rx="12"/>
+
+  <rect class="box" x="250" y="60" width="580" height="48" rx="8"/>
+  <text class="t" x="262" y="80">UI · React, Tailwind, shadcn/ui</text>
+  <text class="s" x="262" y="97">span highlights on the draft · Gurmukhi read-only in Noto Sans Gurmukhi</text>
+  <path class="e" d="M190 84 H248" marker-end="url(#a3)"/>
+  <text class="el" x="219" y="78" text-anchor="middle">HTTPS</text>
+
+  <rect class="box" x="250" y="136" width="580" height="48" rx="8"/>
+  <text class="t" x="262" y="156">Route handlers · server actions</text>
+  <text class="s" x="262" y="173">/api/check · /api/check/llm · /api/review · /api/rules · /api/eval</text>
+  <path class="e" d="M540 108 V134" marker-end="url(#a3)"/>
+
+  <rect class="box" x="250" y="212" width="133" height="70" rx="8"/>
+  <text class="t" x="262" y="232">Check engine</text>
+  <text class="s" x="262" y="250">L1 → L2 → grammar</text>
+  <text class="s" x="262" y="266">→ L3 → validator</text>
+  <rect class="box" x="399" y="212" width="133" height="70" rx="8"/>
+  <text class="t" x="411" y="232">Rules</text>
+  <text class="s" x="411" y="250">rules.resolved.json</text>
+  <text class="s" x="411" y="266">severity · layers</text>
+  <rect class="box" x="548" y="212" width="133" height="70" rx="8"/>
+  <text class="t" x="560" y="232">Gurmukhi</text>
+  <text class="s" x="560" y="250">NFC · tokens</text>
+  <text class="s" x="560" y="266">stem + ending matra</text>
+  <rect class="box" x="697" y="212" width="133" height="70" rx="8"/>
+  <text class="t" x="709" y="232">Retrieval</text>
+  <text class="s" x="709" y="250">FTS5 on stems</text>
+  <text class="s" x="709" y="266">English vectors</text>
+  <path class="e" d="M316 184 V210" marker-end="url(#a3)"/>
+  <text class="el" x="322" y="202">calls</text>
+
+  <rect class="box llm" x="250" y="310" width="280" height="52" rx="8"/>
+  <text class="t" x="262" y="330">LLM adapter · Vercel AI SDK</text>
+  <text class="s" x="262" y="347">generateObject + Zod schema · response cache</text>
+  <rect class="box" x="550" y="310" width="280" height="52" rx="8"/>
+  <text class="t" x="562" y="330">Data layer · Drizzle ORM</text>
+  <text class="s" x="562" y="347">better-sqlite3 · migrations</text>
+  <path class="e" d="M316 282 V308" marker-end="url(#a3)"/>
+  <path class="e" d="M763 282 V308" marker-end="url(#a3)"/>
+
+  <text class="s" x="250" y="410">Checks are pure TypeScript functions: draft + context in, findings out. Vitest golden tests cover them.</text>
+
+  <rect class="box store" x="890" y="136" width="290" height="126" rx="3"/>
+  <text class="t" x="902" y="158">SQLite · eko.db</text>
+  <text class="m" x="902" y="182">lines · words · rules</text>
+  <text class="m" x="902" y="202">drafts · findings · decisions</text>
+  <text class="m" x="902" y="222">proposals · drift · eval_runs</text>
+  <text class="m" x="902" y="242">llm_cache · embeddings</text>
+  <path class="e" d="M830 324 H858 V200 H888" marker-end="url(#a3)"/>
+  <text class="el" x="876" y="285" transform="rotate(-90 876 285)" text-anchor="middle">read / write</text>
+
+  <rect class="box note" x="890" y="300" width="290" height="72" rx="8"/>
+  <text class="t" x="902" y="320">LLM provider</text>
+  <text class="s" x="902" y="338">hosted, picked for speed after the bake-off</text>
+  <text class="s" x="902" y="355">one-line swap in the adapter</text>
+  <path class="e" d="M390 362 V385 H872 V356 H888" marker-end="url(#a3)"/>
+  <text class="el" x="630" y="379" text-anchor="middle">cache miss only · one line × one rule per packet</text>
+
+  <text class="zone" x="230" y="462">SCRIPTS · RUN WITH TSX</text>
+  <rect class="box" x="230" y="472" width="190" height="56" rx="8"/>
+  <text class="t" x="242" y="493">pnpm ingest</text>
+  <text class="s" x="242" y="510">BaniDB DB → eko.db</text>
+  <rect class="box" x="440" y="472" width="190" height="56" rx="8"/>
+  <text class="t" x="452" y="493">pnpm eval</text>
+  <text class="s" x="452" y="510">backtest → eval_runs</text>
+  <rect class="box" x="650" y="472" width="200" height="56" rx="8"/>
+  <text class="t" x="662" y="493">pnpm test</text>
+  <text class="s" x="662" y="510">Vitest golden tests</text>
+  <path class="e" d="M400 470 V434" marker-end="url(#a3)"/>
+  <path class="e" d="M610 470 V434" marker-end="url(#a3)"/>
+  <path class="e" d="M830 470 V434" marker-end="url(#a3)"/>
+  <text class="el" x="640" y="456">import the same modules</text>
+
+  <rect class="box store" x="20" y="472" width="170" height="56" rx="3"/>
+  <text class="t" x="32" y="493">BaniDB database</text>
+  <text class="s" x="32" y="510">local MariaDB in Docker</text>
+  <path class="e" d="M228 500 H192" marker-end="url(#a3)"/>
+</svg>
+    </div>
+    <figcaption>Figure 3. One process, one file. BaniDB is read only by the ingest script, from a local copy of its database, never at request time. The LLM is reached only through the adapter, and every response is cached by its inputs, so the demo and the backtest give the same results every run.</figcaption>
+  </figure>
+
+  <h3>Stack choices</h3>
+  <div class="tablewrap">
+    <table>
+      <thead><tr><th>Layer</th><th>Choice</th><th>Why</th><th>Considered instead</th></tr></thead>
+      <tbody>
+        <tr><td><strong>App</strong></td><td>Next.js (App Router), TypeScript</td><td>UI and API in one repo and one process; one language for the whole team</td><td class="dim">Separate API + single-page app (two deploys)</td></tr>
+        <tr><td><strong>UI</strong></td><td>Tailwind CSS, shadcn/ui, Noto Sans Gurmukhi</td><td>Accessible components fast; findings highlighted by character offsets on the draft</td><td class="dim">Rich-text editor (more to learn, not needed)</td></tr>
+        <tr><td><strong>Database</strong></td><td>SQLite with better-sqlite3 and Drizzle ORM</td><td>No server to run; the whole demo state is one file you can copy</td><td class="dim">Postgres (setup cost for no benefit at this size)</td></tr>
+        <tr><td><strong>Gurbani source</strong></td><td>BaniDB's own dev database image (<code>khalisfoundation/banidb-dev</code>, MariaDB) run locally in Docker; the ingest script reads it with mysql2</td><td>Offline, no rate limits, the same data the BaniDB API serves</td><td class="dim">The hosted API (rate limits, network at ingest)</td></tr>
+        <tr><td><strong>Word lookup</strong></td><td>SQLite FTS5 over stem and stem + ending keys</td><td>Exact word identity across spellings, which embeddings blur</td><td class="dim">Vector search on Gurmukhi</td></tr>
+        <tr><td><strong>English similarity</strong></td><td>Embeddings stored in SQLite, cosine similarity in TypeScript</td><td>The sample is thousands of lines at most; a loop is fast enough</td><td class="dim">A vector database</td></tr>
+        <tr><td><strong>Embedding model</strong></td><td>Local model through Transformers.js (all-MiniLM-L6-v2)</td><td>Good enough for the proof of concept and needs no API key; the sample is small</td><td class="dim">A provider's embeddings API, if indexing speed or quality becomes the bottleneck</td></tr>
+        <tr><td><strong>LLM access</strong></td><td>Vercel AI SDK <code>generateObject</code> with Zod schemas</td><td>Switching provider is a one-line change, so the fastest model that passes the bake-off wins; output is typed JSON or an error</td><td class="dim">Hand-written client per provider</td></tr>
+        <tr><td><strong>LLM caching</strong></td><td><code>llm_cache</code> table keyed by hash of model, prompt version and packet</td><td>Repeatable demo and backtest; pays for each question once</td><td class="dim">No cache</td></tr>
+        <tr><td><strong>Rate limits</strong></td><td>p-limit, about 4 LLM calls at once</td><td>Stays under provider limits without a queue</td><td class="dim">Job queue</td></tr>
+        <tr><td><strong>Tests</strong></td><td>Vitest golden tests from the 38 synthetic sentences</td><td>Code checks pass before any LLM work starts</td><td class="dim">—</td></tr>
+        <tr><td><strong>Rules authoring</strong></td><td><code>rules.resolved.json</code> is the contract; <code>resolve.py</code> stays the authoring tool</td><td>Decisions are edited in one place and the app just loads JSON</td><td class="dim">Porting the script to TypeScript</td></tr>
+        <tr><td><strong>Hosting</strong></td><td>Laptop for the recorded demo; Fly.io with a volume for a shareable link</td><td>SQLite needs a persistent disk. Serverless hosts don't keep local files between requests</td><td class="dim">Vercel</td></tr>
+        <tr><td><strong>Secrets</strong></td><td><code>.env.local</code>, never committed</td><td>API keys stay out of the repo</td><td class="dim">—</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="twocol">
+    <div>
+      <h3>What happens on save</h3>
+<pre>POST /api/check        <span class="c">// code checks, returns at once</span>
+  diff draft → changed tukks
+  L1 rules (TERM-01/03/07,
+     LAYER-06/07) → findings
+  save → report card shows them
+
+POST /api/check/llm    <span class="c">// UI calls right after</span>
+  prefilters pick (line, rule) pairs
+  build packet per pair
+  cache hit? use it : adapter call
+  validator drops bad spans / IDs
+  save → report card updates</pre>
+      <p class="small">Two calls instead of streaming keeps the build simple: reviewers see code findings instantly, and model findings arrive a few seconds later.</p>
+    </div>
+    <div>
+      <h3>Repository layout</h3>
+<pre>eko/
+  app/                 <span class="c">// pages: sabad, review, rules, eval</span>
+    api/check, review, rules, eval
+  lib/
+    gurmukhi/          <span class="c">// normalize, tokenize, morphology</span>
+    rules/             <span class="c">// load rules.resolved.json</span>
+    checks/            <span class="c">// l1/, llm/, validator, pipeline</span>
+    llm/               <span class="c">// adapter, prompts, schemas, cache</span>
+    retrieval/         <span class="c">// fts, vectors</span>
+    db/                <span class="c">// drizzle schema, client</span>
+  scripts/             <span class="c">// ingest, eval, seed-demo</span>
+  data/
+    banidb/            <span class="c">// docker-compose for the local DB</span>
+    rules/             <span class="c">// resolved ruleset</span>
+    sikhri-sample/     <span class="c">// arrives on the day</span>
+  tests/golden/
+  CLAUDE.md            <span class="c">// ownership map + conventions</span>
+  WORKING_LOG.md       <span class="c">// done / doing / next, per person</span></pre>
+    </div>
+  </div>
+
+  <h3>How two people and their agents work without collisions</h3>
+  <p class="lead">Merge conflicts come from two agents editing the same files, not from git itself. Three ways to set this up:</p>
+  <div class="tablewrap">
+    <table>
+      <thead><tr><th>Option</th><th>How it works</th><th>Pros</th><th>Cons</th></tr></thead>
+      <tbody>
+        <tr><td><strong>A. Split by folder (recommended)</strong></td><td>Each person and their agent owns a set of folders. Shared contracts are written together in hour 0–1 and then frozen. Small commits to <code>main</code>, pull and rebase every hour</td><td>Both people build at full speed; conflicts are rare because nobody edits the other's files</td><td>Needs an hour of setup discipline; a contract change needs a quick heads-up</td></tr>
+        <tr><td><strong>B. One driver, one set of agents</strong></td><td>One person runs the coding agents (several in parallel, each in its own git worktree). The other handles the SikhRI sample, the reviewer document, test data, QA and the video</td><td>No merge conflicts at all; the non-coding work is real and needed</td><td>Coding throughput is one person's attention; the second engineer barely codes</td></tr>
+        <tr><td><strong>C. Pair on one machine</strong></td><td>Both people steer one agent session together</td><td>Zero conflicts, shared understanding</td><td>Roughly half the output; fine for the last two hours, wasteful all day</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="small">Recommendation: A for hours 1–9, then C for the last hour of integration and recording.</p>
+
+  <h3>Ownership map for option A</h3>
+  <div class="tablewrap">
+    <table>
+      <thead><tr><th>Owner</th><th>Folders</th><th>Builds</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Person 1 · Checks</strong></td><td><code>lib/checks</code>, <code>lib/llm</code>, <code>lib/rules</code>, <code>lib/gurmukhi</code>, <code>tests/</code></td><td>Code checks, LLM adapter and prompts, validator, cache, Gurmukhi matching for TERM-02, CONS-01 and style checks, drift check logic</td></tr>
+        <tr><td><strong>Person 2 · App and data</strong></td><td><code>app/</code>, <code>lib/db</code>, <code>lib/retrieval</code>, <code>scripts/</code>, <code>data/</code></td><td>Pages and API routes, schema and migrations, BaniDB ingest, SikhRI sample import and reference lookup, backtest and eval card</td></tr>
+        <tr><td><strong>Both, frozen after hour 1</strong></td><td><code>lib/types.ts</code> (Finding, Packet, Rule, Decision), <code>lib/db/schema.ts</code>, <code>package.json</code></td><td>Change only after telling the other person; one commit, then both pull</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <ul class="hero">
+    <li><strong>Agent instructions live in the repo.</strong> <code>CLAUDE.md</code> holds the ownership map, the frozen contracts and the conventions, so both agents follow the same rules and stay in their folders.</li>
+    <li><strong>One owner for shared files.</strong> Person 2 owns the schema and runs migrations; Person 1 asks for columns rather than adding them. Only one person adds packages at a time, so the lockfile doesn't conflict.</li>
+    <li><strong>Mock across the seam.</strong> Person 2 builds the report card against mocked findings in the frozen <code>Finding</code> shape until Person 1's checks land.</li>
+    <li><strong>Short-lived work.</strong> Commit when a piece works; pull and rebase at least hourly. Never leave an agent running unattended on a shared file.</li>
+  </ul>
+
+  <h3>One-day plan for two people</h3>
+  <div class="tablewrap">
+    <table class="sched">
+      <thead><tr><th>Hours</th><th>Person 1 · Checks</th><th>Person 2 · App and data</th></tr></thead>
+      <tbody>
+        <tr><td>0–1</td><td colspan="2">Together: scaffold the repo, write <code>CLAUDE.md</code> and <code>WORKING_LOG.md</code>, freeze the shared types and schema, start the BaniDB container and ingest the demo Sabad</td></tr>
+        <tr><td>1–4</td><td>Code checks (TERM-01/03/07, LAYER-06/07) with golden tests; LLM adapter; model bake-off</td><td>Workspace and report card on mocked findings; review actions with reasons</td></tr>
+        <tr><td>4–7</td><td>TERM-02 (Gurmukhi matching + LLM), PRIN-04, LLM confirmations, validator, cache</td><td>Publish gate; SikhRI sample import, reference set and lookup; attribution</td></tr>
+        <tr><td>7–9</td><td>CONS-01 and style check (using the reference lookup); drift check: contradiction, published-line replay, glossary collision</td><td>Rules page, rule proposal form, approval with reason, ruleset versioning; backtest and eval card</td></tr>
+        <tr><td>9–10</td><td colspan="2">Together (pairing): integrate, seed the demo, run it end to end, record the video</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="small">Hours are a plan, not an estimate from past runs. If the SikhRI sample arrives late, Person 2 swaps the import for the rule proposal form and comes back to it.</p>
+
+  <h3>WORKING_LOG.md</h3>
+  <p class="lead">Created in hour 0–1 and kept current all day: the complete task plan, plus what's done and what's pending. Each person and their agent edits only their own section, so the log itself never conflicts. Agents update it at the end of every task.</p>
+<pre># Eko working log
+
+## Decisions          <span class="c">// anyone; append only, with date and name</span>
+- 10:05 Model for L2: chosen after bake-off (see results below)
+
+## Person 1 · Checks
+### Done
+- [x] TERM-01 code check + golden tests (commit abc123)
+### In progress
+- [ ] TERM-02 Gurmukhi matching
+### Next
+- [ ] PRIN-04 · LLM confirmations · validator · cache · drift check
+### Blocked
+- (none)
+
+## Person 2 · App and data
+### Done / In progress / Next / Blocked   <span class="c">// same shape</span>
+
+## Integration checklist   <span class="c">// filled together in the last hour</span>
+- [ ] Demo Sabad loads from eko.db
+- [ ] Report card shows code and LLM findings
+- [ ] Override with reason → publish → new rule → drift check
+- [ ] Backtest numbers on the eval card</pre>
+
+  <h3>If the day runs short, cut in this order</h3>
+  <ol class="cut">
+    <li>CONS-01, if SikhRI's sample is late (the reason flow still shows on any flag)</li>
+    <li>Duplicate and scope-change warnings in the drift check (keep contradiction and published-line replay)</li>
+    <li>Per-rule breakdown on the eval card (keep the overall catch and false-flag rates)</li>
+    <li>LAYER-06's confirmation tier for ambiguous words (keep the closed archaism list)</li>
+  </ol>
+</section>
+
+<section aria-labelledby="rules">
+  <h2 id="rules">Ruleset v0.1</h2>
+  <p class="lead">66 rules drawn from SikhRI's published Approach and Methodology pages, each with its strength level and source. Eko checks the English transcreation only, so rules for the literal translation, annotation and transcription wait. Rule text stays verbatim; the team's judgment calls sit beside each rule in <code>rules.resolved.json</code>, and the open ones go to the reviewer in a separate document.</p>
+  <div class="counts" aria-label="Rule counts">
+    <span><b>8</b> checks on the transcreation</span>
+    <span><b>1</b> met by design</span>
+    <span><b>1</b> suppresses false flags</span>
+    <span><b>32</b> later (literal, annotation, transcription)</span>
+    <span><b>11</b> reviewer guidance</span>
+    <span><b>9</b> process only</span>
+    <span><b>3</b> removed by the team</span>
+    <span><b>1</b> merged</span>
+  </div>
+
+  <h3>Severity follows the draft's strength levels</h3>
+  <div class="sev">
+    <div><span class="badge err">Error</span><p>MUST rule checked by code with near-zero false positives. Blocks publishing until fixed or waived with a reason.</p></div>
+    <div><span class="badge flg">Flag</span><p>MUST rule confirmed by the LLM against the BaniDB line. Blocks publishing until fixed or overridden with a reason.</p></div>
+    <div><span class="badge wrn">Warning</span><p>SHOULD rule. Needs a reason to dismiss; never blocks.</p></div>
+    <div><span class="badge ok">By design</span><p>Eko's workflow makes the rule impossible to break, or the rule only switches other warnings off.</p></div>
+  </div>
+
+  <h3>Rules active on the transcreation</h3>
+  <div class="tablewrap">
+    <table>
+      <thead><tr><th>Rule</th><th>What it checks</th><th>Level</th><th>How Eko checks it</th><th>Severity</th></tr></thead>
+      <tbody>
+        <tr><td class="rid">TERM-01</td><td>No "God" or "Lord" for the Divine</td><td>MUST</td><td>Code for capitalized forms; LLM checks the referent for lowercase or plural</td><td><span class="badge err">Error</span></td></tr>
+        <tr><td class="rid">LAYER-07</td><td>No parentheses or brackets in the transcreation</td><td>MUST</td><td>Code</td><td><span class="badge err">Error</span></td></tr>
+        <tr><td class="rid">TERM-02</td><td>Keep the Divine attribute the line uses</td><td>MUST</td><td>Gurmukhi matching finds Divine names in the BaniDB line; LLM judges the English. Only the Kartar family (Creator) for now, plus a warning when 3+ different names share one English word</td><td><span class="badge flg">Flag</span></td></tr>
+        <tr><td class="rid">PRIN-04</td><td>No claim of one correct reading</td><td>MUST</td><td>Prefilter, then LLM confirms</td><td><span class="badge flg">Flag</span></td></tr>
+        <tr><td class="rid">LAYER-06</td><td>Contemporary English</td><td>MUST</td><td>Code for a closed archaism list; LLM for ambiguous words</td><td><span class="badge flg">Flag</span></td></tr>
+        <tr><td class="rid">TERM-03</td><td>"IkOankar", glossed on first use in the Sabad</td><td>SHOULD</td><td>Code</td><td><span class="badge wrn">Warning</span></td></tr>
+        <tr><td class="rid">TERM-07</td><td>Core terms kept transcribed (Sabad, Nam, Bani …)</td><td>SHOULD</td><td>Code for spellings; LLM for substitutes like "the Word"</td><td><span class="badge wrn">Warning</span></td></tr>
+        <tr><td class="rid">CONS-01</td><td>Default to the reference rendering</td><td>SHOULD</td><td>Code, once SikhRI's sample arrives</td><td><span class="badge wrn">Warning</span></td></tr>
+        <tr><td class="rid">CONS-03</td><td>Every departure has a recorded reason</td><td>MUST</td><td>Warnings can't be dismissed without a written reason</td><td><span class="badge ok">By design</span></td></tr>
+        <tr><td class="rid">CONS-02</td><td>Depart when context requires</td><td>MUST</td><td>A written reason clears a consistency warning</td><td><span class="badge ok">Suppressor</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="small"><strong>Removed by the team:</strong> TERM-04, TERM-05, PRIN-03 and the interim pronoun check. <strong>Inactive while only the transcreation is reviewed:</strong> TERM-08, LAYER-01 to 04 and LAYER-08; their earlier calls are kept in the file for later.</p>
+
+  <h3>Judgment calls on ambiguous rules</h3>
+  <div class="tablewrap">
+    <table>
+      <thead><tr><th>Ambiguity</th><th>Current call</th></tr></thead>
+      <tbody>
+        <tr><td><strong>CONS-01 vs CONS-02</strong><br><span class="small">stay consistent vs. depart for context</span></td><td>A departure is a warning that needs a reason, never an error. CONS-02 clears it; the stored reason satisfies CONS-03.</td></tr>
+        <tr><td><strong>TERM-01 scope</strong><br><span class="small">rule says "the Divine", checklist says "anywhere"</span></td><td>The rule text governs. A worldly lord or another tradition's deity passes once the LLM confirms the referent.</td></tr>
+        <tr><td><strong>TERM-02 without a names table</strong></td><td>Only names whose attribute is explicit in the word are checked (Kartar → Creator, the rule's own example). A collapse detector warns when 3+ different Divine names in one Sabad share one English word.</td></tr>
+        <tr><td><strong>Gloss format</strong><br><span class="small">TERM-03/07 vs. LAYER-07</span></td><td>In the transcreation the gloss follows a comma or dash, because parentheses aren't allowed.</td></tr>
+        <tr><td><strong>LAYER-06 vs the "Register" gap</strong></td><td>LAYER-06 settles archaisms (thee, thou, hath): they're flagged. Plain vs. elevated register waits for the style guide.</td></tr>
+        <tr><td><strong>TERM-08 on the transcreation</strong></td><td>Not applied, because LAYER-08 frees the transcreation from mirroring the source. Asked of the reviewer.</td></tr>
+        <tr><td><strong>Duplicates and umbrellas</strong></td><td>TERM-09 merged into CONS-01. LAYER-10 never raises its own flag; the specific TERM rule is cited.</td></tr>
+        <tr><td><strong>Precedence</strong></td><td>PRIN rules win conflicts, as the draft states. A specific rule is cited over an umbrella rule.</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="small">Each call stands until the reviewer answers otherwise; their answers update <code>rules.resolved.json</code> through <code>resolve.py</code>. SikhRI's style guide arrives separately and may settle pronouns, capitalization and loaded words.</p>
+
+  <h3>Rules to feature in the video</h3>
+  <ul class="hero">
+    <li><strong>TERM-01</strong> shows a code check: instant, no model call.</li>
+    <li><strong>TERM-02</strong> shows Gurmukhi matching on the BaniDB line plus the LLM's judgment, with the evidence cited.</li>
+    <li><strong>LAYER-07</strong> shows a transcreation-specific rule.</li>
+    <li><strong>An override with a reason</strong> on a TERM-02 flag, then publishing, shows CONS-02/03 in action. With SikhRI's sample loaded, show it on a CONS-01 warning instead.</li>
+  </ul>
+</section>
+
+<section aria-labelledby="contracts">
+  <h2 id="contracts">What crosses the LLM boundary</h2>
+  <p class="lead">The LLM gets a structured packet, not raw Gurmukhi to interpret. Its answer is a JSON flag that the validator checks before anyone sees it. Values below are illustrative.</p>
+  <div class="twocol">
+    <div>
+      <h3>Evidence packet → LLM</h3>
+<pre><span class="c">// built by code, per line × rule</span>
+{
+  <span class="k">"line_id"</span>: "L-000123",
+  <span class="k">"gurmukhi"</span>: "&lt;from BaniDB&gt;",
+  <span class="k">"divine_terms"</span>: [{
+    <span class="k">"surface"</span>: "<span class="g">ਕਰਤਾ</span>",
+    <span class="k">"attribute"</span>: "Creator"
+  }],
+  <span class="k">"english_draft"</span>: "The Lord sustains all creation.",
+  <span class="k">"layer"</span>: "transcreation",
+  <span class="k">"rule"</span>: {
+    <span class="k">"id"</span>: "TERM-02",
+    <span class="k">"level"</span>: "MUST",
+    <span class="k">"text"</span>: "Retain the specific Divine attribute
+             the original Sabad uses …",
+    <span class="k">"plan"</span>: "grammar_conditioned"
+  },
+  <span class="k">"precedents"</span>: [{ <span class="k">"id"</span>: "T-0456", <span class="k">"english"</span>: "…" }]
+}</pre>
+    </div>
+    <div>
+      <h3>Flag ← LLM (then validated)</h3>
+<pre>{
+  <span class="k">"rule_id"</span>: "TERM-02",
+  <span class="k">"verdict"</span>: "flag",
+  <span class="k">"quoted_span"</span>: "The Lord",
+  <span class="k">"explanation"</span>: "The line names the Divine
+     as Creator (<span class="g">ਕਰਤਾ</span>); the draft
+     collapses it into 'Lord'.",
+  <span class="k">"precedent_ids"</span>: ["T-0456"],
+  <span class="k">"layer"</span>: "L2"
+}
+
+<span class="c">// validator: drop the flag if
+//  - "The Lord" is not in english_draft
+//  - TERM-02 or T-0456 does not exist</span></pre>
+      <p class="small">The same draft also fails TERM-01 ("God" or "Lord"), but that one is caught by a deterministic L1 check and never reaches the LLM. TERM-02 needs the Gurmukhi from BaniDB, which is why it's an LLM check. Pronouns for the Divine are still an open question in the ruleset, so there's no pronoun rule yet.</p>
+    </div>
+  </div>
+</section>
+
+<section aria-labelledby="records">
+  <h2 id="records">Core records</h2>
+  <p class="lead">Everything above reads and writes these. One SQLite file keeps the hackathon build simple; the shapes carry over to Postgres later.</p>
+  <div class="tablewrap">
+    <table>
+      <thead><tr><th>Record</th><th>Key fields</th><th>Written by</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Line · Word</strong></td><td><code>line_id, shabad_id, ang, raag, author, is_rahao</code>; word: <code>surface, stem, ending, features</code></td><td>Ingest, from the offline BaniDB database</td></tr>
+        <tr><td><strong>Rule</strong></td><td><code>id, text, level, layers, plan, severity, decision, version, status, approved_by, approved_at, reason</code></td><td>Anyone, with a reason</td></tr>
+        <tr><td><strong>Draft</strong></td><td><code>id, line_ids[], layer (transcreation), text, author, status</code></td><td>Anyone</td></tr>
+        <tr><td><strong>Flag</strong></td><td><code>id, draft_id, rule_id, layer (L1 | L2 | grammar | style), quoted_span, explanation, precedent_ids[]</code></td><td>Engine</td></tr>
+        <tr><td><strong>Decision</strong></td><td><code>flag_id, action (accept | override | waive), reason, reviewer, at</code></td><td>Anyone reviewing</td></tr>
+        <tr><td><strong>Proposal</strong></td><td><code>id, source (overrides | pattern), rule_text, evidence_ids[]</code></td><td>Engine</td></tr>
+        <tr><td><strong>Drift result</strong></td><td><code>proposal_id, check, outcome (pass | warn | block), evidence, overridden_by, reason</code></td><td>Engine, anyone overriding</td></tr>
+        <tr><td><strong>Eval run</strong></td><td><code>id, ruleset_version, n_corrections, catch_rate, false_flag_rate</code></td><td>Backtest harness</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section aria-labelledby="drift">
+  <h2 id="drift">Drift check</h2>
+  <p class="lead">Runs on every proposed rule before anyone approves it. Anyone can override a block, with a reason that stays on the rule's record.</p>
+  <div class="tablewrap">
+    <table>
+      <thead><tr><th>Check</th><th>How</th><th>Outcome</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Contradiction</strong></td><td>Retrieve related rules; LLM labels each pair contradicts / overlaps / unrelated, with a reason</td><td><span class="badge block">Block</span></td></tr>
+        <tr><td><strong>Retroactive impact</strong></td><td>Replay the proposed rule over every approved translation and count the lines it would flag</td><td><span class="badge block">Block</span> above threshold, affected lines listed</td></tr>
+        <tr><td><strong>Glossary collision</strong></td><td>Compare new renderings with existing preferred renderings</td><td><span class="badge block">Block</span></td></tr>
+        <tr><td><strong>Duplicate</strong></td><td>Similarity against existing rules</td><td><span class="badge warn">Warn</span> suggest merge</td></tr>
+        <tr><td><strong>Scope change</strong></td><td>LLM compares with the rule it narrows or broadens</td><td><span class="badge warn">Warn</span> show both</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="small">Retroactive impact is the strongest signal: it measures drift against SikhRI's actual approved work rather than a model's opinion, and it demos well ("this rule would have flagged 7 approved lines").</p>
+</section>
+
+<section aria-labelledby="open">
+  <h2 id="open">Still open</h2>
+  <ul class="open">
+    <li><strong>Reviewer answers.</strong> The judgment-call questions go to the reviewer in a separate document; answers update <code>rules.resolved.json</code>.</li>
+    <li><strong>Style guide.</strong> SikhRI's team shares it separately. It may settle pronouns for the Divine, capitalization, loaded words and register.</li>
+    <li><strong>SikhRI sample.</strong> Format of the reference transcreations and review history, which IDs they use, and whether pre-edit drafts are included.</li>
+    <li><strong>BaniDB.</strong> Confirm the <code>banidb-dev</code> image holds the full Guru Granth Sahib (it is a development image; unverified). If not, request a database copy from Khalis Foundation. Also confirm whether the monthly contribution requirement applies to a hackathon prototype.</li>
+    <li><strong>LLM provider.</strong> Hosted is fine; pick the fastest model that passes the minimal-pairs bake-off.</li>
+    <li><strong>Thresholds.</strong> How many published lines a proposed rule may flag before the drift check blocks it.</li>
+  </ul>
+</section>
+
+<footer>Eko · Team BJ13 · code MIT for SikhRI; SikhRI's translations and documents remain SikhRI's. Gurmukhi text and metadata from BaniDB (Khalis Foundation).</footer>
+</div>

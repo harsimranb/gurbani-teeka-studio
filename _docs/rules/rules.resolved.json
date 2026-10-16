@@ -1,0 +1,3125 @@
+{
+  "version": "0.1-resolved",
+  "global_decisions": [
+    "Severity follows the draft's strength table: MUST -> flag (blocks publish until fixed or waived with a reason); SHOULD -> warning (needs a reason, doesn't block); GUIDE -> review lens (never flagged). Deterministic MUST checks with near-zero false positives are 'error'.",
+    "Precedence: PRIN rules win conflicts (as the draft says); a specific rule is cited over an umbrella rule; a reviewer's context reason (CONS-02) clears consistency warnings.",
+    "Review unit is the Sabad: 'first use' and 'same word' are scoped to one Sabad.",
+    "Every rule runs only on the layers it applies to (literal, transcreation, publication).",
+    "Wording (PRIN-04): flags say 'differs from reference rendering'. 'Approved' is used only as a workflow status, never as 'correct'.",
+    "'Same word' grouping uses the stem key from BaniDB text; the ending matra is kept as a feature for grammar hints.",
+    "Open SikhRI questions never become flags: Eko reports variation within a Sabad, not a choice it can't verify.",
+    "Scope: Eko reviews the English transcreation only, and never generates translation text.",
+    "No roles: anyone may resolve a finding, propose a rule, or approve one, always with a written reason."
+  ],
+  "interim_checks": [],
+  "rules": [
+    {
+      "id": "PRIN-01",
+      "text": "Interpret according to Gurmat, the principles of the Guru's Wisdom.",
+      "section": "1. Foundational principles (PRIN)",
+      "subsection": null,
+      "level": "MUST",
+      "source_tag": "[A]",
+      "applies_to": [
+        "literal",
+        "transcreation",
+        "annotation"
+      ],
+      "category": "other",
+      "check_type": "manual",
+      "eko_scope": "review_lens",
+      "prefilter": null,
+      "examples": {
+        "right": [],
+        "wrong": []
+      },
+      "needs_gurmukhi_features": false,
+      "needs_gurmukhi_line": false,
+      "related_rules": [
+        "PRIN-02"
+      ],
+      "ambiguities": [
+        "'Gurmat' is not operationalized; no observable test in English text."
+      ],
+      "confidence": "low",
+      "resolution": {
+        "active": false,
+        "scope": "review_lens",
+        "severity": "lens",
+        "blocks_publish": false,
+        "layers": [
+          "literal",
+          "transcreation",
+          "annotation"
+        ],
+        "conditional": null,
+        "decision": null
+      }
+    },
+    {
+      "id": "PRIN-02",
+      "text": "Treat internal evidence from the Guru Granth Sahib itself as the primary authority. Outside resources are consulted but rank below it.",
+      "section": "1. Foundational principles (PRIN)",
+      "subsection": null,
+      "level": "MUST",
+      "source_tag": "[A]",
+      "applies_to": [
+        "process"
+      ],
+      "category": "other",
+      "check_type": "manual",
+      "eko_scope": "out_of_scope",
+      "prefilter": null,
+      "examples": {
+        "right": [],
+        "wrong": []
+      },
+      "needs_gurmukhi_features": false,
+      "needs_gurmukhi_line": false,
+      "related_rules": [
+        "PRIN-01",
+        "TERM-08"
+      ],
+      "ambiguities": [
+        "Governs research sources, not the output text; nothing for Eko to read."
+      ],
+      "confidence": "low",
+      "resolution": {
+        "active": false,
+        "scope": "out_of_scope",
+        "severity": "none",
+        "blocks_publish": false,
+        "layers": [
+          "process"
+        ],
+        "conditional": null,
+        "decision": null
+      }
+    },
+    {
+      "id": "PRIN-03",
+      "text": "Present every rendering as the team's current understanding, not a final one. Understanding is expected to change as the relationship with Sabad deepens.",
+      "section": "1. Foundational principles (PRIN)",
+      "subsection": null,
+      "level": "MUST",
+      "source_tag": "[A]",
+      "applies_to": [
+        "publication"
+      ],
+      "category": "other",
+      "check_type": "prefilter_llm",
+      "eko_scope": "p1_check",
+      "prefilter": {
+        "proposal": true,
+        "patterns": [
+          {
+            "pattern": "(?i)\\b(?:evolv\\w*|current understanding|finite|infinite|may change)\\b",
+            "flags": "",
+            "action": "llm_confirm"
+          }
+        ],
+        "keywords": [
+          "evolve",
+          "current understanding",
+          "finite",
+          "infinite"
+        ],
+        "notes": "Publication-level presence check for the humility note (see 'Standard disclaimer' under section 1). Eko's demo input is per-line text, so this needs Sabad-level publication data."
+      },
+      "examples": {
+        "right": [],
+        "wrong": []
+      },
+      "needs_gurmukhi_features": false,
+      "needs_gurmukhi_line": false,
+      "related_rules": [
+        "PRIN-04"
+      ],
+      "ambiguities": [
+        "Is there a canonical wording for the humility note, or only the three ideas (Sabad infinite, understanding finite, reading may evolve)?",
+        "Does the note attach per Sabad, per Bani, or per publication?"
+      ],
+      "confidence": "medium",
+      "resolution": {
+        "active": false,
+        "scope": "removed",
+        "severity": "none",
+        "blocks_publish": false,
+        "layers": [
+          "publication"
+        ],
+        "conditional": null,
+        "decision": "Removed from automated checks by the team (Oct 16). Reviewer asked to confirm (Q1)."
+      }
+    },
+    {
+      "id": "PRIN-04",
+      "text": "Never label a rendering as the single correct translation, or other translations as wrong. Multiple renderings can coexist.",
+      "section": "1. Foundational principles (PRIN)",
+      "subsection": null,
+      "level": "MUST",
+      "source_tag": "[A]",
+      "applies_to": [
+        "transcreation",
+        "publication"
+      ],
+      "category": "other",
+      "check_type": "prefilter_llm",
+      "eko_scope": "p0_check",
+      "prefilter": {
+        "proposal": true,
+        "patterns": [
+          {
+            "pattern": "(?i)\\b(?:the\\s+)?(?:only|single|sole|one|true|real|correct|right|definitive|authoritative|final)\\s+(?:correct\\s+|true\\s+|right\\s+)?(?:translation|rendering|interpretation|meaning|reading)s?\\b",
+            "flags": "",
+            "action": "llm_confirm"
+          },
+          {
+            "pattern": "(?i)\\bmis-?translat\\w*\\b",
+            "flags": "",
+            "action": "llm_confirm"
+          },
+          {
+            "pattern": "(?i)\\b(?:other|these|those|previous|earlier|existing|their|his|her)\\s+(?:translations?|renderings?|interpretations?)\\s+(?:is|are|was|were)\\s+(?:wrong|incorrect|mistaken|erroneous|false)\\b",
+            "flags": "",
+            "action": "flag"
+          },
+          {
+            "pattern": "(?i)\\b(?:wrongly|incorrectly|mistakenly)\\s+(?:translated|rendered|interpreted)\\b",
+            "flags": "",
+            "action": "llm_confirm"
+          }
+        ],
+        "keywords": [],
+        "notes": "High precision, low recall. 'true'/'real' + 'meaning' also occurs in ordinary content ('the true friend'), so those hits go to LLM confirmation. Most real occurrences will be in commentary/footnotes, which Eko does not ingest."
+      },
+      "examples": {
+        "right": [],
+        "wrong": []
+      },
+      "needs_gurmukhi_features": false,
+      "needs_gurmukhi_line": false,
+      "related_rules": [
+        "PRIN-03",
+        "PRIN-09"
+      ],
+      "ambiguities": [
+        "Applies to claims about translations; also constrains Eko's own UI wording (avoid 'approved/correct' vs 'wrong').",
+        "Unclear whether a footnote saying another rendering 'misses' a nuance counts as labelling it wrong."
+      ],
+      "confidence": "medium",
+      "resolution": {
+        "active": true,
+        "scope": "p0_check",
+        "severity": "flag",
+        "blocks_publish": true,
+        "layers": [
+          "transcreation"
+        ],
+        "conditional": null,
+        "decision": "Prefilter + LLM confirm on claims of a single correct reading or that other renderings are wrong. Eko's own UI follows this rule too: flags say 'differs from reference rendering', never 'incorrect'."
+      }
+    },
+    {
+      "id": "PRIN-05",
+      "text": "Keep transcreation distinct from translation. They are separate deliverables with separate rules (see LAYER).",
+      "section": "1. Foundational principles (PRIN)",
+      "subsection": null,
+      "level": "MUST",
+      "source_tag": "[A] [M]",
+      "applies_to": [
+        "literal",
+        "transcreation"
+      ],
+      "category": "style",
+      "check_type": "style_llm",
+      "eko_scope": "review_lens",
+      "prefilter": null,
+      "examples": {
+        "right": [],
+        "wrong": []
+      },
+      "needs_gurmukhi_features": false,
+      "needs_gurmukhi_line": false,
+      "related_rules": [
+        "LAYER-03",
+        "LAYER-07",
+        "LAYER-08"
+      ],
+      "ambiguities": [
+        "Principle only; the checkable forms are LAYER-07 (no parentheses) and LAYER-08 (no mirroring). Eko should cite those, not PRIN-05."
+      ],
+      "confidence": "low",
+      "resolution": {
+        "active": false,
+        "scope": "review_lens",
+        "severity": "lens",
+        "blocks_publish": false,
+        "layers": [
+          "literal",
+          "transcreation"
+        ],
+        "conditional": null,
+        "decision": null
+      }
+    },
+    {
+      "id": "PRIN-06",
+      "text": "Aim for closeness and intimacy, so the reader can engage personally with the Guru's teachings.",
+      "section": "1. Foundational principles (PRIN)",
+      "subsection": null,
+      "level": "GUIDE",
+      "source_tag": "[A]",
+      "applies_to": [
+        "transcreation"
+      ],
+      "category": "style",
+      "check_type": "style_llm",
+      "eko_scope": "review_lens",
+      "prefilter": null,
+      "examples": {
+        "right": [],
+        "wrong": []
+      },
+      "needs_gurmukhi_features": false,
+      "needs_gurmukhi_line": false,
+      "related_rules": [
+        "PRIN-07",
+        "LAYER-06"
+      ],
+      "ambiguities": [
+        "GUIDE level: 'closeness and intimacy' has no testable definition yet."
+      ],
+      "confidence": "low",
+      "resolution": {
+        "active": false,
+        "scope": "review_lens",
+        "severity": "lens",
+        "blocks_publish": false,
+        "layers": [
+          "transcreation"
+        ],
+        "conditional": null,
+        "decision": null
+      }
+    },
+    {
+      "id": "PRIN-07",
+      "text": "Connect contemporary readers to Sabad within their present social, cultural and linguistic context.",
+      "section": "1. Foundational principles (PRIN)",
+      "subsection": null,
+      "level": "GUIDE",
+      "source_tag": "[M]",
+      "applies_to": [
+        "transcreation"
+      ],
+      "category": "style",
+      "check_type": "style_llm",
+      "eko_scope": "review_lens",
+      "prefilter": null,
+      "examples": {
+        "right": [],
+        "wrong": []
+      },
+      "needs_gurmukhi_features": false,
+      "needs_gurmukhi_line": false,
+      "related_rules": [
+        "LAYER-06",
+        "PRIN-08"
+      ],
+      "ambiguities": [
+        "GUIDE level; overlaps LAYER-06 (contemporary English)."
+      ],
+      "confidence": "low",
+      "resolution": {
+        "active": false,
+        "scope": "review_lens",
+        "severity": "lens",
+        "blocks_publish": false,
+        "layers": [
+          "transcreation"
+        ],
+        "conditional": null,
+        "decision": null
+      }
+    },
+    {
+      "id": "PRIN-08",
+      "text": "Assume a global reader with no prior knowledge; supply context and clarification accordingly.",
+      "section": "1. Foundational principles (PRIN)",
+      "subsection": null,
+      "level": "SHOULD",
+      "source_tag": "[M]",
+      "applies_to": [
+        "transcreation",
+        "publication"
+      ],
+      "category": "style",
+      "check_type": "style_llm",
+      "eko_scope": "review_lens",
+      "prefilter": null,
+      "examples": {
+        "right": [],
+        "wrong": []
+      },
+      "needs_gurmukhi_features": false,
+      "needs_gurmukhi_line": false,
+      "related_rules": [
+        "TERM-03",
+        "TERM-07",
+        "FLOW-05",
+        "CONS-04"
+      ],
+      "ambiguities": [
+        "'Supply context' is unbounded; the checkable slice is 'transcribed term glossed on first use' (TERM-03/07).",
+        "Where should context go: in-line in the transcreation, or in footnotes (CONS-04)?"
+      ],
+      "confidence": "low",
+      "resolution": {
+        "active": false,
+        "scope": "review_lens",
+        "severity": "lens",
+        "blocks_publish": false,
+        "layers": [
+          "transcreation",
+          "publication"
+        ],
+        "conditional": null,
+        "decision": null
+      }
+    },
+    {
+      "id": "PRIN-09",
+      "text": "Draw on, and openly acknowledge, diverse schools of thought; name where interpretations diverge rather than hiding it.",
+      "section": "1. Foundational principles (PRIN)",
+      "subsection": null,
+      "level": "SHOULD",
+      "source_tag": "[M]",
+      "applies_to": [
+        "publication"
+      ],
+      "category": "other",
+      "check_type": "manual",
+      "eko_scope": "out_of_scope",
+      "prefilter": null,
+      "examples": {
+        "right": [],
+        "wrong": []
+      },
+      "needs_gurmukhi_features": false,
+      "needs_gurmukhi_line": false,
+      "related_rules": [
+        "FLOW-07"
+      ],
+      "ambiguities": [
+        "Applies to commentary, which Eko does not ingest. Duplicates FLOW-07."
+      ],
+      "confidence": "low",
+      "resolution": {
+        "active": false,
+        "scope": "out_of_scope",
+        "severity": "none",
+        "blocks_publish": false,
+        "layers": [
+          "publication"
+        ],
+        "conditional": null,
+        "decision": "Duplicate of FLOW-07; out of scope for text checks."
+      }
+    },
+    {
+      "id": "TERM-01",
+      "text": "Do not render the Divine as \"God\" or \"Lord\". These terms project connotations onto the Guru-Wisdom that the original does not carry.",
+      "section": "2. Terminology (TERM)",
+      "subsection": null,
+      "level": "MUST",
+      "source_tag": "[A]",
+      "applies_to": [
+        "literal",
+        "transcreation",
+        "annotation"
+      ],
+      "category": "divine_reference",
+      "check_type": "glossary",
+      "eko_scope": "p0_check",
+      "prefilter": {
+        "proposal": true,
+        "patterns": [
+          {
+            "pattern": "\\b(?:God|Lord)(?:'s|s'|s)?\\b",
+            "flags": "",
+            "action": "flag"
+          },
+          {
+            "pattern": "\\b(?:God(?:head|hood|ly|liness)|Lord(?:ship|ly))\\b|\\b(?:God|Lord)-\\w+",
+            "flags": "",
+            "action": "flag"
+          },
+          {
+            "pattern": "(?i)\\b(?:gods?|goddess(?:es)?|lords?|lordly|lordship)\\b",
+            "flags": "",
+            "action": "llm_confirm"
+          }
+        ],
+        "keywords": [
+          "God",
+          "Lord",
+          "Godhead",
+          "Lord God",
+          "Lord-Master"
+        ],
+        "notes": "Tier 1 is case-sensitive (capitalized forms = Divine reference): flag directly. Tier 2 (lowercase/plural/goddess) goes to LLM to decide whether the referent is the Divine. Word boundaries exclude 'landlord', 'warlord'."
+      },
+      "examples": {
+        "right": [],
+        "wrong": [
+          "God",
+          "Lord"
+        ]
+      },
+      "needs_gurmukhi_features": false,
+      "needs_gurmukhi_line": false,
+      "related_rules": [
+        "TERM-02",
+        "TERM-03",
+        "LAYER-10"
+      ],
+      "ambiguities": [
+        "Rule says 'render the Divine as'; the reviewer checklist says 'No God or Lord anywhere'. Is a worldly lord/master, another tradition's 'God', or a quoted title (e.g. a deity epithet) also banned?",
+        "Lowercase and plural forms (gods, lords, goddess) for deities or rulers: in scope or not?",
+        "Quoted text inside notes (e.g. citing another translator's 'God') would false-positive if notes are ever ingested."
+      ],
+      "confidence": "high",
+      "resolution": {
+        "active": true,
+        "scope": "p0_check",
+        "severity": "error",
+        "blocks_publish": true,
+        "layers": [
+          "transcreation"
+        ],
+        "conditional": null,
+        "decision": "The rule text governs: it bans 'God'/'Lord' as renderings of the Divine. The checklist's 'anywhere' is read as shorthand. Capitalized God/Lord (and Godhead, Lordship, Lord-X) -> error, deterministic L1. Lowercase or plural (gods, lords, goddess) -> LLM confirms the referent with the BaniDB line; a worldly or other-tradition referent passes."
+      }
+    },
+    {
+      "id": "TERM-02",
+      "text": "Retain the specific Divine attribute the original Sabad uses (for example, a name meaning Creator stays Creator) rather than collapsing every name into one English word.",
+      "section": "2. Terminology (TERM)",
+      "subsection": null,
+      "level": "MUST",
+      "source_tag": "[A]",
+      "applies_to": [
+        "literal",
+        "transcreation"
+      ],
+      "category": "divine_reference",
+      "check_type": "prefilter_llm",
+      "eko_scope": "p0_check",
+      "prefilter": {
+        "proposal": true,
+        "patterns": [
+          {
+            "pattern": "(?:ਹਰਿ|ਹਰੀ|ਹਰੇ|ਰਾਮ|ਪ੍ਰਭ|ਠਾਕੁਰ|ਸਾਹਿਬ|ਸਾਹਿਬੁ|ਕਰਤਾਰ|ਕਰਤਾ|ਗੋਬਿੰਦ|ਗੋਬਿੰਦੁ)",
+            "flags": "",
+            "action": "llm_confirm"
+          }
+        ],
+        "keywords": [
+          "the One",
+          "the Divine",
+          "Master",
+          "Creator"
+        ],
+        "notes": "Gurmukhi-side prefilter on the BaniDB line (stems from the Section 8 'Divine names' list; inflected endings need normalization). If a name is found, LLM checks whether the English keeps that name's specific attribute or collapses it into a generic word."
+      },
+      "examples": {
+        "right": [
+          "a name meaning Creator stays Creator"
+        ],
+        "wrong": []
+      },
+      "needs_gurmukhi_features": true,
+      "needs_gurmukhi_line": true,
+      "related_rules": [
+        "TERM-01",
+        "TERM-08",
+        "LAYER-10"
+      ],
+      "ambiguities": [
+        "No name-to-attribute table exists yet (Section 8 gap 'Divine names'); without it the LLM's own sense of each name's meaning is the reference, so FP risk is high.",
+        "When is a name kept untranslated instead of rendered by attribute (Section 8)?",
+        "Is 'the Divine' an acceptable rendering for any name, or always a collapse?"
+      ],
+      "confidence": "low",
+      "resolution": {
+        "active": true,
+        "scope": "p0_check",
+        "severity": "flag",
+        "blocks_publish": true,
+        "layers": [
+          "transcreation"
+        ],
+        "conditional": null,
+        "decision": "Narrowed until SikhRI supplies the Divine-name table (Section 8 gap). Two checks only: (a) names whose attribute is explicit in the word itself: the karta/kartar family must keep 'Creator' (the rule's own example) -> flag. (b) collapse detector: 3+ distinct Divine names in one Sabad all rendered by the same single English word -> warning for the reviewer. Eko does not judge other names' renderings yet."
+      }
+    },
+    {
+      "id": "TERM-03",
+      "text": "Use \"IkOankar\" for the core Divine concept, glossed on first use as One Universal Integrative Force (1Force, the One).",
+      "section": "2. Terminology (TERM)",
+      "subsection": null,
+      "level": "SHOULD",
+      "source_tag": "[A]",
+      "applies_to": [
+        "literal",
+        "transcreation"
+      ],
+      "category": "divine_reference",
+      "check_type": "glossary",
+      "eko_scope": "p0_check",
+      "prefilter": {
+        "proposal": true,
+        "patterns": [
+          {
+            "pattern": "(?i)\\b(?:ik|ek|1)[\\s-]*o?a?(?:n|m|ng|an|ang)[\\s-]*k(?:aa|a|ā)r\\b",
+            "flags": "",
+            "action": "flag_if_not_exact:IkOankar"
+          },
+          {
+            "pattern": "(?i)\\bOne\\s+Universal\\s+Creator\\b",
+            "flags": "",
+            "action": "flag"
+          }
+        ],
+        "keywords": [
+          "IkOankar",
+          "One Universal Integrative Force",
+          "1Force",
+          "the One",
+          "ੴ"
+        ],
+        "notes": "Spelling check: any variant (Ik Onkar, Ek Onkar, Ik Oankar, Ekankar, Ik Omkar ...) that is not exactly 'IkOankar' is flagged. Gloss check: within the first-use scope, the first 'IkOankar' should be accompanied by 'One Universal Integrative Force'. The ੴ symbol on the Gurmukhi line can serve as a trigger."
+      },
+      "examples": {
+        "right": [
+          "IkOankar",
+          "One Universal Integrative Force (1Force, the One)"
+        ],
+        "wrong": []
+      },
+      "needs_gurmukhi_features": false,
+      "needs_gurmukhi_line": false,
+      "related_rules": [
+        "TERM-01",
+        "TERM-07",
+        "LAYER-07"
+      ],
+      "ambiguities": [
+        "'First use' scope: per Sabad, per Bani, per page, or per publication?",
+        "Gloss format conflicts with layer rules: parentheses mean 'added words' in the literal (LAYER-03) and are banned in the transcreation (LAYER-07).",
+        "Are '1Force' and 'the One' alternative glosses, or required alongside 'One Universal Integrative Force'?"
+      ],
+      "confidence": "medium",
+      "resolution": {
+        "active": true,
+        "scope": "p0_check",
+        "severity": "warning",
+        "blocks_publish": false,
+        "layers": [
+          "transcreation"
+        ],
+        "conditional": null,
+        "decision": "Exact spelling 'IkOankar'; any variant -> warning. First use = first occurrence in the Sabad. Gloss 'One Universal Integrative Force' at first use, written as an apposition (comma or dash), because LAYER-07 bans parentheses in the transcreation."
+      }
+    },
+    {
+      "id": "TERM-04",
+      "text": "Avoid English terms with Judeo-Christian undertones when describing Sikh concepts. The named example: do not call the Guru Granth Sahib \"scripture\" or \"canon\".",
+      "section": "2. Terminology (TERM)",
+      "subsection": null,
+      "level": "MUST",
+      "source_tag": "[M]",
+      "applies_to": [
+        "literal",
+        "transcreation",
+        "publication"
+      ],
+      "category": "terminology",
+      "check_type": "prefilter_llm",
+      "eko_scope": "p0_check",
+      "prefilter": {
+        "proposal": true,
+        "patterns": [
+          {
+            "pattern": "(?i)\\b(?:Guru\\s+Granth(?:\\s+Sahib)?|Granth|Gurbani|Bani|Sabad|Sikhs?'?)\\b[^.]{0,40}?\\b(?:scriptures?|scriptural|canon(?:s|ical)?)\\b",
+            "flags": "",
+            "action": "flag"
+          },
+          {
+            "pattern": "(?i)\\b(?:holy|sacred|Sikh)\\s+(?:scriptures?|canon)\\b",
+            "flags": "",
+            "action": "flag"
+          },
+          {
+            "pattern": "(?i)\\b(?:scriptures?|scriptural|canon(?:s|ical)?)\\b",
+            "flags": "",
+            "action": "llm_confirm"
+          }
+        ],
+        "keywords": [
+          "scripture",
+          "scriptures",
+          "scriptural",
+          "canon",
+          "canonical"
+        ],
+        "notes": "Named terms only. Co-occurrence with a GGS/Sikh referent = flag; bare hits go to LLM to check the referent (e.g. 'scriptures' used for other traditions' books named on the source line). The rule's general clause ('Judeo-Christian undertones') is not encoded; see Section 8 'Loaded words'."
+      },
+      "examples": {
+        "right": [],
+        "wrong": [
+          "scripture",
+          "canon"
+        ]
+      },
+      "needs_gurmukhi_features": false,
+      "needs_gurmukhi_line": false,
+      "related_rules": [
+        "TERM-05",
+        "TERM-06",
+        "FLOW-04"
+      ],
+      "ambiguities": [
+        "General clause is open-ended; only 'scripture'/'canon' are named. Soul, sin, heaven, salvation, worship, prayer, saint, hymn are listed as an open gap (Section 8), not banned.",
+        "Is 'scripture' acceptable when rendering a source word that refers to non-Sikh books?"
+      ],
+      "confidence": "high",
+      "resolution": {
+        "active": false,
+        "scope": "removed",
+        "severity": "none",
+        "blocks_publish": false,
+        "layers": [
+          "literal",
+          "transcreation",
+          "publication"
+        ],
+        "conditional": null,
+        "decision": "Removed from automated checks by the team (Oct 16). Reviewer asked to confirm (Q1)."
+      }
+    },
+    {
+      "id": "TERM-05",
+      "text": "Equally avoid Hindu or Indological terms that misframe Sikh concepts. The named example: do not call the Guru Granth Sahib \"ved\" or \"shastra\".",
+      "section": "2. Terminology (TERM)",
+      "subsection": null,
+      "level": "MUST",
+      "source_tag": "[M]",
+      "applies_to": [
+        "literal",
+        "transcreation",
+        "publication"
+      ],
+      "category": "terminology",
+      "check_type": "prefilter_llm",
+      "eko_scope": "p0_check",
+      "prefilter": {
+        "proposal": true,
+        "patterns": [
+          {
+            "pattern": "(?i)\\b(?:Guru\\s+Granth(?:\\s+Sahib)?|Granth|Gurbani|Bani|Sabad|Sikhs?'?)\\b[^.]{0,40}?\\b(?:veda?s?|vedic|shastras?|sastras?)\\b",
+            "flags": "",
+            "action": "flag"
+          },
+          {
+            "pattern": "(?i)\\bSikh\\s+(?:veda?s?|shastras?)\\b",
+            "flags": "",
+            "action": "flag"
+          },
+          {
+            "pattern": "(?i)\\b(?:veda?s?|vedic|shastras?|sastras?)\\b",
+            "flags": "",
+            "action": "llm_confirm"
+          }
+        ],
+        "keywords": [
+          "ved",
+          "veda",
+          "vedas",
+          "vedic",
+          "shastra",
+          "shastras"
+        ],
+        "notes": "Same structure as TERM-04. Bare hits are common and legitimate because Gurbani itself refers to the Vedas and Shastras; if the Gurmukhi line contains those words, a bare hit is almost certainly a faithful rendering, not a breach."
+      },
+      "examples": {
+        "right": [],
+        "wrong": [
+          "ved",
+          "shastra"
+        ]
+      },
+      "needs_gurmukhi_features": false,
+      "needs_gurmukhi_line": false,
+      "related_rules": [
+        "TERM-04",
+        "TERM-06",
+        "FLOW-04"
+      ],
+      "ambiguities": [
+        "General clause ('Hindu or Indological terms that misframe') is open-ended beyond the two named examples.",
+        "Lower precision than TERM-04 because legitimate references to the Vedas/Shastras are frequent in the source."
+      ],
+      "confidence": "medium",
+      "resolution": {
+        "active": false,
+        "scope": "removed",
+        "severity": "none",
+        "blocks_publish": false,
+        "layers": [
+          "literal",
+          "transcreation",
+          "publication"
+        ],
+        "conditional": null,
+        "decision": "Removed from automated checks by the team (Oct 16). Reviewer asked to confirm (Q1)."
+      }
+    },
+    {
+      "id": "TERM-06",
+      "text": "Before choosing an English equivalent for any term, check what the English word's own history implies; near-equivalents are not neutral.",
+      "section": "2. Terminology (TERM)",
+      "subsection": null,
+      "level": "SHOULD",
+      "source_tag": "[M]",
+      "applies_to": [
+        "literal",
+        "transcreation",
+        "process"
+      ],
+      "category": "terminology",
+      "check_type": "style_llm",
+      "eko_scope": "review_lens",
+      "prefilter": null,
+      "examples": {
+        "right": [],
+        "wrong": []
+      },
+      "needs_gurmukhi_features": false,
+      "needs_gurmukhi_line": false,
+      "related_rules": [
+        "TERM-04",
+        "TERM-05",
+        "FLOW-04"
+      ],
+      "ambiguities": [
+        "Describes a translator's research step; Eko can at most surface loaded words for a reviewer."
+      ],
+      "confidence": "low",
+      "resolution": {
+        "active": false,
+        "scope": "review_lens",
+        "severity": "lens",
+        "blocks_publish": false,
+        "layers": [
+          "literal",
+          "transcreation",
+          "process"
+        ],
+        "conditional": null,
+        "decision": "Review lens only."
+      }
+    },
+    {
+      "id": "TERM-07",
+      "text": "Keep core Sikh terms in transcribed form, with a gloss, where English has no faithful equivalent. Terms SikhRI uses this way include Sabad (Infinite Wisdom), Nam (Identification with IkOankar), Bani, Gurmat, Panth (Collective), Patshah (Sovereign) and Prakash Purab (Illumination Day).",
+      "section": "2. Terminology (TERM)",
+      "subsection": null,
+      "level": "SHOULD",
+      "source_tag": "[A]",
+      "applies_to": [
+        "literal",
+        "transcreation",
+        "publication"
+      ],
+      "category": "terminology",
+      "check_type": "glossary",
+      "eko_scope": "p0_check",
+      "prefilter": {
+        "proposal": true,
+        "patterns": [
+          {
+            "pattern": "\\bSha?ba?ds?\\b",
+            "flags": "",
+            "action": "flag_if_not_proper_noun"
+          },
+          {
+            "pattern": "\\bNaam\\b",
+            "flags": "",
+            "action": "flag"
+          },
+          {
+            "pattern": "(?i)\\b(?:Padshah|Paatshah|Patshaah|Paatshaah)\\b",
+            "flags": "",
+            "action": "flag"
+          },
+          {
+            "pattern": "(?i)\\bParkash\\s+Purab\\b|\\bPrakash\\s+Purb\\b",
+            "flags": "",
+            "action": "flag"
+          },
+          {
+            "pattern": "(?i)\\bthe\\s+(?:holy\\s+)?(?:Word|Name)\\b|\\bhymns?\\b",
+            "flags": "",
+            "action": "llm_confirm"
+          }
+        ],
+        "keywords": [
+          "Sabad",
+          "Nam",
+          "Bani",
+          "Gurmat",
+          "Panth",
+          "Patshah",
+          "Prakash Purab",
+          "Infinite Wisdom",
+          "Identification with IkOankar",
+          "Collective",
+          "Sovereign",
+          "Illumination Day"
+        ],
+        "notes": "Patterns are applied per span; when several tiers hit the same span, the most specific action wins. Two checks: (1) non-preferred spellings of the listed terms (deterministic); (2) English substitutes such as 'the Word', 'the Name', 'hymn' (LLM confirm; lowercase 'word'/'name' are ordinary English). Proper nouns such as Bani titles may legitimately use common spellings (TRAN-02)."
+      },
+      "examples": {
+        "right": [
+          "Sabad (Infinite Wisdom)",
+          "Nam (Identification with IkOankar)",
+          "Bani",
+          "Gurmat",
+          "Panth (Collective)",
+          "Patshah (Sovereign)",
+          "Prakash Purab (Illumination Day)"
+        ],
+        "wrong": []
+      },
+      "needs_gurmukhi_features": false,
+      "needs_gurmukhi_line": false,
+      "related_rules": [
+        "TERM-03",
+        "TRAN-02",
+        "TRAN-07",
+        "LAYER-07",
+        "PRIN-08"
+      ],
+      "ambiguities": [
+        "Bani and Gurmat are listed without a gloss although the rule requires one.",
+        "Gloss format per layer is undefined (parentheses conflict with LAYER-03/LAYER-07).",
+        "Listed forms carry no diacritics (Nam, not Nām); unclear whether TRAN rules apply to Sikh terms in English running text.",
+        "List is 'terms SikhRI uses this way include' = non-exhaustive; full list should come from the SikhRI glossary."
+      ],
+      "confidence": "medium",
+      "resolution": {
+        "active": true,
+        "scope": "p0_check",
+        "severity": "warning",
+        "blocks_publish": false,
+        "layers": [
+          "transcreation"
+        ],
+        "conditional": null,
+        "decision": "Non-preferred spellings (Shabad, Naam, Padshah, Parkash Purab) -> warning; titles of Banis are proper nouns and exempt. English substitutes ('the Word', 'the Name', 'hymn') -> LLM confirm -> warning. Missing gloss at first use in the Sabad -> hint only."
+      }
+    },
+    {
+      "id": "TERM-08",
+      "text": "When the same word repeats in a Sabad, render it with the same English word throughout that Sabad.",
+      "section": "2. Terminology (TERM)",
+      "subsection": null,
+      "level": "SHOULD",
+      "source_tag": "SikhRI Sabad notes",
+      "applies_to": [
+        "literal",
+        "transcreation"
+      ],
+      "category": "terminology",
+      "check_type": "grammar_conditioned",
+      "eko_scope": "p0_check",
+      "prefilter": null,
+      "examples": {
+        "right": [],
+        "wrong": []
+      },
+      "needs_gurmukhi_features": true,
+      "needs_gurmukhi_line": true,
+      "related_rules": [
+        "TERM-02",
+        "CONS-01",
+        "CONS-02"
+      ],
+      "ambiguities": [
+        "'Same word': same surface form, or same lemma across inflected endings (matra changes case/number)?",
+        "Does it apply to the literal only, or also to the transcreation (which LAYER-08 frees from the source)?",
+        "SHOULD-level and from Sabad notes; CONS-02 (MUST) requires departure when context changes meaning. Eko should report 'inconsistent, needs reason', not 'error'.",
+        "Draft says TERM-08 states 'the same principle as TERM-02 at line level'; they differ (TERM-02 = attribute fidelity, TERM-08 = repetition consistency)."
+      ],
+      "confidence": "medium",
+      "resolution": {
+        "active": false,
+        "scope": "p1_check",
+        "severity": "none",
+        "blocks_publish": false,
+        "layers": [
+          "literal",
+          "transcreation"
+        ],
+        "conditional": null,
+        "decision": "Inactive: applies to the literal translation, which is out of scope (transcreation only). Earlier call kept for later: Literal layer only (LAYER-08 frees the transcreation). 'Same word' = same stem key from the morphology analyzer within one Sabad, so inflected forms group together. Differing renderings -> warning, cleared by a reviewer reason (CONS-02/03)."
+      }
+    },
+    {
+      "id": "TERM-09",
+      "text": "Check the project glossary and prior renderings before introducing a new English equivalent (see CONS).",
+      "section": "2. Terminology (TERM)",
+      "subsection": null,
+      "level": "SHOULD",
+      "source_tag": "[M]",
+      "applies_to": [
+        "process",
+        "literal",
+        "transcreation"
+      ],
+      "category": "terminology",
+      "check_type": "glossary",
+      "eko_scope": "p1_check",
+      "prefilter": {
+        "proposal": true,
+        "patterns": [],
+        "keywords": [],
+        "notes": "Populate from SikhRI glossary and the published sample renderings when they arrive; flag an English equivalent for a term that differs from every prior rendering of that term."
+      },
+      "examples": {
+        "right": [],
+        "wrong": []
+      },
+      "needs_gurmukhi_features": false,
+      "needs_gurmukhi_line": false,
+      "related_rules": [
+        "CONS-01",
+        "CONS-03"
+      ],
+      "ambiguities": [
+        "Process step; Eko can only check the outcome (new equivalent vs prior ones), which needs the project glossary/sample. Largely duplicates CONS-01."
+      ],
+      "confidence": "medium",
+      "resolution": {
+        "active": false,
+        "scope": "merged",
+        "severity": "none",
+        "blocks_publish": false,
+        "layers": [
+          "process",
+          "literal",
+          "transcreation"
+        ],
+        "conditional": null,
+        "decision": "Merged into CONS-01 (same check)."
+      }
+    },
+    {
+      "id": "FLOW-01",
+      "text": "Do not write a transcreation for a line until its words have been annotated and its literal translation exists.",
+      "section": "3. Workflow and layers of meaning (FLOW)",
+      "subsection": null,
+      "level": "MUST",
+      "source_tag": "[M]",
+      "applies_to": [
+        "process"
+      ],
+      "category": "other",
+      "check_type": "manual",
+      "eko_scope": "p1_check",
+      "prefilter": null,
+      "examples": {
+        "right": [],
+        "wrong": []
+      },
+      "needs_gurmukhi_features": false,
+      "needs_gurmukhi_line": false,
+      "related_rules": [
+        "ANNO-01",
+        "LAYER-01"
+      ],
+      "ambiguities": [
+        "Ordering ('until') is not visible in final text; only presence (annotation + literal exist when a transcreation exists) is checkable, and only once annotation data is available."
+      ],
+      "confidence": "low",
+      "resolution": {
+        "active": false,
+        "scope": "p1_check",
+        "severity": "flag",
+        "blocks_publish": false,
+        "layers": [
+          "process"
+        ],
+        "conditional": null,
+        "decision": "Process rule. Eko has no annotation data, so this stays p1."
+      }
+    },
+    {
+      "id": "FLOW-02",
+      "text": "Organize work by Bani (composition) rather than linearly through the volume.",
+      "section": "3. Workflow and layers of meaning (FLOW)",
+      "subsection": null,
+      "level": "SHOULD",
+      "source_tag": "[M]",
+      "applies_to": [
+        "process"
+      ],
+      "category": "other",
+      "check_type": "manual",
+      "eko_scope": "out_of_scope",
+      "prefilter": null,
+      "examples": {
+        "right": [],
+        "wrong": []
+      },
+      "needs_gurmukhi_features": false,
+      "needs_gurmukhi_line": false,
+      "related_rules": [],
+      "ambiguities": [
+        "Workflow organization; not observable in text."
+      ],
+      "confidence": "low",
+      "resolution": {
+        "active": false,
+        "scope": "out_of_scope",
+        "severity": "none",
+        "blocks_publish": false,
+        "layers": [
+          "process"
+        ],
+        "conditional": null,
+        "decision": null
+      }
+    },
+    {
+      "id": "FLOW-03",
+      "text": "For every term, weigh layer 1, words and terms: each word carries multiple meanings, connotations and history that cannot fully cross into English.",
+      "section": "3. Workflow and layers of meaning (FLOW)",
+      "subsection": null,
+      "level": "MUST",
+      "source_tag": "[M]",
+      "applies_to": [
+        "process"
+      ],
+      "category": "other",
+      "check_type": "manual",
+      "eko_scope": "out_of_scope",
+      "prefilter": null,
+      "examples": {
+        "right": [],
+        "wrong": []
+      },
+      "needs_gurmukhi_features": false,
+      "needs_gurmukhi_line": false,
+      "related_rules": [
+        "TERM-06"
+      ],
+      "ambiguities": [
+        "Deliberation duty; no observable artifact."
+      ],
+      "confidence": "low",
+      "resolution": {
+        "active": false,
+        "scope": "out_of_scope",
+        "severity": "none",
+        "blocks_publish": false,
+        "layers": [
+          "process"
+        ],
+        "conditional": null,
+        "decision": null
+      }
+    },
+    {
+      "id": "FLOW-04",
+      "text": "Weigh layer 2, historical implications: near-equivalent English terms carry their own developed connotations (see TERM-04 to 06).",
+      "section": "3. Workflow and layers of meaning (FLOW)",
+      "subsection": null,
+      "level": "MUST",
+      "source_tag": "[M]",
+      "applies_to": [
+        "process"
+      ],
+      "category": "other",
+      "check_type": "manual",
+      "eko_scope": "out_of_scope",
+      "prefilter": null,
+      "examples": {
+        "right": [],
+        "wrong": []
+      },
+      "needs_gurmukhi_features": false,
+      "needs_gurmukhi_line": false,
+      "related_rules": [
+        "TERM-04",
+        "TERM-05",
+        "TERM-06"
+      ],
+      "ambiguities": [
+        "Deliberation duty; its observable outcome is covered by TERM-04 to 06."
+      ],
+      "confidence": "low",
+      "resolution": {
+        "active": false,
+        "scope": "out_of_scope",
+        "severity": "none",
+        "blocks_publish": false,
+        "layers": [
+          "process"
+        ],
+        "conditional": null,
+        "decision": null
+      }
+    },
+    {
+      "id": "FLOW-05",
+      "text": "Weigh layer 3, the audience: decide how much prior knowledge to assume, and how much added context the English needs to be intelligible.",
+      "section": "3. Workflow and layers of meaning (FLOW)",
+      "subsection": null,
+      "level": "MUST",
+      "source_tag": "[M]",
+      "applies_to": [
+        "process"
+      ],
+      "category": "other",
+      "check_type": "manual",
+      "eko_scope": "out_of_scope",
+      "prefilter": null,
+      "examples": {
+        "right": [],
+        "wrong": []
+      },
+      "needs_gurmukhi_features": false,
+      "needs_gurmukhi_line": false,
+      "related_rules": [
+        "PRIN-08",
+        "CONS-04"
+      ],
+      "ambiguities": [
+        "Deliberation duty; overlaps PRIN-08 and CONS-04."
+      ],
+      "confidence": "low",
+      "resolution": {
+        "active": false,
+        "scope": "out_of_scope",
+        "severity": "none",
+        "blocks_publish": false,
+        "layers": [
+          "process"
+        ],
+        "conditional": null,
+        "decision": null
+      }
+    },
+    {
+      "id": "FLOW-06",
+      "text": "Decide, per passage, where to sit between strict literal faithfulness and smooth, meaningful English. Record the choice.",
+      "section": "3. Workflow and layers of meaning (FLOW)",
+      "subsection": null,
+      "level": "SHOULD",
+      "source_tag": "[M]",
+      "applies_to": [
+        "process"
+      ],
+      "category": "other",
+      "check_type": "manual",
+      "eko_scope": "out_of_scope",
+      "prefilter": null,
+      "examples": {
+        "right": [],
+        "wrong": []
+      },
+      "needs_gurmukhi_features": false,
+      "needs_gurmukhi_line": false,
+      "related_rules": [
+        "LAYER-04",
+        "CONS-03"
+      ],
+      "ambiguities": [
+        "'Record the choice' implies a log; where it is recorded is unspecified. Could become p1 if a decision log is shared."
+      ],
+      "confidence": "low",
+      "resolution": {
+        "active": false,
+        "scope": "out_of_scope",
+        "severity": "none",
+        "blocks_publish": false,
+        "layers": [
+          "process"
+        ],
+        "conditional": null,
+        "decision": null
+      }
+    },
+    {
+      "id": "FLOW-07",
+      "text": "Ground the commentary in a range of interpretive schools and discuss where they diverge.",
+      "section": "3. Workflow and layers of meaning (FLOW)",
+      "subsection": null,
+      "level": "SHOULD",
+      "source_tag": "[M]",
+      "applies_to": [
+        "publication",
+        "process"
+      ],
+      "category": "other",
+      "check_type": "manual",
+      "eko_scope": "out_of_scope",
+      "prefilter": null,
+      "examples": {
+        "right": [],
+        "wrong": []
+      },
+      "needs_gurmukhi_features": false,
+      "needs_gurmukhi_line": false,
+      "related_rules": [
+        "PRIN-09"
+      ],
+      "ambiguities": [
+        "Commentary layer; duplicates PRIN-09."
+      ],
+      "confidence": "low",
+      "resolution": {
+        "active": false,
+        "scope": "out_of_scope",
+        "severity": "none",
+        "blocks_publish": false,
+        "layers": [
+          "publication",
+          "process"
+        ],
+        "conditional": null,
+        "decision": null
+      }
+    },
+    {
+      "id": "LAYER-01",
+      "text": "Retain every word, meaning, grammatical position and context present in the source line.",
+      "section": "4. Literal translation vs transcreation (LAYER)",
+      "subsection": "Literal translation rules",
+      "level": "MUST",
+      "source_tag": "[M]",
+      "applies_to": [
+        "literal"
+      ],
+      "category": "grammar",
+      "check_type": "grammar_conditioned",
+      "eko_scope": "p0_check",
+      "prefilter": null,
+      "examples": {
+        "right": [],
+        "wrong": []
+      },
+      "needs_gurmukhi_features": true,
+      "needs_gurmukhi_line": true,
+      "related_rules": [
+        "LAYER-03",
+        "LAYER-04",
+        "TERM-08"
+      ],
+      "ambiguities": [
+        "Four things in one rule: word, meaning, grammatical position, context. Word omission is checkable with medium confidence; grammatical position (case, number, person from endings) is low without SikhRI annotation data.",
+        "'Every meaning' of a polysemous word: all senses in the literal, or the one in context?",
+        "How are implicit or compound words counted?"
+      ],
+      "confidence": "low",
+      "resolution": {
+        "active": false,
+        "scope": "p1_check",
+        "severity": "none",
+        "blocks_publish": false,
+        "layers": [
+          "literal"
+        ],
+        "conditional": null,
+        "decision": "Inactive: applies to the literal translation, which is out of scope (transcreation only). Earlier call kept for later: Possible omissions only: the LLM lists content words in the BaniDB line with no English counterpart. Non-blocking hint, because without annotation data Eko can't verify grammatical position. 'Grammatical position' is read as grammatical role, not word order (see LAYER-04)."
+      }
+    },
+    {
+      "id": "LAYER-02",
+      "text": "Set the literal translation in italics.",
+      "section": "4. Literal translation vs transcreation (LAYER)",
+      "subsection": "Literal translation rules",
+      "level": "MUST",
+      "source_tag": "[M]",
+      "applies_to": [
+        "literal"
+      ],
+      "category": "punctuation_format",
+      "check_type": "prefilter_llm",
+      "eko_scope": "p1_check",
+      "prefilter": {
+        "proposal": true,
+        "patterns": [
+          {
+            "pattern": "^\\s*(?:<(?:em|i)>[\\s\\S]*</(?:em|i)>|\\*[^*][\\s\\S]*\\*|_[\\s\\S]*_)\\s*$",
+            "flags": "",
+            "action": "flag_if_no_match"
+          }
+        ],
+        "keywords": [],
+        "notes": "Deterministic markup check on rich text; no LLM step needed. Plain-text input (current demo) carries no italics, hence p1."
+      },
+      "examples": {
+        "right": [],
+        "wrong": []
+      },
+      "needs_gurmukhi_features": false,
+      "needs_gurmukhi_line": false,
+      "related_rules": [
+        "PRIN-05"
+      ],
+      "ambiguities": [
+        "What represents italics in plain-text or API exports?",
+        "Does italics extend to parenthesized additions inside the literal?",
+        "The layer table also says the transcreation is Roman (upright); that has no rule ID."
+      ],
+      "confidence": "high",
+      "resolution": {
+        "active": false,
+        "scope": "p1_check",
+        "severity": "none",
+        "blocks_publish": false,
+        "layers": [
+          "literal"
+        ],
+        "conditional": null,
+        "decision": "Inactive: applies to the literal translation, which is out of scope (transcreation only). Earlier call kept for later: Satisfied by design: Eko stores each layer separately and always renders the literal in italics, so italics can't be wrong. The transcreation is rendered upright (the draft's layer table)."
+      }
+    },
+    {
+      "id": "LAYER-03",
+      "text": "Put any English word added for readability, clarity or poetic balance inside parentheses, so it is visibly not in the source.",
+      "section": "4. Literal translation vs transcreation (LAYER)",
+      "subsection": "Literal translation rules",
+      "level": "MUST",
+      "source_tag": "[M]",
+      "applies_to": [
+        "literal"
+      ],
+      "category": "punctuation_format",
+      "check_type": "grammar_conditioned",
+      "eko_scope": "p0_check",
+      "prefilter": null,
+      "examples": {
+        "right": [],
+        "wrong": []
+      },
+      "needs_gurmukhi_features": true,
+      "needs_gurmukhi_line": true,
+      "related_rules": [
+        "LAYER-01",
+        "LAYER-04",
+        "TERM-03",
+        "TERM-07"
+      ],
+      "ambiguities": [
+        "Do English function words required by grammar (articles, copulas, prepositions that express a case ending) count as 'added'? If yes, nearly every line is full of parentheses; if no, the boundary needs examples.",
+        "Prepositions derived from Gurmukhi case endings (matra) are not additions, so a naive alignment check will false-positive.",
+        "Only the format half (balanced, non-empty, non-nested parentheses) is deterministic; finding unmarked additions needs source alignment.",
+        "Glosses (TERM-03/07) written in parentheses would be indistinguishable from added words."
+      ],
+      "confidence": "low",
+      "resolution": {
+        "active": false,
+        "scope": "p1_check",
+        "severity": "none",
+        "blocks_publish": false,
+        "layers": [
+          "literal"
+        ],
+        "conditional": null,
+        "decision": "Inactive: applies to the literal translation, which is out of scope (transcreation only). Earlier call kept for later: Two parts. (1) Parentheses must be balanced, non-empty and not nested -> error, deterministic. (2) Unmarked additions: the LLM flags added content words (nouns, verbs, adjectives, adverbs) with no source counterpart -> hint. Grammar-required function words (articles, copulas, case prepositions) are not flagged until annotation data exists. Parentheses holding a known gloss (TERM-03/07) are exempt."
+      }
+    },
+    {
+      "id": "LAYER-04",
+      "text": "Sentence order may be rearranged when needed for comprehension; meaning may not be added outside parentheses.",
+      "section": "4. Literal translation vs transcreation (LAYER)",
+      "subsection": "Literal translation rules",
+      "level": "SHOULD",
+      "source_tag": "[M]",
+      "applies_to": [
+        "literal"
+      ],
+      "category": "style",
+      "check_type": "grammar_conditioned",
+      "eko_scope": "p0_check",
+      "prefilter": null,
+      "examples": {
+        "right": [],
+        "wrong": []
+      },
+      "needs_gurmukhi_features": true,
+      "needs_gurmukhi_line": true,
+      "related_rules": [
+        "LAYER-01",
+        "LAYER-03",
+        "FLOW-06"
+      ],
+      "ambiguities": [
+        "First clause is a permission: Eko must not flag word-order changes in the literal.",
+        "Second clause restates LAYER-03; suggest Eko cites LAYER-03 for unmarked additions and uses LAYER-04 as a suppressor."
+      ],
+      "confidence": "low",
+      "resolution": {
+        "active": false,
+        "scope": "p1_check",
+        "severity": "none",
+        "blocks_publish": false,
+        "layers": [
+          "literal"
+        ],
+        "conditional": null,
+        "decision": "Inactive: applies to the literal translation, which is out of scope (transcreation only). Earlier call kept for later: Suppressor: word-order changes are never flagged. Meaning added outside parentheses is reported under LAYER-03."
+      }
+    },
+    {
+      "id": "LAYER-05",
+      "text": "Where possible, preserve the poetic balance and beauty of the line despite English lacking the source languages' oral roots.",
+      "section": "4. Literal translation vs transcreation (LAYER)",
+      "subsection": "Literal translation rules",
+      "level": "GUIDE",
+      "source_tag": "[M]",
+      "applies_to": [
+        "literal"
+      ],
+      "category": "style",
+      "check_type": "style_llm",
+      "eko_scope": "review_lens",
+      "prefilter": null,
+      "examples": {
+        "right": [],
+        "wrong": []
+      },
+      "needs_gurmukhi_features": false,
+      "needs_gurmukhi_line": false,
+      "related_rules": [
+        "PRIN-06"
+      ],
+      "ambiguities": [
+        "GUIDE level; 'poetic balance and beauty' undefined."
+      ],
+      "confidence": "low",
+      "resolution": {
+        "active": false,
+        "scope": "review_lens",
+        "severity": "lens",
+        "blocks_publish": false,
+        "layers": [
+          "literal"
+        ],
+        "conditional": null,
+        "decision": "Review lens only."
+      }
+    },
+    {
+      "id": "LAYER-06",
+      "text": "Write in contemporary English; the aim is resonance with today's reader.",
+      "section": "4. Literal translation vs transcreation (LAYER)",
+      "subsection": "Transcreation rules",
+      "level": "MUST",
+      "source_tag": "[M]",
+      "applies_to": [
+        "transcreation"
+      ],
+      "category": "style",
+      "check_type": "prefilter_llm",
+      "eko_scope": "p0_check",
+      "prefilter": {
+        "proposal": true,
+        "patterns": [
+          {
+            "pattern": "(?i)\\b(?:thee|thou|thy|thine|hath|doth|dost|didst|hast|shalt|wilt|unto|whence|whither|hither|thither|verily|methinks|wherefore|whosoever|hearken\\w*)\\b",
+            "flags": "",
+            "action": "flag"
+          },
+          {
+            "pattern": "(?i)\\b(?:art|ye|lo|behold|nay|yea|ere|oft)\\b",
+            "flags": "",
+            "action": "llm_confirm"
+          },
+          {
+            "pattern": "(?i)\\b\\w{3,}(?:eth|est)\\b",
+            "flags": "",
+            "action": "llm_confirm"
+          }
+        ],
+        "keywords": [],
+        "notes": "Archaism list is high precision; ambiguous short words ('art', 'ye', 'lo') and -eth/-est endings ('best', 'rest', 'forest') need LLM confirmation."
+      },
+      "examples": {
+        "right": [],
+        "wrong": []
+      },
+      "needs_gurmukhi_features": false,
+      "needs_gurmukhi_line": false,
+      "related_rules": [
+        "PRIN-07",
+        "LAYER-08"
+      ],
+      "ambiguities": [
+        "Section 8 lists 'Register: are archaisms (thee, thou) banned?' as open, although this MUST rule seems to answer it. Confirm with SikhRI.",
+        "Beyond archaisms, 'contemporary English' is judgment (diction, idiom).",
+        "Applies to the transcreation only; archaisms in the literal are not covered by any rule."
+      ],
+      "confidence": "medium",
+      "resolution": {
+        "active": true,
+        "scope": "p0_check",
+        "severity": "flag",
+        "blocks_publish": true,
+        "layers": [
+          "transcreation"
+        ],
+        "conditional": null,
+        "decision": "Closed archaism list (thee, thou, thy, hath, unto ...) -> flag. Ambiguous words (art, ye, lo) and -eth/-est endings -> LLM confirm. Treats LAYER-06 as settling the archaism part of the Section 8 'Register' question; plain vs elevated register stays open."
+      }
+    },
+    {
+      "id": "LAYER-07",
+      "text": "Do not use parentheses; the transcreation is not a translation and nothing in it is marked as added.",
+      "section": "4. Literal translation vs transcreation (LAYER)",
+      "subsection": "Transcreation rules",
+      "level": "MUST",
+      "source_tag": "[M]",
+      "applies_to": [
+        "transcreation"
+      ],
+      "category": "punctuation_format",
+      "check_type": "prefilter_llm",
+      "eko_scope": "p0_check",
+      "prefilter": {
+        "proposal": true,
+        "patterns": [
+          {
+            "pattern": "[()]",
+            "flags": "",
+            "action": "flag"
+          },
+          {
+            "pattern": "[\\[\\]]",
+            "flags": "",
+            "action": "llm_confirm"
+          }
+        ],
+        "keywords": [],
+        "notes": "Deterministic; any parenthesis in a transcreation is a breach. LLM step not needed except for square brackets."
+      },
+      "examples": {
+        "right": [],
+        "wrong": []
+      },
+      "needs_gurmukhi_features": false,
+      "needs_gurmukhi_line": false,
+      "related_rules": [
+        "LAYER-03",
+        "TERM-03",
+        "TERM-07",
+        "PRIN-05"
+      ],
+      "ambiguities": [
+        "Square brackets: also banned?",
+        "Conflicts with glossing in parentheses (TERM-03/07): how is a gloss written in the transcreation?"
+      ],
+      "confidence": "high",
+      "resolution": {
+        "active": true,
+        "scope": "p0_check",
+        "severity": "error",
+        "blocks_publish": true,
+        "layers": [
+          "transcreation"
+        ],
+        "conditional": null,
+        "decision": "Any parenthesis or square bracket in a transcreation -> error, deterministic. Brackets count, because they also mark text as added."
+      }
+    },
+    {
+      "id": "LAYER-08",
+      "text": "Do not force the transcreation to mirror the original line, the literal translation or the Panjabi transcreation.",
+      "section": "4. Literal translation vs transcreation (LAYER)",
+      "subsection": "Transcreation rules",
+      "level": "MUST",
+      "source_tag": "[M]",
+      "applies_to": [
+        "transcreation"
+      ],
+      "category": "style",
+      "check_type": "style_llm",
+      "eko_scope": "p0_check",
+      "prefilter": null,
+      "examples": {
+        "right": [],
+        "wrong": []
+      },
+      "needs_gurmukhi_features": false,
+      "needs_gurmukhi_line": true,
+      "related_rules": [
+        "LAYER-09",
+        "PRIN-05"
+      ],
+      "ambiguities": [
+        "'Do not force ... to mirror' has no threshold. Proposed signal: token overlap or edit similarity between transcreation and literal above a cutoff calibrated on the SikhRI sample, then LLM/reviewer.",
+        "Mirroring the Panjabi transcreation is uncheckable (no data).",
+        "Short lines may legitimately be close to the literal; tension with LAYER-09 'building on the literal'."
+      ],
+      "confidence": "medium",
+      "resolution": {
+        "active": false,
+        "scope": "p1_check",
+        "severity": "none",
+        "blocks_publish": false,
+        "layers": [
+          "transcreation"
+        ],
+        "conditional": null,
+        "decision": "Inactive: comparing against the literal needs a literal translation, which is out of scope. Revisit if SikhRI's sample includes literals as context."
+      }
+    },
+    {
+      "id": "LAYER-09",
+      "text": "Use the transcreation to elaborate, contextualize and expound the line, building on the literal translation.",
+      "section": "4. Literal translation vs transcreation (LAYER)",
+      "subsection": "Transcreation rules",
+      "level": "MUST",
+      "source_tag": "[M]",
+      "applies_to": [
+        "transcreation"
+      ],
+      "category": "style",
+      "check_type": "style_llm",
+      "eko_scope": "review_lens",
+      "prefilter": null,
+      "examples": {
+        "right": [],
+        "wrong": []
+      },
+      "needs_gurmukhi_features": false,
+      "needs_gurmukhi_line": false,
+      "related_rules": [
+        "LAYER-08"
+      ],
+      "ambiguities": [
+        "How much elaboration is expected (Section 8 'Length' gap)?",
+        "A derived check ('transcreation contradicts the literal') is useful but not stated in the rule."
+      ],
+      "confidence": "low",
+      "resolution": {
+        "active": false,
+        "scope": "review_lens",
+        "severity": "lens",
+        "blocks_publish": false,
+        "layers": [
+          "transcreation"
+        ],
+        "conditional": null,
+        "decision": "Review lens only; LAYER-08's check covers the measurable half."
+      }
+    },
+    {
+      "id": "LAYER-10",
+      "text": "Capture the essence of the attributes of IkOankar as they appear in the original (TERM-01 to 03 apply here with full force).",
+      "section": "4. Literal translation vs transcreation (LAYER)",
+      "subsection": "Transcreation rules",
+      "level": "MUST",
+      "source_tag": "[A]",
+      "applies_to": [
+        "transcreation"
+      ],
+      "category": "divine_reference",
+      "check_type": "style_llm",
+      "eko_scope": "review_lens",
+      "prefilter": null,
+      "examples": {
+        "right": [],
+        "wrong": []
+      },
+      "needs_gurmukhi_features": true,
+      "needs_gurmukhi_line": true,
+      "related_rules": [
+        "TERM-01",
+        "TERM-02",
+        "TERM-03"
+      ],
+      "ambiguities": [
+        "Umbrella rule: Eko should cite TERM-01 to 03 when flagging the transcreation, and use LAYER-10 only as a reviewer lens to avoid double flags."
+      ],
+      "confidence": "low",
+      "resolution": {
+        "active": false,
+        "scope": "review_lens",
+        "severity": "lens",
+        "blocks_publish": false,
+        "layers": [
+          "transcreation"
+        ],
+        "conditional": null,
+        "decision": "Umbrella over TERM-01 to 03. Never raises its own flag; Eko cites the specific TERM rule."
+      }
+    },
+    {
+      "id": "CONS-01",
+      "text": "Default to the English rendering already used for the same or a similar term elsewhere in the project.",
+      "section": "5. Consistency (CONS)",
+      "subsection": null,
+      "level": "SHOULD",
+      "source_tag": "[M]",
+      "applies_to": [
+        "literal",
+        "transcreation"
+      ],
+      "category": "terminology",
+      "check_type": "glossary",
+      "eko_scope": "p1_check",
+      "prefilter": {
+        "proposal": true,
+        "patterns": [],
+        "keywords": [],
+        "notes": "Term-to-rendering map built from SikhRI's published sample; flag a rendering that differs from the established one for the same lemma."
+      },
+      "examples": {
+        "right": [],
+        "wrong": []
+      },
+      "needs_gurmukhi_features": true,
+      "needs_gurmukhi_line": true,
+      "related_rules": [
+        "CONS-02",
+        "CONS-03",
+        "TERM-08",
+        "TERM-09"
+      ],
+      "ambiguities": [
+        "'Same or a similar term': similarity is undefined.",
+        "Needs project-wide renderings, which arrive later as a SikhRI sample."
+      ],
+      "confidence": "medium",
+      "resolution": {
+        "active": true,
+        "scope": "p0_check",
+        "severity": "warning",
+        "blocks_publish": false,
+        "layers": [
+          "transcreation"
+        ],
+        "conditional": "needs SikhRI reference set",
+        "decision": "Active once the SikhRI sample arrives: a stem whose reference rendering differs from the draft -> warning 'differs from reference rendering, add a reason'. Absorbs TERM-09."
+      }
+    },
+    {
+      "id": "CONS-02",
+      "text": "Depart from the default when context requires it. Rigid consistency that ignores context is a misrepresentation.",
+      "section": "5. Consistency (CONS)",
+      "subsection": null,
+      "level": "MUST",
+      "source_tag": "[M]",
+      "applies_to": [
+        "literal",
+        "transcreation"
+      ],
+      "category": "terminology",
+      "check_type": "style_llm",
+      "eko_scope": "review_lens",
+      "prefilter": null,
+      "examples": {
+        "right": [],
+        "wrong": []
+      },
+      "needs_gurmukhi_features": false,
+      "needs_gurmukhi_line": false,
+      "related_rules": [
+        "CONS-01",
+        "CONS-03",
+        "TERM-08"
+      ],
+      "ambiguities": [
+        "Exemption rule: it changes how Eko reports inconsistency (a question for the reviewer, not an error). Not itself a flag."
+      ],
+      "confidence": "low",
+      "resolution": {
+        "active": true,
+        "scope": "p0_suppressor",
+        "severity": "none",
+        "blocks_publish": false,
+        "layers": [
+          "transcreation"
+        ],
+        "conditional": null,
+        "decision": "Precedence rule: a reviewer's context reason clears any consistency warning (TERM-08, CONS-01). It never raises a flag itself."
+      }
+    },
+    {
+      "id": "CONS-03",
+      "text": "Never vary a rendering without a reason. Each departure from the default needs a recorded justification.",
+      "section": "5. Consistency (CONS)",
+      "subsection": null,
+      "level": "MUST",
+      "source_tag": "[M]",
+      "applies_to": [
+        "literal",
+        "transcreation",
+        "process"
+      ],
+      "category": "terminology",
+      "check_type": "glossary",
+      "eko_scope": "p1_check",
+      "prefilter": {
+        "proposal": true,
+        "patterns": [],
+        "keywords": [],
+        "notes": "Reuse CONS-01 departure detection, then look for a matching footnote or term-log entry."
+      },
+      "examples": {
+        "right": [],
+        "wrong": []
+      },
+      "needs_gurmukhi_features": false,
+      "needs_gurmukhi_line": false,
+      "related_rules": [
+        "CONS-01",
+        "CONS-02",
+        "FLOW-06"
+      ],
+      "ambiguities": [
+        "Where justifications are recorded (footnote vs term log) and in what format; Eko needs read access to it."
+      ],
+      "confidence": "medium",
+      "resolution": {
+        "active": true,
+        "scope": "p0_by_design",
+        "severity": "none",
+        "blocks_publish": false,
+        "layers": [
+          "transcreation"
+        ],
+        "conditional": null,
+        "decision": "Satisfied by workflow: Eko won't let a consistency warning be waived without a written reason, and stores that reason as the log."
+      }
+    },
+    {
+      "id": "CONS-04",
+      "text": "Decide, per case, whether an explanatory footnote is needed, weighing the audience's expectations.",
+      "section": "5. Consistency (CONS)",
+      "subsection": null,
+      "level": "SHOULD",
+      "source_tag": "[M]",
+      "applies_to": [
+        "publication"
+      ],
+      "category": "other",
+      "check_type": "manual",
+      "eko_scope": "review_lens",
+      "prefilter": null,
+      "examples": {
+        "right": [],
+        "wrong": []
+      },
+      "needs_gurmukhi_features": false,
+      "needs_gurmukhi_line": false,
+      "related_rules": [
+        "PRIN-08",
+        "FLOW-05"
+      ],
+      "ambiguities": [
+        "Per-case judgment; footnotes are not ingested."
+      ],
+      "confidence": "low",
+      "resolution": {
+        "active": false,
+        "scope": "review_lens",
+        "severity": "lens",
+        "blocks_publish": false,
+        "layers": [
+          "publication"
+        ],
+        "conditional": null,
+        "decision": "Review lens only."
+      }
+    },
+    {
+      "id": "ANNO-01",
+      "text": "List all literal meanings and the implied meaning of the word.",
+      "section": "6. Annotation fields (ANNO)",
+      "subsection": "Meaning",
+      "level": "MUST",
+      "source_tag": "[M]",
+      "applies_to": [
+        "annotation"
+      ],
+      "category": "other",
+      "check_type": "manual",
+      "eko_scope": "p1_check",
+      "prefilter": null,
+      "examples": {
+        "right": [],
+        "wrong": []
+      },
+      "needs_gurmukhi_features": false,
+      "needs_gurmukhi_line": true,
+      "related_rules": [
+        "ANNO-02"
+      ],
+      "ambiguities": [
+        "Completeness of 'all literal meanings' needs a dictionary Eko does not have; only the presence of literal + implied sets is structural."
+      ],
+      "confidence": "low",
+      "resolution": {
+        "active": false,
+        "scope": "p1_check",
+        "severity": "flag",
+        "blocks_publish": false,
+        "layers": [
+          "annotation"
+        ],
+        "conditional": null,
+        "decision": "Out of the demo: Eko has no annotation or transcription input. Kept as p1."
+      }
+    },
+    {
+      "id": "ANNO-02",
+      "text": "Separate one literal meaning set from another with a comma; separate literal sets from the implied set with a semicolon.",
+      "section": "6. Annotation fields (ANNO)",
+      "subsection": "Meaning",
+      "level": "MUST",
+      "source_tag": "[M]",
+      "applies_to": [
+        "annotation"
+      ],
+      "category": "punctuation_format",
+      "check_type": "prefilter_llm",
+      "eko_scope": "p1_check",
+      "prefilter": {
+        "proposal": true,
+        "patterns": [
+          {
+            "pattern": "^[^;]+;[^;]+$",
+            "flags": "",
+            "action": "flag_if_no_match"
+          }
+        ],
+        "keywords": [],
+        "notes": "Structural: exactly one semicolon separating literal sets from the implied set."
+      },
+      "examples": {
+        "right": [],
+        "wrong": []
+      },
+      "needs_gurmukhi_features": false,
+      "needs_gurmukhi_line": false,
+      "related_rules": [
+        "ANNO-01",
+        "ANNO-08"
+      ],
+      "ambiguities": [
+        "What if a word has no implied meaning (semicolon omitted?)",
+        "A single meaning that itself contains a comma would be misparsed as two sets."
+      ],
+      "confidence": "medium",
+      "resolution": {
+        "active": false,
+        "scope": "p1_check",
+        "severity": "flag",
+        "blocks_publish": false,
+        "layers": [
+          "annotation"
+        ],
+        "conditional": null,
+        "decision": "Out of the demo: Eko has no annotation or transcription input. Kept as p1."
+      }
+    },
+    {
+      "id": "ANNO-03",
+      "text": "List every grammatical function: part of speech plus its aspects (case, person, gender, number, tense as applicable).",
+      "section": "6. Annotation fields (ANNO)",
+      "subsection": "Grammar",
+      "level": "MUST",
+      "source_tag": "[M]",
+      "applies_to": [
+        "annotation"
+      ],
+      "category": "grammar",
+      "check_type": "grammar_conditioned",
+      "eko_scope": "p1_check",
+      "prefilter": null,
+      "examples": {
+        "right": [],
+        "wrong": []
+      },
+      "needs_gurmukhi_features": true,
+      "needs_gurmukhi_line": true,
+      "related_rules": [
+        "ANNO-04",
+        "ANNO-05"
+      ],
+      "ambiguities": [
+        "'Every grammatical function' for words with several readings; which aspects are mandatory per class."
+      ],
+      "confidence": "low",
+      "resolution": {
+        "active": false,
+        "scope": "p1_check",
+        "severity": "flag",
+        "blocks_publish": false,
+        "layers": [
+          "annotation"
+        ],
+        "conditional": null,
+        "decision": "Out of the demo: Eko has no annotation or transcription input. Kept as p1."
+      }
+    },
+    {
+      "id": "ANNO-04",
+      "text": "Use a semicolon between the part-of-speech designation and its person, gender and number.",
+      "section": "6. Annotation fields (ANNO)",
+      "subsection": "Grammar",
+      "level": "MUST",
+      "source_tag": "[M]",
+      "applies_to": [
+        "annotation"
+      ],
+      "category": "punctuation_format",
+      "check_type": "prefilter_llm",
+      "eko_scope": "p1_check",
+      "prefilter": {
+        "proposal": true,
+        "patterns": [
+          {
+            "pattern": "^(?:noun|pronoun|pronominal adjective|adjective|verb|adverb|particle|participle|postposition|conjunction|exclamatory)\\b[^;]*;\\s*\\S",
+            "flags": "",
+            "action": "flag_if_no_match"
+          },
+          {
+            "pattern": "^[^;]*\\b(?:first|second|third|masculine|feminine|singular|plural)\\b[^;]*;",
+            "flags": "",
+            "action": "flag"
+          }
+        ],
+        "keywords": [],
+        "notes": "Structural check on the grammar field."
+      },
+      "examples": {
+        "right": [],
+        "wrong": []
+      },
+      "needs_gurmukhi_features": false,
+      "needs_gurmukhi_line": false,
+      "related_rules": [
+        "ANNO-03",
+        "ANNO-05"
+      ],
+      "ambiguities": [
+        "Separator between person, gender and number after the semicolon is not specified.",
+        "Where do case and tense go relative to the semicolon?"
+      ],
+      "confidence": "high",
+      "resolution": {
+        "active": false,
+        "scope": "p1_check",
+        "severity": "flag",
+        "blocks_publish": false,
+        "layers": [
+          "annotation"
+        ],
+        "conditional": null,
+        "decision": "Out of the demo: Eko has no annotation or transcription input. Kept as p1."
+      }
+    },
+    {
+      "id": "ANNO-05",
+      "text": "Use the project's word classes: noun, pronoun, adjective or pronominal adjective, verb, adverb, particle, participle, postposition, conjunction, exclamatory.",
+      "section": "6. Annotation fields (ANNO)",
+      "subsection": "Grammar",
+      "level": "MUST",
+      "source_tag": "[M]",
+      "applies_to": [
+        "annotation"
+      ],
+      "category": "grammar",
+      "check_type": "glossary",
+      "eko_scope": "p1_check",
+      "prefilter": {
+        "proposal": true,
+        "patterns": [],
+        "keywords": [
+          "noun",
+          "pronoun",
+          "adjective",
+          "pronominal adjective",
+          "verb",
+          "adverb",
+          "particle",
+          "participle",
+          "postposition",
+          "conjunction",
+          "exclamatory"
+        ],
+        "notes": "Closed vocabulary: the part-of-speech token must be one of these."
+      },
+      "examples": {
+        "right": [],
+        "wrong": []
+      },
+      "needs_gurmukhi_features": false,
+      "needs_gurmukhi_line": false,
+      "related_rules": [
+        "ANNO-03",
+        "ANNO-04"
+      ],
+      "ambiguities": [
+        "Is 'adjective or pronominal adjective' one class or two?",
+        "Are sub-types (e.g. proper noun) allowed?"
+      ],
+      "confidence": "high",
+      "resolution": {
+        "active": false,
+        "scope": "p1_check",
+        "severity": "flag",
+        "blocks_publish": false,
+        "layers": [
+          "annotation"
+        ],
+        "conditional": null,
+        "decision": "Out of the demo: Eko has no annotation or transcription input. Kept as p1."
+      }
+    },
+    {
+      "id": "ANNO-06",
+      "text": "Trace forms back through source languages where possible (for example Old Panjabi, Lehndi, Braj, Sindhi, Apbhransh, Prakrit, Pali, Sanskrit, Arabic, Persian).",
+      "section": "6. Annotation fields (ANNO)",
+      "subsection": "Etymology",
+      "level": "SHOULD",
+      "source_tag": "[M]",
+      "applies_to": [
+        "annotation"
+      ],
+      "category": "other",
+      "check_type": "manual",
+      "eko_scope": "review_lens",
+      "prefilter": null,
+      "examples": {
+        "right": [],
+        "wrong": []
+      },
+      "needs_gurmukhi_features": false,
+      "needs_gurmukhi_line": false,
+      "related_rules": [
+        "ANNO-07",
+        "ANNO-11"
+      ],
+      "ambiguities": [
+        "'Where possible' is not testable."
+      ],
+      "confidence": "low",
+      "resolution": {
+        "active": false,
+        "scope": "review_lens",
+        "severity": "lens",
+        "blocks_publish": false,
+        "layers": [
+          "annotation"
+        ],
+        "conditional": null,
+        "decision": "Out of the demo: Eko has no annotation or transcription input. Kept as p1."
+      }
+    },
+    {
+      "id": "ANNO-07",
+      "text": "Write Sanskrit and Arabic/Persian forms in both Gurmukhi and their own script; write other languages in Gurmukhi only.",
+      "section": "6. Annotation fields (ANNO)",
+      "subsection": "Etymology",
+      "level": "MUST",
+      "source_tag": "[M]",
+      "applies_to": [
+        "annotation"
+      ],
+      "category": "punctuation_format",
+      "check_type": "prefilter_llm",
+      "eko_scope": "p1_check",
+      "prefilter": {
+        "proposal": true,
+        "patterns": [
+          {
+            "pattern": "[਀-੿]",
+            "flags": "",
+            "action": "require"
+          },
+          {
+            "pattern": "[ऀ-ॿ]",
+            "flags": "",
+            "action": "require_if:Sanskrit"
+          },
+          {
+            "pattern": "[؀-ۿݐ-ݿﭐ-﷿ﹰ-﻿]",
+            "flags": "",
+            "action": "require_if:Arabic|Persian"
+          },
+          {
+            "pattern": "[ऀ-ॿ؀-ۿ]",
+            "flags": "",
+            "action": "forbid_if:other_language"
+          }
+        ],
+        "keywords": [],
+        "notes": "Unicode-script check per language segment; depends on languages being labelled in a parseable way."
+      },
+      "examples": {
+        "right": [],
+        "wrong": []
+      },
+      "needs_gurmukhi_features": false,
+      "needs_gurmukhi_line": false,
+      "related_rules": [
+        "ANNO-06",
+        "ANNO-08"
+      ],
+      "ambiguities": [
+        "How languages are labelled inside the field.",
+        "Pali is commonly written in other scripts; rule says Gurmukhi only, confirm."
+      ],
+      "confidence": "high",
+      "resolution": {
+        "active": false,
+        "scope": "p1_check",
+        "severity": "flag",
+        "blocks_publish": false,
+        "layers": [
+          "annotation"
+        ],
+        "conditional": null,
+        "decision": "Out of the demo: Eko has no annotation or transcription input. Kept as p1."
+      }
+    },
+    {
+      "id": "ANNO-08",
+      "text": "Use a slash between variants within one language, a semicolon between languages or changes of meaning, and quotation marks for text cited from a source.",
+      "section": "6. Annotation fields (ANNO)",
+      "subsection": "Etymology",
+      "level": "MUST",
+      "source_tag": "[M]",
+      "applies_to": [
+        "annotation"
+      ],
+      "category": "punctuation_format",
+      "check_type": "prefilter_llm",
+      "eko_scope": "p1_check",
+      "prefilter": {
+        "proposal": true,
+        "patterns": [
+          {
+            "pattern": ";",
+            "flags": "",
+            "action": "segment"
+          },
+          {
+            "pattern": "/",
+            "flags": "",
+            "action": "segment"
+          },
+          {
+            "pattern": "[\\\"“”]",
+            "flags": "",
+            "action": "segment"
+          }
+        ],
+        "keywords": [],
+        "notes": "Parse etymology into language segments (;) and variants (/); quoted spans must be citations."
+      },
+      "examples": {
+        "right": [],
+        "wrong": []
+      },
+      "needs_gurmukhi_features": false,
+      "needs_gurmukhi_line": false,
+      "related_rules": [
+        "ANNO-02",
+        "ANNO-07"
+      ],
+      "ambiguities": [
+        "Semicolon means both 'between languages' and 'change of meaning'; a parser cannot tell which.",
+        "Which quotation marks (straight vs curly)?"
+      ],
+      "confidence": "medium",
+      "resolution": {
+        "active": false,
+        "scope": "p1_check",
+        "severity": "flag",
+        "blocks_publish": false,
+        "layers": [
+          "annotation"
+        ],
+        "conditional": null,
+        "decision": "Out of the demo: Eko has no annotation or transcription input. Kept as p1."
+      }
+    },
+    {
+      "id": "ANNO-09",
+      "text": "Give Sanskrit verb meanings in the masculine form; match singular or plural to the source form where an equivalent exists.",
+      "section": "6. Annotation fields (ANNO)",
+      "subsection": "Etymology",
+      "level": "MUST",
+      "source_tag": "[M]",
+      "applies_to": [
+        "annotation"
+      ],
+      "category": "grammar",
+      "check_type": "grammar_conditioned",
+      "eko_scope": "p1_check",
+      "prefilter": null,
+      "examples": {
+        "right": [],
+        "wrong": []
+      },
+      "needs_gurmukhi_features": true,
+      "needs_gurmukhi_line": true,
+      "related_rules": [
+        "ANNO-03"
+      ],
+      "ambiguities": [
+        "In which language are meanings written (English has no masculine verb form; Panjabi does)?"
+      ],
+      "confidence": "low",
+      "resolution": {
+        "active": false,
+        "scope": "p1_check",
+        "severity": "flag",
+        "blocks_publish": false,
+        "layers": [
+          "annotation"
+        ],
+        "conditional": null,
+        "decision": "Out of the demo: Eko has no annotation or transcription input. Kept as p1."
+      }
+    },
+    {
+      "id": "ANNO-10",
+      "text": "Omit a language's meaning if it is the same as the Sanskrit, Pali or Arabic meaning already given. Put sources in footnotes only when needed.",
+      "section": "6. Annotation fields (ANNO)",
+      "subsection": "Etymology",
+      "level": "SHOULD",
+      "source_tag": "[M]",
+      "applies_to": [
+        "annotation"
+      ],
+      "category": "other",
+      "check_type": "prefilter_llm",
+      "eko_scope": "p1_check",
+      "prefilter": {
+        "proposal": true,
+        "patterns": [],
+        "keywords": [],
+        "notes": "Flag a language's meaning string that duplicates the Sanskrit, Pali or Arabic meaning already given in the same field."
+      },
+      "examples": {
+        "right": [],
+        "wrong": []
+      },
+      "needs_gurmukhi_features": false,
+      "needs_gurmukhi_line": false,
+      "related_rules": [
+        "ANNO-08"
+      ],
+      "ambiguities": [
+        "'Same' meaning: exact string match or semantic equivalence?",
+        "'Footnotes only when needed' is judgment."
+      ],
+      "confidence": "medium",
+      "resolution": {
+        "active": false,
+        "scope": "p1_check",
+        "severity": "warning",
+        "blocks_publish": false,
+        "layers": [
+          "annotation"
+        ],
+        "conditional": null,
+        "decision": "Out of the demo: Eko has no annotation or transcription input. Kept as p1."
+      }
+    },
+    {
+      "id": "ANNO-11",
+      "text": "Consult both contemporary and historical dictionaries and literary sources.",
+      "section": "6. Annotation fields (ANNO)",
+      "subsection": "Etymology",
+      "level": "SHOULD",
+      "source_tag": "[M]",
+      "applies_to": [
+        "annotation",
+        "process"
+      ],
+      "category": "other",
+      "check_type": "manual",
+      "eko_scope": "out_of_scope",
+      "prefilter": null,
+      "examples": {
+        "right": [],
+        "wrong": []
+      },
+      "needs_gurmukhi_features": false,
+      "needs_gurmukhi_line": false,
+      "related_rules": [
+        "ANNO-06"
+      ],
+      "ambiguities": [
+        "Research process; not visible in the field."
+      ],
+      "confidence": "low",
+      "resolution": {
+        "active": false,
+        "scope": "out_of_scope",
+        "severity": "none",
+        "blocks_publish": false,
+        "layers": [
+          "annotation",
+          "process"
+        ],
+        "conditional": null,
+        "decision": "Out of the demo: Eko has no annotation or transcription input. Kept as p1."
+      }
+    },
+    {
+      "id": "TRAN-01",
+      "text": "Use transcription, not transliteration. Pronunciation takes precedence over pattern rules.",
+      "section": "7. Transcription (TRAN)",
+      "subsection": null,
+      "level": "MUST",
+      "source_tag": "[M]",
+      "applies_to": [
+        "transcription"
+      ],
+      "category": "grammar",
+      "check_type": "grammar_conditioned",
+      "eko_scope": "p1_check",
+      "prefilter": null,
+      "examples": {
+        "right": [
+          "ਪਰਮਦਭੁਤੰ → parmadbhutaṅ"
+        ],
+        "wrong": []
+      },
+      "needs_gurmukhi_features": true,
+      "needs_gurmukhi_line": true,
+      "related_rules": [],
+      "ambiguities": [
+        "Pronunciation precedence makes every pattern rule defeasible; needs a pronunciation reference Eko lacks."
+      ],
+      "confidence": "low",
+      "resolution": {
+        "active": false,
+        "scope": "p1_check",
+        "severity": "flag",
+        "blocks_publish": false,
+        "layers": [
+          "transcription"
+        ],
+        "conditional": null,
+        "decision": "Out of the demo: Eko has no annotation or transcription input. Kept as p1."
+      }
+    },
+    {
+      "id": "TRAN-02",
+      "text": "In proper nouns outside line meanings and footnotes, use the common spelling.",
+      "section": "7. Transcription (TRAN)",
+      "subsection": null,
+      "level": "MUST",
+      "source_tag": "[M]",
+      "applies_to": [
+        "transcription",
+        "publication"
+      ],
+      "category": "terminology",
+      "check_type": "glossary",
+      "eko_scope": "p1_check",
+      "prefilter": {
+        "proposal": true,
+        "patterns": [],
+        "keywords": [],
+        "notes": "Proper-noun common-spelling list (to be supplied); flag strict transcriptions of listed names outside line meanings and footnotes."
+      },
+      "examples": {
+        "right": [
+          "Duni Cand → Duni Chand"
+        ],
+        "wrong": []
+      },
+      "needs_gurmukhi_features": false,
+      "needs_gurmukhi_line": false,
+      "related_rules": [
+        "TERM-07"
+      ],
+      "ambiguities": [
+        "'Outside line meanings and footnotes': does 'line meanings' mean the literal translation? Implies strict transcription inside it and common spelling elsewhere.",
+        "Reviewer checklist drops this qualifier ('proper nouns use common spellings').",
+        "Needs a proper-noun common-spelling list."
+      ],
+      "confidence": "medium",
+      "resolution": {
+        "active": false,
+        "scope": "p1_check",
+        "severity": "flag",
+        "blocks_publish": false,
+        "layers": [
+          "transcription",
+          "publication"
+        ],
+        "conditional": null,
+        "decision": "Out of the demo: Eko has no annotation or transcription input. Kept as p1."
+      }
+    },
+    {
+      "id": "TRAN-03",
+      "text": "A consonant with no vowel sign carries an implicit \"a\", except when it is the last letter of a multi-letter word.",
+      "section": "7. Transcription (TRAN)",
+      "subsection": null,
+      "level": "MUST",
+      "source_tag": "[M]",
+      "applies_to": [
+        "transcription"
+      ],
+      "category": "grammar",
+      "check_type": "grammar_conditioned",
+      "eko_scope": "p1_check",
+      "prefilter": null,
+      "examples": {
+        "right": [
+          "ਨਦਰ → nadar"
+        ],
+        "wrong": []
+      },
+      "needs_gurmukhi_features": true,
+      "needs_gurmukhi_line": true,
+      "related_rules": [
+        "TRAN-05"
+      ],
+      "ambiguities": [
+        "TRAN-05 allows dropping the implicit 'a' mid-word (the TRAN-01 example itself does), so a strict TRAN-03 check will false-positive."
+      ],
+      "confidence": "medium",
+      "resolution": {
+        "active": false,
+        "scope": "p1_check",
+        "severity": "flag",
+        "blocks_publish": false,
+        "layers": [
+          "transcription"
+        ],
+        "conditional": null,
+        "decision": "Out of the demo: Eko has no annotation or transcription input. Kept as p1."
+      }
+    },
+    {
+      "id": "TRAN-04",
+      "text": "A single-letter word keeps its implicit \"a\".",
+      "section": "7. Transcription (TRAN)",
+      "subsection": null,
+      "level": "MUST",
+      "source_tag": "[M]",
+      "applies_to": [
+        "transcription"
+      ],
+      "category": "grammar",
+      "check_type": "grammar_conditioned",
+      "eko_scope": "p1_check",
+      "prefilter": null,
+      "examples": {
+        "right": [
+          "ਨ → na"
+        ],
+        "wrong": []
+      },
+      "needs_gurmukhi_features": true,
+      "needs_gurmukhi_line": true,
+      "related_rules": [],
+      "ambiguities": [],
+      "confidence": "high",
+      "resolution": {
+        "active": false,
+        "scope": "p1_check",
+        "severity": "flag",
+        "blocks_publish": false,
+        "layers": [
+          "transcription"
+        ],
+        "conditional": null,
+        "decision": "Out of the demo: Eko has no annotation or transcription input. Kept as p1."
+      }
+    },
+    {
+      "id": "TRAN-05",
+      "text": "The implicit \"a\" may be dropped mid-word where natural pronunciation drops it.",
+      "section": "7. Transcription (TRAN)",
+      "subsection": null,
+      "level": "SHOULD",
+      "source_tag": "[M]",
+      "applies_to": [
+        "transcription"
+      ],
+      "category": "grammar",
+      "check_type": "grammar_conditioned",
+      "eko_scope": "p1_check",
+      "prefilter": null,
+      "examples": {
+        "right": [
+          "ਦਰਸਨ → darsan"
+        ],
+        "wrong": []
+      },
+      "needs_gurmukhi_features": true,
+      "needs_gurmukhi_line": true,
+      "related_rules": [
+        "TRAN-03"
+      ],
+      "ambiguities": [
+        "'Natural pronunciation' is not deterministic; needs a pronunciation lexicon or examples."
+      ],
+      "confidence": "low",
+      "resolution": {
+        "active": false,
+        "scope": "p1_check",
+        "severity": "warning",
+        "blocks_publish": false,
+        "layers": [
+          "transcription"
+        ],
+        "conditional": null,
+        "decision": "Out of the demo: Eko has no annotation or transcription input. Kept as p1."
+      }
+    },
+    {
+      "id": "TRAN-06",
+      "text": "Mark ਉ or ਇ following a short-\"a\" consonant with a dieresis.",
+      "section": "7. Transcription (TRAN)",
+      "subsection": null,
+      "level": "MUST",
+      "source_tag": "[M]",
+      "applies_to": [
+        "transcription"
+      ],
+      "category": "grammar",
+      "check_type": "grammar_conditioned",
+      "eko_scope": "p1_check",
+      "prefilter": null,
+      "examples": {
+        "right": [
+          "ਸਉ → saü"
+        ],
+        "wrong": []
+      },
+      "needs_gurmukhi_features": true,
+      "needs_gurmukhi_line": true,
+      "related_rules": [],
+      "ambiguities": [
+        "Exact conditions for 'short-a consonant' when TRAN-05 has dropped the a."
+      ],
+      "confidence": "high",
+      "resolution": {
+        "active": false,
+        "scope": "p1_check",
+        "severity": "flag",
+        "blocks_publish": false,
+        "layers": [
+          "transcription"
+        ],
+        "conditional": null,
+        "decision": "Out of the demo: Eko has no annotation or transcription input. Kept as p1."
+      }
+    },
+    {
+      "id": "TRAN-07",
+      "text": "Vowel signs map to a, ā, i, ī, u, ū, e, ai, o, au.",
+      "section": "7. Transcription (TRAN)",
+      "subsection": null,
+      "level": "MUST",
+      "source_tag": "[M]",
+      "applies_to": [
+        "transcription"
+      ],
+      "category": "grammar",
+      "check_type": "grammar_conditioned",
+      "eko_scope": "p1_check",
+      "prefilter": null,
+      "examples": {
+        "right": [
+          "ਸੂਰਾ → sūrā"
+        ],
+        "wrong": []
+      },
+      "needs_gurmukhi_features": true,
+      "needs_gurmukhi_line": true,
+      "related_rules": [],
+      "ambiguities": [],
+      "confidence": "high",
+      "resolution": {
+        "active": false,
+        "scope": "p1_check",
+        "severity": "flag",
+        "blocks_publish": false,
+        "layers": [
+          "transcription"
+        ],
+        "conditional": null,
+        "decision": "Out of the demo: Eko has no annotation or transcription input. Kept as p1."
+      }
+    },
+    {
+      "id": "TRAN-08",
+      "text": "A ṭippī takes the nasal of the following consonant's row (ṇ, ṅ, ñ, n, m); word-final it defaults to \"aṅ\".",
+      "section": "7. Transcription (TRAN)",
+      "subsection": null,
+      "level": "MUST",
+      "source_tag": "[M]",
+      "applies_to": [
+        "transcription"
+      ],
+      "category": "grammar",
+      "check_type": "grammar_conditioned",
+      "eko_scope": "p1_check",
+      "prefilter": null,
+      "examples": {
+        "right": [
+          "ਸੰਗਤਿ → saṅgati",
+          "ਕਰਮੰ → karmaṅ"
+        ],
+        "wrong": []
+      },
+      "needs_gurmukhi_features": true,
+      "needs_gurmukhi_line": true,
+      "related_rules": [
+        "TRAN-09"
+      ],
+      "ambiguities": [
+        "Boundary with TRAN-09 (ṁ for vowel nasalization) is not stated: when is a ṭippī a nasal consonant vs vowel nasalization?"
+      ],
+      "confidence": "medium",
+      "resolution": {
+        "active": false,
+        "scope": "p1_check",
+        "severity": "flag",
+        "blocks_publish": false,
+        "layers": [
+          "transcription"
+        ],
+        "conditional": null,
+        "decision": "Out of the demo: Eko has no annotation or transcription input. Kept as p1."
+      }
+    },
+    {
+      "id": "TRAN-09",
+      "text": "Write all vowel nasalization as ṁ (ṭippī or bindī).",
+      "section": "7. Transcription (TRAN)",
+      "subsection": null,
+      "level": "MUST",
+      "source_tag": "[M]",
+      "applies_to": [
+        "transcription"
+      ],
+      "category": "grammar",
+      "check_type": "grammar_conditioned",
+      "eko_scope": "p1_check",
+      "prefilter": null,
+      "examples": {
+        "right": [
+          "ਤੂੰ → tūṁ"
+        ],
+        "wrong": []
+      },
+      "needs_gurmukhi_features": true,
+      "needs_gurmukhi_line": true,
+      "related_rules": [
+        "TRAN-08"
+      ],
+      "ambiguities": [
+        "See TRAN-08 boundary."
+      ],
+      "confidence": "medium",
+      "resolution": {
+        "active": false,
+        "scope": "p1_check",
+        "severity": "flag",
+        "blocks_publish": false,
+        "layers": [
+          "transcription"
+        ],
+        "conditional": null,
+        "decision": "Out of the demo: Eko has no annotation or transcription input. Kept as p1."
+      }
+    },
+    {
+      "id": "TRAN-10",
+      "text": "Write visarg as ḥ, preceded by an implicit \"a\".",
+      "section": "7. Transcription (TRAN)",
+      "subsection": null,
+      "level": "MUST",
+      "source_tag": "[M]",
+      "applies_to": [
+        "transcription"
+      ],
+      "category": "grammar",
+      "check_type": "grammar_conditioned",
+      "eko_scope": "p1_check",
+      "prefilter": null,
+      "examples": {
+        "right": [
+          "ਦ੍ਰਿੜੰਤਣਃ → driṛantaṇaḥ"
+        ],
+        "wrong": []
+      },
+      "needs_gurmukhi_features": true,
+      "needs_gurmukhi_line": true,
+      "related_rules": [],
+      "ambiguities": [],
+      "confidence": "high",
+      "resolution": {
+        "active": false,
+        "scope": "p1_check",
+        "severity": "flag",
+        "blocks_publish": false,
+        "layers": [
+          "transcription"
+        ],
+        "conditional": null,
+        "decision": "Out of the demo: Eko has no annotation or transcription input. Kept as p1."
+      }
+    },
+    {
+      "id": "TRAN-11",
+      "text": "Pronounce a subscript directly after its consonant, with no implicit \"a\" between them.",
+      "section": "7. Transcription (TRAN)",
+      "subsection": null,
+      "level": "MUST",
+      "source_tag": "[M]",
+      "applies_to": [
+        "transcription"
+      ],
+      "category": "grammar",
+      "check_type": "grammar_conditioned",
+      "eko_scope": "p1_check",
+      "prefilter": null,
+      "examples": {
+        "right": [],
+        "wrong": []
+      },
+      "needs_gurmukhi_features": true,
+      "needs_gurmukhi_line": true,
+      "related_rules": [],
+      "ambiguities": [],
+      "confidence": "high",
+      "resolution": {
+        "active": false,
+        "scope": "p1_check",
+        "severity": "flag",
+        "blocks_publish": false,
+        "layers": [
+          "transcription"
+        ],
+        "conditional": null,
+        "decision": "Out of the demo: Eko has no annotation or transcription input. Kept as p1."
+      }
+    },
+    {
+      "id": "TRAN-12",
+      "text": "Represent the halant-like sign with the same mark in Roman.",
+      "section": "7. Transcription (TRAN)",
+      "subsection": null,
+      "level": "MUST",
+      "source_tag": "[M]",
+      "applies_to": [
+        "transcription"
+      ],
+      "category": "grammar",
+      "check_type": "grammar_conditioned",
+      "eko_scope": "p1_check",
+      "prefilter": null,
+      "examples": {
+        "right": [
+          "ਜਿਨੑੀ → jin̖ī"
+        ],
+        "wrong": []
+      },
+      "needs_gurmukhi_features": true,
+      "needs_gurmukhi_line": true,
+      "related_rules": [],
+      "ambiguities": [
+        "Exact Unicode code point for the Roman mark (the example uses U+0316 combining grave accent below)."
+      ],
+      "confidence": "high",
+      "resolution": {
+        "active": false,
+        "scope": "p1_check",
+        "severity": "flag",
+        "blocks_publish": false,
+        "layers": [
+          "transcription"
+        ],
+        "conditional": null,
+        "decision": "Out of the demo: Eko has no annotation or transcription input. Kept as p1."
+      }
+    },
+    {
+      "id": "TRAN-13",
+      "text": "Word-final ਅ after a vowel marks prolongation.",
+      "section": "7. Transcription (TRAN)",
+      "subsection": null,
+      "level": "MUST",
+      "source_tag": "[M]",
+      "applies_to": [
+        "transcription"
+      ],
+      "category": "grammar",
+      "check_type": "grammar_conditioned",
+      "eko_scope": "p1_check",
+      "prefilter": null,
+      "examples": {
+        "right": [
+          "ਜੀਅ → jīa"
+        ],
+        "wrong": []
+      },
+      "needs_gurmukhi_features": true,
+      "needs_gurmukhi_line": true,
+      "related_rules": [],
+      "ambiguities": [],
+      "confidence": "high",
+      "resolution": {
+        "active": false,
+        "scope": "p1_check",
+        "severity": "flag",
+        "blocks_publish": false,
+        "layers": [
+          "transcription"
+        ],
+        "conditional": null,
+        "decision": "Out of the demo: Eko has no annotation or transcription input. Kept as p1."
+      }
+    },
+    {
+      "id": "TRAN-14",
+      "text": "Transcribe Gurmukhi numerals as Roman digits, unless the number is spelled out in the original.",
+      "section": "7. Transcription (TRAN)",
+      "subsection": null,
+      "level": "MUST",
+      "source_tag": "[M]",
+      "applies_to": [
+        "transcription"
+      ],
+      "category": "grammar",
+      "check_type": "grammar_conditioned",
+      "eko_scope": "p1_check",
+      "prefilter": null,
+      "examples": {
+        "right": [
+          "੧ → 1",
+          "ਇਕੁ → iku"
+        ],
+        "wrong": []
+      },
+      "needs_gurmukhi_features": true,
+      "needs_gurmukhi_line": true,
+      "related_rules": [],
+      "ambiguities": [],
+      "confidence": "high",
+      "resolution": {
+        "active": false,
+        "scope": "p1_check",
+        "severity": "flag",
+        "blocks_publish": false,
+        "layers": [
+          "transcription"
+        ],
+        "conditional": null,
+        "decision": "Out of the demo: Eko has no annotation or transcription input. Kept as p1."
+      }
+    },
+    {
+      "id": "TRAN-15",
+      "text": "Farsi-derived letters use their Roman equivalent (ਫ਼ → f, ਜ਼ → z), or an underlined letter where Roman has none.",
+      "section": "7. Transcription (TRAN)",
+      "subsection": null,
+      "level": "MUST",
+      "source_tag": "[M]",
+      "applies_to": [
+        "transcription"
+      ],
+      "category": "grammar",
+      "check_type": "grammar_conditioned",
+      "eko_scope": "p1_check",
+      "prefilter": null,
+      "examples": {
+        "right": [
+          "ਫ਼ → f",
+          "ਜ਼ → z"
+        ],
+        "wrong": []
+      },
+      "needs_gurmukhi_features": true,
+      "needs_gurmukhi_line": true,
+      "related_rules": [],
+      "ambiguities": [
+        "How the 'underlined letter' is encoded in Unicode/markup."
+      ],
+      "confidence": "high",
+      "resolution": {
+        "active": false,
+        "scope": "p1_check",
+        "severity": "flag",
+        "blocks_publish": false,
+        "layers": [
+          "transcription"
+        ],
+        "conditional": null,
+        "decision": "Out of the demo: Eko has no annotation or transcription input. Kept as p1."
+      }
+    },
+    {
+      "id": "TRAN-16",
+      "text": "Double the letter marked by adhak (only the first letter of a digraph). Adhak does not occur in the Guru Granth Sahib itself.",
+      "section": "7. Transcription (TRAN)",
+      "subsection": null,
+      "level": "MUST",
+      "source_tag": "[M]",
+      "applies_to": [
+        "transcription"
+      ],
+      "category": "grammar",
+      "check_type": "grammar_conditioned",
+      "eko_scope": "p1_check",
+      "prefilter": null,
+      "examples": {
+        "right": [
+          "ਭੱਠੀ → bhaṭṭhī"
+        ],
+        "wrong": []
+      },
+      "needs_gurmukhi_features": true,
+      "needs_gurmukhi_line": true,
+      "related_rules": [],
+      "ambiguities": [
+        "Adhak does not occur in the Guru Granth Sahib; rule is irrelevant to GGS lines."
+      ],
+      "confidence": "high",
+      "resolution": {
+        "active": false,
+        "scope": "p1_check",
+        "severity": "flag",
+        "blocks_publish": false,
+        "layers": [
+          "transcription"
+        ],
+        "conditional": null,
+        "decision": "Out of the demo: Eko has no annotation or transcription input. Kept as p1."
+      }
+    }
+  ]
+}

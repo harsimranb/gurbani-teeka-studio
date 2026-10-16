@@ -1,0 +1,431 @@
+Purpose and how to read this
+This ruleset turns SikhRI's two published project pages, Approach and Methodology, into numbered, checkable rules for rendering Gurbani into English. It is a proof of concept: every rule traces to one of those pages, and nothing is invented.
+Rule IDs follow the pattern SECTION-NN (for example TERM-01). Each rule carries a source tag: [A] = Approach page, [M] = Methodology page.
+Strength levels
+Level
+Meaning
+How to apply
+MUST
+SikhRI states it as a fixed convention
+Treat a breach as an error
+SHOULD
+SikhRI states it as a principle or default
+Follow unless context gives a documented reason not to
+GUIDE
+SikhRI describes an aim without a testable rule
+Use as a review lens; operationalize in v0.2 from sample Shabads
+Scope. Covers the English literal translation, the English interpretive transcreation, the supporting annotation fields, and Gurmukhi-to-Roman transcription. Panjabi transcreation follows the same principles but is out of scope for this POC.
+1. Foundational principles (PRIN)
+These govern every other rule. When a lower rule seems to conflict with them, they win.
+ID
+Rule
+Level
+Source
+PRIN-01
+Interpret according to Gurmat, the principles of the Guru's Wisdom.
+MUST
+[A]
+PRIN-02
+Treat internal evidence from the Guru Granth Sahib itself as the primary authority. Outside resources are consulted but rank below it.
+MUST
+[A]
+PRIN-03
+Present every rendering as the team's current understanding, not a final one. Understanding is expected to change as the relationship with Sabad deepens.
+MUST
+[A]
+PRIN-04
+Never label a rendering as the single correct translation, or other translations as wrong. Multiple renderings can coexist.
+MUST
+[A]
+PRIN-05
+Keep transcreation distinct from translation. They are separate deliverables with separate rules (see LAYER).
+MUST
+[A] [M]
+PRIN-06
+Aim for closeness and intimacy, so the reader can engage personally with the Guru's teachings.
+GUIDE
+[A]
+PRIN-07
+Connect contemporary readers to Sabad within their present social, cultural and linguistic context.
+GUIDE
+[M]
+PRIN-08
+Assume a global reader with no prior knowledge; supply context and clarification accordingly.
+SHOULD
+[M]
+PRIN-09
+Draw on, and openly acknowledge, diverse schools of thought; name where interpretations diverge rather than hiding it.
+SHOULD
+[M]
+Standard disclaimer. Every published Sabad carries a humility note stating that Sabad is infinite, our understanding is finite, and this reading may evolve. SikhRI uses this note on its Sabad posts (example).
+2. Terminology (TERM)
+The clearest prescriptive rules SikhRI publishes concern word choice: avoid English terms that import outside theology.
+ID
+Rule
+Level
+Source
+TERM-01
+Do not render the Divine as "God" or "Lord". These terms project connotations onto the Guru-Wisdom that the original does not carry.
+MUST
+[A]
+TERM-02
+Retain the specific Divine attribute the original Sabad uses (for example, a name meaning Creator stays Creator) rather than collapsing every name into one English word.
+MUST
+[A]
+TERM-03
+Use "IkOankar" for the core Divine concept, glossed on first use as One Universal Integrative Force (1Force, the One).
+SHOULD
+[A]
+TERM-04
+Avoid English terms with Judeo-Christian undertones when describing Sikh concepts. The named example: do not call the Guru Granth Sahib "scripture" or "canon".
+MUST
+[M]
+TERM-05
+Equally avoid Hindu or Indological terms that misframe Sikh concepts. The named example: do not call the Guru Granth Sahib "ved" or "shastra".
+MUST
+[M]
+TERM-06
+Before choosing an English equivalent for any term, check what the English word's own history implies; near-equivalents are not neutral.
+SHOULD
+[M]
+TERM-07
+Keep core Sikh terms in transcribed form, with a gloss, where English has no faithful equivalent. Terms SikhRI uses this way include Sabad (Infinite Wisdom), Nam (Identification with IkOankar), Bani, Gurmat, Panth (Collective), Patshah (Sovereign) and Prakash Purab (Illumination Day).
+SHOULD
+[A]
+TERM-08
+When the same word repeats in a Sabad, render it with the same English word throughout that Sabad.
+SHOULD
+SikhRI Sabad notes
+TERM-09
+Check the project glossary and prior renderings before introducing a new English equivalent (see CONS).
+SHOULD
+[M]
+TERM-08 comes from SikhRI's published Sabad notes rather than the two core pages. It is included because it states the same principle as TERM-02 at line level.
+3. Workflow and layers of meaning (FLOW)
+Work proceeds bottom-up: the word-level annotation drives every rendering above it. Work is organized by Bani (composition), not page by page.
+Required order [M]
+1. Annotate each word in Gurmukhi: meaning, grammar and etymology (see ANNO).
+2. Write the literal translation for each pauri (stanza) or line (see LAYER-01 to 05).
+3. Write the interpretive transcreation from the annotation and the literal translation (see LAYER-06 to 10).
+4. Add the supporting layers: overview, introduction, commentary, and the historical, musical and poetical dimensions.
+ID
+Rule
+Level
+Source
+FLOW-01
+Do not write a transcreation for a line until its words have been annotated and its literal translation exists.
+MUST
+[M]
+FLOW-02
+Organize work by Bani (composition) rather than linearly through the volume.
+SHOULD
+[M]
+FLOW-03
+For every term, weigh layer 1, words and terms: each word carries multiple meanings, connotations and history that cannot fully cross into English.
+MUST
+[M]
+FLOW-04
+Weigh layer 2, historical implications: near-equivalent English terms carry their own developed connotations (see TERM-04 to 06).
+MUST
+[M]
+FLOW-05
+Weigh layer 3, the audience: decide how much prior knowledge to assume, and how much added context the English needs to be intelligible.
+MUST
+[M]
+FLOW-06
+Decide, per passage, where to sit between strict literal faithfulness and smooth, meaningful English. Record the choice.
+SHOULD
+[M]
+FLOW-07
+Ground the commentary in a range of interpretive schools and discuss where they diverge.
+SHOULD
+[M]
+4. Literal translation vs transcreation (LAYER)
+The two English layers have opposite rules: the literal translation keeps everything in the source, while the transcreation is free to expand and does not map onto the source.
+Attribute
+Literal translation
+Interpretive transcreation
+Purpose
+Faithfulness to the original Sabad
+Convey essence and meaning to a contemporary reader
+Typeface
+Italics
+Roman (upright)
+Coverage
+Every word, meaning, grammatical position and context in the source
+Free; may elaborate, contextualize and expound
+Parentheses
+Yes, for words added to aid readability or balance
+Never
+Word order
+May be rearranged for comprehension
+Not tied to source order
+Mapping
+Tracks the source line
+Need not match the source or the Panjabi transcreation
+Literal translation rules
+ID
+Rule
+Level
+Source
+LAYER-01
+Retain every word, meaning, grammatical position and context present in the source line.
+MUST
+[M]
+LAYER-02
+Set the literal translation in italics.
+MUST
+[M]
+LAYER-03
+Put any English word added for readability, clarity or poetic balance inside parentheses, so it is visibly not in the source.
+MUST
+[M]
+LAYER-04
+Sentence order may be rearranged when needed for comprehension; meaning may not be added outside parentheses.
+SHOULD
+[M]
+LAYER-05
+Where possible, preserve the poetic balance and beauty of the line despite English lacking the source languages' oral roots.
+GUIDE
+[M]
+Transcreation rules
+ID
+Rule
+Level
+Source
+LAYER-06
+Write in contemporary English; the aim is resonance with today's reader.
+MUST
+[M]
+LAYER-07
+Do not use parentheses; the transcreation is not a translation and nothing in it is marked as added.
+MUST
+[M]
+LAYER-08
+Do not force the transcreation to mirror the original line, the literal translation or the Panjabi transcreation.
+MUST
+[M]
+LAYER-09
+Use the transcreation to elaborate, contextualize and expound the line, building on the literal translation.
+MUST
+[M]
+LAYER-10
+Capture the essence of the attributes of IkOankar as they appear in the original (TERM-01 to 03 apply here with full force).
+MUST
+[A]
+Supporting layers [M]
+• Overview: a brief glimpse of the larger message of a stanza, Sabad or Bani.
+• Introduction: page, rag, author(s), themes and scholarly arguments, drawing on outside sources when needed.
+• Commentary: the essence of the Sabad, its contemporary application and nuance, and how it departed from the religious or political ideas of its time.
+• Historical, musical and poetical dimensions: context from traditional Sikh sources and South Asian scholarship; the rag's meaning and form; figures of speech and poetic form.
+• Footnotes and in-text citations: definitions, pronunciation guidance, context, and supporting references from within the Guru Granth Sahib.
+5. Consistency (CONS)
+SikhRI explicitly rejects rigid one-to-one consistency, but it also rejects arbitrary inconsistency. The target is reasoned consistency with documented exceptions.
+ID
+Rule
+Level
+Source
+CONS-01
+Default to the English rendering already used for the same or a similar term elsewhere in the project.
+SHOULD
+[M]
+CONS-02
+Depart from the default when context requires it. Rigid consistency that ignores context is a misrepresentation.
+MUST
+[M]
+CONS-03
+Never vary a rendering without a reason. Each departure from the default needs a recorded justification.
+MUST
+[M]
+CONS-04
+Decide, per case, whether an explanatory footnote is needed, weighing the audience's expectations.
+SHOULD
+[M]
+Decision test for a term: use the established rendering, unless this context changes the meaning. If it does, use the context-fit rendering and log why (for example in a footnote or the term log).
+6. Annotation fields (ANNO)
+Each word gets three structured fields, with punctuation rules that make them machine-parseable.
+ID
+Field
+Rule
+Level
+Source
+ANNO-01
+Meaning
+List all literal meanings and the implied meaning of the word.
+MUST
+[M]
+ANNO-02
+Meaning
+Separate one literal meaning set from another with a comma; separate literal sets from the implied set with a semicolon.
+MUST
+[M]
+ANNO-03
+Grammar
+List every grammatical function: part of speech plus its aspects (case, person, gender, number, tense as applicable).
+MUST
+[M]
+ANNO-04
+Grammar
+Use a semicolon between the part-of-speech designation and its person, gender and number.
+MUST
+[M]
+ANNO-05
+Grammar
+Use the project's word classes: noun, pronoun, adjective or pronominal adjective, verb, adverb, particle, participle, postposition, conjunction, exclamatory.
+MUST
+[M]
+ANNO-06
+Etymology
+Trace forms back through source languages where possible (for example Old Panjabi, Lehndi, Braj, Sindhi, Apbhransh, Prakrit, Pali, Sanskrit, Arabic, Persian).
+SHOULD
+[M]
+ANNO-07
+Etymology
+Write Sanskrit and Arabic/Persian forms in both Gurmukhi and their own script; write other languages in Gurmukhi only.
+MUST
+[M]
+ANNO-08
+Etymology
+Use a slash between variants within one language, a semicolon between languages or changes of meaning, and quotation marks for text cited from a source.
+MUST
+[M]
+ANNO-09
+Etymology
+Give Sanskrit verb meanings in the masculine form; match singular or plural to the source form where an equivalent exists.
+MUST
+[M]
+ANNO-10
+Etymology
+Omit a language's meaning if it is the same as the Sanskrit, Pali or Arabic meaning already given. Put sources in footnotes only when needed.
+SHOULD
+[M]
+ANNO-11
+Etymology
+Consult both contemporary and historical dictionaries and literary sources.
+SHOULD
+[M]
+7. Transcription (TRAN)
+SikhRI uses transcription (sound-based) rather than transliteration (spelling-based), because Gurmukhi is highly phonetic and pronunciation affects meaning. The full character chart is on the Methodology page; the rules below are the ones a reviewer checks.
+ID
+Rule
+Example
+Level
+TRAN-01
+Use transcription, not transliteration. Pronunciation takes precedence over pattern rules.
+ਪਰਮਦਭੁਤੰ → parmadbhutaṅ
+MUST
+TRAN-02
+In proper nouns outside line meanings and footnotes, use the common spelling.
+Duni Cand → Duni Chand
+MUST
+TRAN-03
+A consonant with no vowel sign carries an implicit "a", except when it is the last letter of a multi-letter word.
+ਨਦਰ → nadar
+MUST
+TRAN-04
+A single-letter word keeps its implicit "a".
+ਨ → na
+MUST
+TRAN-05
+The implicit "a" may be dropped mid-word where natural pronunciation drops it.
+ਦਰਸਨ → darsan
+SHOULD
+TRAN-06
+Mark ਉ or ਇ following a short-"a" consonant with a dieresis.
+ਸਉ → saü
+MUST
+TRAN-07
+Vowel signs map to a, ā, i, ī, u, ū, e, ai, o, au.
+ਸੂਰਾ → sūrā
+MUST
+TRAN-08
+A ṭippī takes the nasal of the following consonant's row (ṇ, ṅ, ñ, n, m); word-final it defaults to "aṅ".
+ਸੰਗਤਿ → saṅgati; ਕਰਮੰ → karmaṅ
+MUST
+TRAN-09
+Write all vowel nasalization as ṁ (ṭippī or bindī).
+ਤੂੰ → tūṁ
+MUST
+TRAN-10
+Write visarg as ḥ, preceded by an implicit "a".
+ਦ੍ਰਿੜੰਤਣਃ → driṛantaṇaḥ
+MUST
+TRAN-11
+Pronounce a subscript directly after its consonant, with no implicit "a" between them.
+—
+MUST
+TRAN-12
+Represent the halant-like sign with the same mark in Roman.
+ਜਿਨੑੀ → jin̖ī
+MUST
+TRAN-13
+Word-final ਅ after a vowel marks prolongation.
+ਜੀਅ → jīa
+MUST
+TRAN-14
+Transcribe Gurmukhi numerals as Roman digits, unless the number is spelled out in the original.
+੧ → 1; ਇਕੁ → iku
+MUST
+TRAN-15
+Farsi-derived letters use their Roman equivalent (ਫ਼ → f, ਜ਼ → z), or an underlined letter where Roman has none.
+—
+MUST
+TRAN-16
+Double the letter marked by adhak (only the first letter of a digraph). Adhak does not occur in the Guru Granth Sahib itself.
+ਭੱਠੀ → bhaṭṭhī
+MUST
+All TRAN rules come from the Methodology page [M].
+8. Gaps to fill in v0.2
+The published pages define the literal layer, terminology and transcription well, but leave the transcreation's voice unspecified. These questions should be answered by comparing SikhRI renderings with two outside translations across sample Shabads.
+Gap
+Open question
+Evidence needed
+Divine names
+Which English rendering does each name get (Hari, Ram, Prabh, Thakur, Sahib, Kartar, Gobind)? When is the name kept untranslated?
+Name-by-name table across samples
+Pronouns
+Is the Divine "You" or "you"? Are third-person references gendered?
+Line-level comparison
+Address and voice
+How are vocatives ("O mind", "O mother") and the first-person speaker rendered?
+Lines containing vocatives
+Register
+Plain modern English, or elevated? Are archaisms (thee, thou) banned?
+Diction sample per Shabad
+Length
+How much longer than the literal may a transcreation run?
+Word-count ratio, literal vs transcreation
+Rahau line
+Is the refrain (rahau) treated or marked differently?
+Each sample's rahau
+Imagery
+Are metaphors kept, explained in-line, or moved to footnotes?
+Metaphor-bearing lines
+Loaded words
+Beyond God, Lord, scripture and canon: what about soul, sin, heaven, salvation, worship, prayer, saint?
+Occurrence check vs outside translations
+Capitalization
+Which terms are capitalized (Wisdom, Divine, Guru, Will)?
+Style pass over samples
+Also ask SikhRI directly. Their transcreator job posting requires documenting the reasoning behind creative choices, so an internal style record likely exists (posting).
+Patterns observed across SikhRI's published transcreations, and the rules they suggest: Site investigation (v0.2 suggestions)
+9. Reviewer checklist
+Run this on every Sabad before release. A failed MUST item blocks publication.
+[ ] Every word is annotated with meaning, grammar and etymology (FLOW-01, ANNO)
+[ ] Literal translation is in italics and drops no source word or grammatical position (LAYER-01, 02)
+[ ] Every added word in the literal translation is in parentheses (LAYER-03)
+[ ] Transcreation has no parentheses and does not mirror the source line by line (LAYER-07, 08)
+[ ] No "God" or "Lord" anywhere (TERM-01)
+[ ] Each Divine attribute matches the one used in the original (TERM-02)
+[ ] No "scripture", "canon", "ved" or "shastra" for the Guru Granth Sahib (TERM-04, 05)
+[ ] Repeated words in the Sabad are rendered consistently (TERM-08)
+[ ] Any departure from an established rendering has a logged reason (CONS-03)
+[ ] Transcription follows the TRAN rules; proper nouns use common spellings (TRAN-02)
+[ ] Nothing claims to be the definitive or only correct meaning (PRIN-04)
+[ ] The humility note is attached (PRIN-03)
+Sources
+• Approach – The Guru Granth Sahib Project
+• Methodology – The Guru Granth Sahib Project
+• Glossary – The Guru Granth Sahib Project
+• SikhRI – Gurbani tag (Sabad transcreation notes)
+• SikhRI – Transcreator job posting
