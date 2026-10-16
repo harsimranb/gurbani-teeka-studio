@@ -113,7 +113,7 @@ Prefilter patterns for each active rule are proposals in `rules.seed.json` (`pre
 
 1. Edit the decision in `_docs/rules/resolve.py`. Never edit rule text in `rules.seed.json`.
 2. Run `python3 _docs/rules/resolve.py`. It prints the active rules; check the list is what you expect.
-3. Copy `_docs/rules/rules.resolved.json` to `data/rules/` (once the app exists).
+3. Nothing to copy: the DATA seed and engine tests read `_docs/rules/rules.resolved.json` in place. Re-run the seed so the app's rules table picks up the change.
 4. Update this file's tables if the active set or a severity changed.
 5. Add a line to [07-decisions.md](07-decisions.md).
 6. Update or add golden tests for the affected rule.

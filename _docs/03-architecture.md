@@ -15,10 +15,10 @@ flowchart LR
     B[(BaniDB<br/>local database)]
     S[(SikhRI sample<br/>reference transcreations,<br/>review history)]
   end
-  subgraph Ingest
-    N[Normalizer<br/>Unicode NFC, tokens]
-    M[Morphology<br/>stem + ending matra]
-    I[(Indexes<br/>FTS on stems,<br/>English vectors)]
+  subgraph Ingest["Ingest and engine prep"]
+    N[Ingest: lines,<br/>Unicode NFC]
+    M[Engine morphology<br/>stem + ending matra]
+    I[(Engine indexes<br/>stem keys in memory,<br/>English vectors)]
   end
   subgraph Engine["Check engine (every save)"]
     L1[L1 code checks]
@@ -46,38 +46,61 @@ Two loops run at different speeds. The **edit loop** (edit → re-check) runs ma
 
 ## Runtime architecture
 
-One Next.js process and one SQLite file. BaniDB is read only by the ingest script, never at request time. The LLM is reached only through the adapter.
+One Next.js process and one shared SQLite file. BaniDB is read only by the ingest script, never at request time. The **engine** (`lib/engine/`) is pure: it receives everything it needs from the API, never touches the shared database, and reaches the LLM only through its adapter. The **app** (`lib/server/`, `app/`) owns all storage and HTTP. This boundary is also how the two people split the work; see [06-team-workflow.md](06-team-workflow.md).
 
 ```mermaid
 flowchart TB
   BR[Browser<br/>workspace · review · rules · eval]
   subgraph APP["Next.js app (one process)"]
-    UI[UI: React, Tailwind, shadcn/ui]
-    API["Route handlers<br/>/api/check · /api/check/llm · /api/review · /api/rules · /api/eval"]
-    subgraph LIB["lib/"]
-      CK[checks]
-      RU[rules]
-      GU[gurmukhi]
-      RE[retrieval]
-      LLM[llm adapter<br/>AI SDK + Zod + cache]
-      DB[db: Drizzle]
+    subgraph FE["FE: app/(studio), components, lib/client"]
+      UI[Pages and report card]
+    end
+    subgraph API["API: app/api, lib/server/services"]
+      RT[Route handlers]
+      SV[Services: review, publish, rules, proposals]
+    end
+    subgraph DATA["DATA: lib/server/db"]
+      RP[Repository, Drizzle]
+    end
+    subgraph ENGINE["Engine: lib/engine (pure)"]
+      IDX["index.ts: Engine port"]
+      CK[checks, gurmukhi, rules]
+      LLM[llm adapter, prompts, LLM checks]
+      RE[retrieval index]
+      DR[drift]
     end
   end
-  SQL[(SQLite eko.db)]
+  SQL[(eko.db<br/>shared app data)]
+  CACHE[(data/cache<br/>LLM cache, embeddings)]
+  EVF[(data/eval/latest.json)]
   PROV[LLM provider<br/>hosted, chosen after bake-off]
   BDB[(BaniDB MariaDB<br/>Docker, local)]
-  subgraph SCRIPTS["scripts/ via tsx"]
-    ING[pnpm ingest]
-    EV[pnpm eval]
-    TS[pnpm test]
-  end
-  BR -- HTTPS --> UI --> API --> CK
-  CK --> RU & GU & RE & LLM
+  ING[pnpm ingest]
+  EV[pnpm eval]
+  BR -- HTTPS --> UI -- "lib/contracts/api.ts" --> RT --> SV
+  SV --> RP --> SQL
+  SV -- "CheckInput via Engine port" --> IDX
+  IDX --> CK & DR
+  CK --> LLM & RE
+  DR --> LLM
   LLM -- cache miss only --> PROV
-  CK & RE & LLM --> DB --> SQL
+  LLM & RE --> CACHE
   ING -- reads --> BDB
-  ING & EV & TS -. import same modules .-> LIB
+  ING --> RP
+  EV --> IDX
+  EV --> EVF
+  SV -. reads .-> EVF
 ```
+
+### Module boundaries
+
+| Boundary | Rule | Why |
+|---|---|---|
+| App → engine | Import only `lib/engine/index.ts` (the `Engine` port in `lib/contracts/ports.ts`) | Engine internals can change without touching app code |
+| Engine → app | Never import `lib/server/` or the database. Everything arrives in `CheckInput` / `DriftContext` | Keeps checks pure, testable, and owned by one person |
+| Engine storage | LLM cache and embeddings in `data/cache/`; eval output in `data/eval/latest.json` | Nobody else reads them, so they stay out of the shared schema |
+| FE → API | Only through `lib/client`, typed by `lib/contracts/api.ts`; mock mode serves fixtures | The UI can be built before the API exists |
+| Rules | `_docs/rules/rules.resolved.json` seeds the rules table (DATA) and feeds engine tests directly | One source, no copies |
 
 ## Stack
 
@@ -87,14 +110,14 @@ flowchart TB
 | UI | Tailwind CSS, shadcn/ui, Noto Sans Gurmukhi | Accessible components fast; findings highlighted by character offsets | Rich-text editor |
 | Database | SQLite, better-sqlite3, Drizzle ORM | No server; the whole state is one file | Postgres |
 | Gurbani source | `khalisfoundation/banidb-dev` (MariaDB) in Docker, read with mysql2 at ingest | Offline, no rate limits, same data the BaniDB API serves | Hosted API |
-| Word lookup | SQLite FTS5 over stem and stem + ending keys | Exact word identity across spellings | Vector search on Gurmukhi |
-| English similarity | Embeddings in SQLite, cosine similarity in TypeScript | Sample is small; a loop is fast enough | Vector database |
+| Word lookup | In-memory index by stem and stem + ending keys, built by the engine from `CheckInput` | Exact word identity across spellings; no shared-schema dependency; fine at sample scale | SQLite FTS5 (if data grows); vector search on Gurmukhi |
+| English similarity | Embeddings cached in `data/cache/`, cosine similarity in TypeScript | Sample is small; a loop is fast enough; engine-private | Vector database |
 | Embedding model | Transformers.js, all-MiniLM-L6-v2, local | Good enough for the proof of concept, no API key | Provider embeddings API if speed or quality bites |
 | LLM access | Vercel AI SDK `generateObject` + Zod | One-line provider swap; typed output or an error | Per-provider clients |
-| LLM caching | `llm_cache` keyed by hash(model, prompt version, packet) | Repeatable backtest; pays once per question | No cache |
+| LLM caching | Engine-private SQLite file in `data/cache/`, keyed by hash(model, prompt version, packet) | Repeatable backtest; pays once per question; no shared-schema dependency | Table in `eko.db` |
 | Concurrency | p-limit, about 4 LLM calls at once | Stays under provider limits without a queue | Job queue |
 | Tests | Vitest golden tests per rule | Code checks pass before LLM work starts | |
-| Rules authoring | `resolve.py` → `rules.resolved.json` | Decisions edited in one place; the app loads JSON | Porting to TypeScript |
+| Rules authoring | `resolve.py` → `_docs/rules/rules.resolved.json`, read in place | Decisions edited in one place; nothing copies the file | Porting to TypeScript |
 | Hosting | Laptop for the recorded demo; Fly.io with a volume for a shareable link | SQLite needs a persistent disk | Vercel (no persistent local files) |
 | Secrets | `.env.local`, never committed | | |
 
@@ -130,7 +153,7 @@ Two calls instead of streaming keeps the build simple: code findings appear inst
 
 ## What crosses the LLM boundary
 
-Code builds the packet at check time. Ingest precomputes the Gurmukhi side (lines, stems, Divine names); the draft, the rule and the references are added per check. The LLM never receives a request to write English.
+The engine builds the packet at check time from the `CheckInput` the API passes in: lines come from the BaniDB ingest; stems and Divine names are computed in memory; the draft, the rule and the references are added per check. The LLM never receives a request to write English.
 
 **Packet → LLM** (illustrative)
 
@@ -168,29 +191,28 @@ The validator drops this finding if "The Lord" isn't in the draft or if TERM-02 
 
 | Packet field | Comes from | When |
 |---|---|---|
-| line_id, gurmukhi, ang, raag, writer | BaniDB | Ingest, once |
-| words, stems, Divine names | Normalizer + morphology | Ingest, once |
-| reference index | SikhRI sample | Ingest; re-run when something is published |
+| line_id, gurmukhi, ang, raag, writer | BaniDB via ingest; passed in `CheckInput` | Ingest once; read per check |
+| words, stems, Divine names | Engine Gurmukhi module | Check time, in memory (cheap at Sabad scale) |
+| reference index | SikhRI sample (normalized JSON) | Built by the engine at startup; updated via `indexReferences` on publish |
 | english_draft | The person writing | Check time |
 | rule | Ruleset → prefilter | Check time |
 | references | Retrieval | Check time |
 
 ## Core records
 
-One SQLite file. Shapes carry over to Postgres later.
+Shared app data lives in one SQLite file owned by DATA; the shapes are defined in `lib/contracts/domain.ts`. Engine-private data (LLM cache, embeddings, eval output) lives in files under `data/`. Shapes carry over to Postgres later.
 
 | Record | Key fields | Written by |
 |---|---|---|
-| Line · Word | `line_id, shabad_id, ang, raag, writer, is_rahao`; word: `surface, stem, ending, features` | Ingest, from the local BaniDB database |
+| Line | `line_id, shabad_id, ang, raag, writer, is_rahao, gurmukhi (NFC)` | Ingest, from the local BaniDB database. Words, stems and endings are computed in memory by the engine, not stored |
 | Rule | `id, text, level, layers, plan, severity, decision, version, status, approved_by, approved_at, reason` | Anyone, with a reason |
 | Draft | `id, line_ids[], layer (transcreation), text, author, status` | Anyone |
 | Finding | `id, draft_id, rule_id, layer (L1, L2, style), severity, quoted_span, start, end, explanation, reference_ids[], rule_version, model, prompt_version` | Engine |
 | Decision | `finding_id, action (accept, override, waive), reason, reviewer, at` | Anyone reviewing |
 | Proposal | `id, source (free_text, overrides), rule_text, example, reason, evidence_ids[], author` | Anyone; engine for P1 override proposals |
 | Drift result | `proposal_id, check, outcome (pass, warn, block), evidence, overridden_by, reason` | Engine; anyone overriding |
-| Reference | `id, line_ids[], english, source (sikhri_sample, published), waived_rule_ids[]` | Sample import; publishing |
-| LLM cache | `key (hash), model, prompt_version, response, created_at` | Adapter |
-| Eval run | `id, ruleset_version, n_corrections, catch_rate, false_flag_rate, per_rule` | Backtest |
+| Reference | `id, line_ids[], english, source (sikhri_sample, published), waived_rule_ids[]` | Sample import (normalized JSON, then DB); publishing |
+| Eval run | `id, ruleset_version, n_corrections, catch_rate, false_flag_rate, per_rule`; a JSON file (`data/eval/latest.json`), not a table | Backtest (EVAL) |
 
 ## Drift check
 

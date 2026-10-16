@@ -11,7 +11,8 @@ Built by Team BJ13 for Sarbat Build Day, problem statement [sikhri-1](https://sa
 | Problem, scope, requirements | Done: [`_docs/02-requirements.md`](_docs/02-requirements.md) |
 | Architecture and stack | Done: [`_docs/03-architecture.md`](_docs/03-architecture.md) |
 | Ruleset v0.1 (66 rules, 10 active) | Done, pending reviewer answers: [`_docs/04-ruleset.md`](_docs/04-ruleset.md) |
-| Code | Not started. Scaffold is task T-01 in [`WORKING_LOG.md`](WORKING_LOG.md) |
+| Team workflow | Done: 8 workstreams, contracts, ownership hook: [`_docs/06-team-workflow.md`](_docs/06-team-workflow.md) |
+| Code | Not started. Scaffold is task C-01 in [`WORKING_LOG.md`](WORKING_LOG.md) |
 
 ## Start here
 
@@ -23,7 +24,7 @@ Built by Team BJ13 for Sarbat Build Day, problem statement [sikhri-1](https://sa
 | See how it fits together | [`_docs/03-architecture.md`](_docs/03-architecture.md) |
 | Understand the rules | [`_docs/04-ruleset.md`](_docs/04-ruleset.md) |
 | Know where data comes from | [`_docs/05-data-sources.md`](_docs/05-data-sources.md) |
-| Know how two people work in parallel | [`_docs/06-team-workflow.md`](_docs/06-team-workflow.md) |
+| Know who owns what, and how streams depend on each other | [`_docs/06-team-workflow.md`](_docs/06-team-workflow.md) |
 | Know why something was decided | [`_docs/07-decisions.md`](_docs/07-decisions.md) |
 | See what's still unanswered | [`_docs/08-open-questions.md`](_docs/08-open-questions.md) |
 
@@ -47,7 +48,7 @@ TypeScript, Next.js, SQLite with Drizzle, Vercel AI SDK (any LLM provider), Tran
 
 ## Getting started
 
-The app isn't scaffolded yet. Once task T-01 lands, these commands will work (see [`CLAUDE.md`](CLAUDE.md) for the current list):
+The app isn't scaffolded yet. Once task C-01 lands, these commands will work (see [`CLAUDE.md`](CLAUDE.md) for the current list):
 
 ```bash
 # prerequisites: Node 20+, pnpm, Docker
@@ -56,7 +57,15 @@ pnpm install
 cp .env.example .env.local                               # add LLM API keys
 pnpm ingest                                              # BaniDB → eko.db
 pnpm dev                                                 # http://localhost:3000
-pnpm test                                                # golden tests
+pnpm test                                                # tests
+```
+
+One-time setup per clone, so the ownership hook runs (see [`CLAUDE.md`](CLAUDE.md)):
+
+```bash
+git config core.hooksPath .githooks
+chmod +x .githooks/pre-commit
+git config eko.person A        # or B
 ```
 
 To regenerate the resolved ruleset after editing a decision:
