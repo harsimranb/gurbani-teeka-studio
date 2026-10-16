@@ -32,7 +32,7 @@ From https://www.banidb.com/tos and https://www.banidb.com/nposl.
 | Written acknowledgement and the BaniDB logo | FR-21: attribution and logo in the app footer |
 | Data under NPOSL-3.0 (non-profit, share-alike) | Fine for a non-profit hackathon build for SikhRI |
 | A database copy must be refreshed every 90 days | Re-run the image pull and ingest if the build lives on |
-| No redistribution without written permission | Don't commit BaniDB data or `eko.db` to the repo (already git-ignored) |
+| No redistribution without written permission | Don't commit BaniDB data or `eko.db` to the repo; the required ignore patterns are now present |
 | Projects must contribute 20 submissions or votes a month, or pay $15/month | Unclear for a hackathon prototype; ask Khalis Foundation (task P-06) |
 
 The BaniDB-API code itself is MIT-licensed: https://github.com/KhalisFoundation/BaniDB-API
@@ -43,12 +43,12 @@ The brief says teams work from a sample of SikhRI's ruleset, approved translatio
 
 | Dataset | Used for | Fields needed | Minimum useful | If late or missing |
 |---|---|---|---|---|
-| A. Reference transcreations | CONS-01, style check, published-line replay | line or Sabad ID (or Gurmukhi text), English transcreation | 3–5 Sabads (about 50–100 tukks) | Skip CONS-01 and style claims in the demo |
+| A. Reference transcreations | Claims about SikhRI's established voice, cited style check, published-line replay; deterministic CONS-01 only with explicit term mapping | line or Sabad ID (or Gurmukhi text), English transcreation; term-to-rendering alignment or preferred-term glossary if available | 3–5 Sabads (about 50–100 tukks) | Eko-published references may exercise citation checks with source labels; do not claim comparison against SikhRI's historical corpus or infer term mappings from line-level English alone |
 | B. Review history | Backtest (beat 6) | pre-edit draft, final text, line ID, reviewer note if any | 30–50 real corrections | Beat 6 can't be shown credibly. Top ask |
 | C. Demo draft | The live demo | one Sabad's draft with real or realistic issues | 1 Sabad | The team writes it with planted issues (task P-09) |
 
 **Format risks:**
-- **IDs:** SikhRI likely uses its own Sabad IDs, not BaniDB's. Fallback: match lines on normalized Gurmukhi text.
+- **IDs:** SikhRI likely uses its own Sabad IDs, not BaniDB's. Fallback: match lines on normalized Gurmukhi text; repeated identical lines can make this ambiguous, so quarantine those rows for human mapping instead of choosing the first match.
 - **Layer:** confirm the sample includes transcreations, not only literal translations.
 
 Store the sample under `data/sikhri-sample/` (git-ignored). Never commit it.

@@ -11,7 +11,10 @@ Built by Team BJ13 for Sarbat Build Day, problem statement [sikhri-1](https://sa
 | Problem, scope, requirements | Done: [`_docs/02-requirements.md`](_docs/02-requirements.md) |
 | Architecture and stack | Done: [`_docs/03-architecture.md`](_docs/03-architecture.md) |
 | Ruleset v0.1 (66 rules, 10 active) | Done, pending reviewer answers: [`_docs/04-ruleset.md`](_docs/04-ruleset.md) |
-| Team workflow | Done: 8 workstreams, contracts, ownership hook: [`_docs/06-team-workflow.md`](_docs/06-team-workflow.md) |
+| Team workflow | 8 workstreams and contract protocol; ownership map/hook installed, per-clone identity setup pending: [`_docs/06-team-workflow.md`](_docs/06-team-workflow.md) |
+| UI mockups | Eight supplied screens mapped to P0/P1 tasks: [`_docs/09-ui-mockups.md`](_docs/09-ui-mockups.md) |
+| Feature plan | Task breakdown and acceptance criteria: [`_docs/10-feature-breakdown.md`](_docs/10-feature-breakdown.md) |
+| Kickoff readiness | Decisions and external inputs before workstream split: [`_docs/11-execution-readiness.md`](_docs/11-execution-readiness.md) |
 | Code | Not started. Scaffold is task C-01 in [`WORKING_LOG.md`](WORKING_LOG.md) |
 
 ## Start here
@@ -26,6 +29,9 @@ Built by Team BJ13 for Sarbat Build Day, problem statement [sikhri-1](https://sa
 | Know where data comes from | [`_docs/05-data-sources.md`](_docs/05-data-sources.md) |
 | Know who owns what, and how streams depend on each other | [`_docs/06-team-workflow.md`](_docs/06-team-workflow.md) |
 | Know why something was decided | [`_docs/07-decisions.md`](_docs/07-decisions.md) |
+| Build the supplied screens | [`_docs/09-ui-mockups.md`](_docs/09-ui-mockups.md) |
+| Check feature tasks and acceptance | [`_docs/10-feature-breakdown.md`](_docs/10-feature-breakdown.md) |
+| See decisions before kickoff | [`_docs/11-execution-readiness.md`](_docs/11-execution-readiness.md) |
 | See what's still unanswered | [`_docs/08-open-questions.md`](_docs/08-open-questions.md) |
 
 The full docs index is [`_docs/README.md`](_docs/README.md).
@@ -60,7 +66,7 @@ pnpm dev                                                 # http://localhost:3000
 pnpm test                                                # tests
 ```
 
-One-time setup per clone, so the ownership hook runs (see [`CLAUDE.md`](CLAUDE.md)):
+One-time setup per clone so the ownership hook runs (see [`CLAUDE.md`](CLAUDE.md)):
 
 ```bash
 git config core.hooksPath .githooks

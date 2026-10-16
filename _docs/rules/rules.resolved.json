@@ -1,7 +1,7 @@
 {
   "version": "0.1-resolved",
   "global_decisions": [
-    "Severity follows the draft's strength table: MUST -> flag (blocks publish until fixed or waived with a reason); SHOULD -> warning (needs a reason, doesn't block); GUIDE -> review lens (never flagged). Deterministic MUST checks with near-zero false positives are 'error'.",
+    "Severity follows the draft's strength table: MUST -> flag (blocks publish until fixed or waived with a reason); SHOULD -> warning (needs a reason to dismiss; CONS-01 also needs a recorded reason before publish); GUIDE -> review lens (never flagged). Deterministic MUST checks with near-zero false positives are 'error'.",
     "Precedence: PRIN rules win conflicts (as the draft says); a specific rule is cited over an umbrella rule; a reviewer's context reason (CONS-02) clears consistency warnings.",
     "Review unit is the Sabad: 'first use' and 'same word' are scoped to one Sabad.",
     "Every rule runs only on the layers it applies to (literal, transcreation, publication).",
@@ -1815,8 +1815,9 @@
         "layers": [
           "transcreation"
         ],
-        "conditional": "needs SikhRI reference set",
-        "decision": "Active once the SikhRI sample arrives: a stem whose reference rendering differs from the draft -> warning 'differs from reference rendering, add a reason'. Absorbs TERM-09."
+        "conditional": "needs applicable reference with explicit term-to-rendering mapping",
+        "decision": "Active only when an applicable SikhRI-supplied or Eko-published reference explicitly maps a source term to its English rendering: a differing draft rendering -> warning 'differs from reference rendering, add a reason'. A departure must have a recorded reason before publish (CONS-03); the warning remains non-error severity. Absorbs TERM-09.",
+        "publish_requires_reason": true
       }
     },
     {
@@ -1906,7 +1907,7 @@
           "transcreation"
         ],
         "conditional": null,
-        "decision": "Satisfied by workflow: Eko won't let a consistency warning be waived without a written reason, and stores that reason as the log."
+        "decision": "Satisfied by workflow: Eko requires a written reason before publishing a CONS-01 departure and stores that reason as the log."
       }
     },
     {

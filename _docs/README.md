@@ -12,6 +12,9 @@ Everything Team BJ13 decided before the build, in reading order. Each file stand
 | [06-team-workflow.md](06-team-workflow.md) | Workstreams, folder ownership, contracts, dependency map, checkpoints, one-day plan | Who owns what, what depends on what |
 | [07-decisions.md](07-decisions.md) | Dated decision log with reasons | Why |
 | [08-open-questions.md](08-open-questions.md) | Unanswered questions, owners, what each blocks | What's unknown |
+| [09-ui-mockups.md](09-ui-mockups.md) | Eight-page UI reference mapped to requirements, workstreams and P0/P1 priorities; corrections to illustrative labels | How the supplied screens guide the build |
+| [10-feature-breakdown.md](10-feature-breakdown.md) | Ordered feature tasks, dependencies and checkable acceptance criteria | What proves each feature is done |
+| [11-execution-readiness.md](11-execution-readiness.md) | Settled technical calls, unresolved decisions, external inputs and M0 gate | What must be decided before builders split |
 | [reviewer-questions.md](reviewer-questions.md) | The document sent to SikhRI's reviewer: all 66 rules and 15 questions | Copy of the shared doc |
 | [architecture.html](architecture.html) | Visual architecture page with diagrams (open in a browser) | Snapshot; Markdown docs win if they differ |
 
@@ -27,7 +30,7 @@ Everything Team BJ13 decided before the build, in reading order. Each file stand
 
 ## Ownership
 
-Folder ownership per workstream is machine-readable in [`../.ownership.json`](../.ownership.json) and enforced by the pre-commit hook in [`../.githooks/`](../.githooks/pre-commit) via [`../scripts/dev/check-ownership.mjs`](../scripts/dev/check-ownership.mjs).
+Folder ownership per workstream is machine-readable in [`../.ownership.json`](../.ownership.json) and enforced by the pre-commit hook in [`../.githooks/`](../.githooks/pre-commit) via [`../scripts/dev/check-ownership.mjs`](../scripts/dev/check-ownership.mjs). Each clone must configure `core.hooksPath` and its `eko.person` identity.
 
 ## Shared links
 
@@ -36,6 +39,7 @@ These live outside the repo. They are private until shared from their Share menu
 - Architecture page (live): https://claude.ai/artifact/JGZe4iPmsYqXEUBFxRJ6Jq
 - Reviewer questions (Claude Doc): https://claude.ai/code/artifact/aaf9f606-969e-4bd3-b453-30992b387995
 - Problem statement: https://sarbat-problem-statements.fly.dev/#sikhri-1
+- UI mockups: eight-page PDF supplied by Harsimran on 2026-10-16, kept outside the repo; its page-by-page build mapping is [09-ui-mockups.md](09-ui-mockups.md)
 
 ## Keeping docs current
 

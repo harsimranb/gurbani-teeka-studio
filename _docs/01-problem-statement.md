@@ -20,7 +20,7 @@ The brief's modules, and where each sits in this build:
 |---|---|
 | The translation ruleset, with provenance; AI proposes rules, officials approve | P0, but anyone approves (no roles) |
 | Rules check and report card | P0 |
-| Style check against approved work, citing sources | P0, once SikhRI's sample arrives |
+| Style check against approved work, citing sources | P0 when an applicable SikhRI-supplied or Eko-published reference exists; claims about SikhRI's historical voice need SikhRI's sample |
 | Human review: accept or override with a reason, re-check after edits | P0 |
 | Published, and the ruleset gets sharper (proposals from repeated overrides) | Publishing P0; proposals from overrides P1; free-text proposals P0 |
 | Translation workspace: full Guru Granth Sahib, verified Gurmukhi | Demo Sabads P0; full browsing P1 |

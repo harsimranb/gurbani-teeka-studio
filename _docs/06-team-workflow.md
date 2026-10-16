@@ -2,7 +2,7 @@
 
 How two people, each with their own AI coding agents, build Eko in one day without blocking or overwriting each other. The work is split into **feature workstreams**. Each stream owns its own folders, talks to other streams only through **contracts** in `lib/contracts/`, and can start immediately against a **stub**.
 
-Source of truth for folder ownership: [`.ownership.json`](../.ownership.json). A pre-commit hook enforces it (see [Guardrails](#guardrails)).
+Source of truth for folder ownership: [`.ownership.json`](../.ownership.json). The pre-commit hook is in [`.githooks/`](../.githooks/pre-commit); each clone still needs the local setup in [Guardrails](#guardrails).
 
 ## Principles
 
@@ -12,6 +12,7 @@ Source of truth for folder ownership: [`.ownership.json`](../.ownership.json). A
 4. **The engine is pure; the app owns I/O.** Engine code (checks, LLM, eval) never imports the database. App code never imports engine internals, only `lib/engine/index.ts`. This single rule removes most cross-person conflicts.
 5. **Each stream keeps private storage private.** If only one stream reads something (LLM cache, embeddings, eval output), it lives in that stream's own file, not in the shared database schema.
 6. **Integrate on a schedule.** Four short checkpoints wire the streams together, so integration problems surface at hour 3, not hour 9.
+7. **Stop at acceptance.** Keep each hackathon task small and correct; do not add a new service, framework or generalized subsystem for a feature that fits the existing process and database.
 
 ## Workstreams
 
@@ -90,7 +91,7 @@ Written together in hour 0–1 and committed as **contracts v1**.
 
 | File | Holds | Used by |
 |---|---|---|
-| `domain.ts` | Zod schemas for every record crossing a seam | Everyone |
+| `domain.ts` | Zod schemas for every record crossing a seam, including `CheckResult` and persisted `CheckRun` | Everyone |
 | `api.ts` | Request and response schema per route, plus the route list | FE (client and mocks), API (handlers validate responses) |
 | `ports.ts` | The `Engine` interface below | API calls it; CHECKS/LLM implement it |
 | `fixtures/` | Valid instances of every schema | Stubs, mocks, tests |
@@ -101,10 +102,15 @@ The `Engine` port, the main cross-person seam:
 // lib/contracts/ports.ts (shape to agree in hour 0; names are a starting point)
 export interface Engine {
   // phase 'code' returns in < 1 s; phase 'llm' runs prefiltered LLM checks
-  runChecks(input: CheckInput, phase: 'code' | 'llm'): Promise<Finding[]>;
+  runChecks(input: CheckInput, phase: 'code' | 'llm'): Promise<CheckResult>;
   runDriftCheck(proposal: Proposal, ctx: DriftContext): Promise<DriftResult[]>;
   indexReferences(refs: Reference[]): Promise<void>; // after publish or sample import
 }
+
+type CheckResult = {
+  findings: Finding[]; // each passes the exact-span and ID validator
+  notEvaluable: { ruleId: string; reason: string }[]; // no fabricated finding
+};
 
 // Everything the engine needs, passed in by the API. The engine never queries the DB.
 type CheckInput = {
@@ -113,8 +119,11 @@ type CheckInput = {
   changedLineIds: string[];
   rules: Rule[];                       // current ruleset version, from the DB
   rulesetVersion: number;
+  references: Reference[];             // current reference snapshot from the app
 };
 ```
+
+`changedLineIds` contains all BaniDB line IDs covered by each edited authored tukk/group; the engine also re-evaluates any Sabad-scoped checks whose result depends on them. Finding offsets are end-exclusive UTF-16 code-unit positions into the authored English draft: `draft.text.slice(start, end) === quoted_span`. The API passes the current reference snapshot on each check, so a process restart cannot leave the in-memory retrieval index empty. `indexReferences` may warm/update the engine-private index after import or publish, but correctness cannot depend on that warm state. The API stores a `CheckRun` for each phase and persists results only when draft and ruleset versions still match the request. The publish gate requires successful code and model `CheckRun` records for those same versions. A per-rule `notEvaluable` result is visible but is not a finding or a failed phase.
 
 ### Contract change protocol
 
@@ -131,8 +140,8 @@ Never mix contract changes with other code in one commit; it keeps rebase confli
 
 | # | Seam | Provider → consumer | Contract | Stub until ready | Real one needed by |
 |---|---|---|---|---|---|
-| **S1** | Run checks | CHECKS + LLM (A) → API (B) | `Engine.runChecks`, `Finding` | `lib/engine/index.ts` returns `fixtures/findings` from hour 1 | M1 (code phase), M2 (LLM phase) |
-| **S2** | Check input | DATA + API (B) → CHECKS + LLM (A) | `CheckInput`, `Line`, `Rule` | `fixtures/sabad.demo.json` exported from BaniDB in hour 0 | Hour 1 (fixture is enough until M1) |
+| **S1** | Run checks | CHECKS + LLM (A) → API (B) | `Engine.runChecks`, `CheckResult`, `Finding` | `lib/engine/index.ts` returns `fixtures/check-result` from hour 1 | M1 (code phase), M2 (LLM phase) |
+| **S2** | Check input | DATA + API (B) → CHECKS + LLM (A) | `CheckInput`, `Line`, `Rule`, `Reference` | Local, git-ignored `fixtures/sabad.demo.json` exported from BaniDB in hour 0 | Hour 1 (fixture is enough until M1) |
 | **S3** | SikhRI sample | DATA (B) → LLM retrieval and EVAL (A) | `Reference`, `ReviewCorrection` as JSON files in `data/sikhri-sample/normalized/` | `fixtures/references.json`, `fixtures/corrections.json` (labelled test data) | M2 (references), M3 (corrections) |
 | **S4** | Drift check | LLM (A) → API (B) | `Engine.runDriftCheck`, `DriftResult` | Stub returns one `pass` result | M3 |
 | S5 | Eval results | EVAL (A) → API → FE (B) | `EvalRun` written to `data/eval/latest.json` | `fixtures/eval-run.json` | M3 |
@@ -172,17 +181,17 @@ hour 6–8  drift, rule judge, eval (A)  ‖  rules page, proposals, eval card (
 M3      propose → drift → approve → re-check uses new rule; eval numbers shown
 ```
 
-**Top risk:** the BaniDB container in hour 0. If it isn't running within 30 minutes, export the demo Sabad from the BaniDB API once (`GET /v2/shabads/:id`) into `fixtures/sabad.demo.json` and keep going; fix ingest later. Never hand-type Gurmukhi into a fixture.
+**Top risk:** the BaniDB container in hour 0. If it isn't running within 30 minutes, the [BaniDB API source](https://github.com/KhalisFoundation/banidb-api/blob/dev/swagger.json) documents `GET /v2/shabads/{shabadID}` as a fallback; verify the live endpoint and terms before one local export into the git-ignored fixture, then fix ingest later. Never hand-type or commit Gurmukhi into a fixture.
 
 ## Checkpoints
 
-Each is about 15 minutes with both people, run against `main`.
+Each is about 15 minutes with both people, run against `main`. The hour labels are planning estimates; milestone order and acceptance conditions govern progress (D-61).
 
 | Checkpoint | When | Must work | If it doesn't |
 |---|---|---|---|
 | **M0** | End of hour 1 | `pnpm dev` and `pnpm test` pass; contracts v1 committed; demo Sabad fixture from BaniDB; engine stub and client mocks compile; hooks installed | Don't split up until it does |
 | **M1** | Hour 3 | Thin slice: save a transcreation in the UI → real API → `runChecks('code')` → real findings shown with highlights | Fix the seam first, then go back to streams |
-| **M2** | Hour 6 | LLM findings; override and waive need a reason; publish blocked by an open must-fix; references loaded if the sample arrived | Decide cuts now (cut order below) |
+| **M2** | Hour 6 | LLM findings; override and waive need a reason; publish blocked by must-fix/incomplete checks; reference findings if an applicable source exists | Decide cuts now (cut order below) |
 | **M3** | Hour 8 | Propose → drift → approve → the next check uses the new rule; eval card shows backtest numbers | Drop the eval card for a table in the video |
 | **M4** | Hour 9–10 | Demo end to end; video recorded | |
 
@@ -201,7 +210,7 @@ Task IDs match [`WORKING_LOG.md`](../WORKING_LOG.md).
 | **M3** | | |
 | 8–10 | Together: fix integration issues, seed the demo, record the video (INT-01 to INT-03) | |
 
-If the SikhRI sample is late: B does rules, proposals and approval before the sample import; A does drift and the rule judge before CONS-01 and style.
+If the SikhRI sample is late: B does rules, proposals and approval before sample import; A does drift and the rule judge. Style may still use clearly labelled Eko-published references; deterministic CONS-01 waits for explicit term mapping.
 
 ## Conflict hotspots
 
@@ -243,23 +252,22 @@ So nobody touches the lockfile later. Pin exact versions at install time.
 
 ## Git rules
 
-- Trunk-based: work on `main`, small commits, `git pull --rebase && git push` at least hourly and before each checkpoint.
+- Trunk-based: work on `main`, make a small reviewed commit and push at the end of each approved task and before a checkpoint. Pull/rebase when safe; preserve unrelated local changes.
 - Commit message: `<task-id> <stream>: <what changed>`, for example `CHK-04 checks: LAYER-07 parentheses`.
-- Update `WORKING_LOG.md` (your streams' sections) in the same commit as the work.
+- Update `WORKING_LOG.md` (your stream's section) in the same commit as the work; report the final commit hash after the commit and push.
 - If a rebase conflicts in a file you don't own, stop and ask the owner; don't resolve it for them.
 
 ## Working with AI agents
 
-- Each agent session starts with one task ID: "Work on LLM-05 from WORKING_LOG.md." The agent reads `CLAUDE.md`, the task's FR, and the contracts it touches.
-- Because streams have separate folders, one person can run **two agents in parallel** on two of their streams (for example CHECKS and LLM), each in its own git worktree (`git worktree add ../eko-llm main`). Only do this when the two tasks don't share a seam that's still changing.
-- An agent that needs a contract change stops and asks its person; it doesn't edit `lib/contracts/` on its own initiative.
-- Review the diff before pushing. Never leave an agent running unattended on shared files.
+- Follow the end-to-end harness in [`CLAUDE.md`](../CLAUDE.md#end-to-end-agent-workflow): load context, ask the user which ready task to take unless already specified, identify dependencies/overlap, get approval on a small plan, implement, verify, use a fresh subagent for correctness review, fix valid findings, then commit and push.
+- Each implementation session owns one task ID. Two independent tasks may run in parallel only in separate worktrees and only when their files and seams do not overlap; this is optional, not a requirement for a small hackathon task.
+- An agent that needs a breaking contract change coordinates at a checkpoint; it does not edit another stream's files on its own initiative. Never leave an agent running unattended on shared files.
 
 ## Cut order if short on time
 
 Decide at M2.
 
-1. CONS-01 and the style check, if the SikhRI sample is late (the reason flow still shows on any flag)
+1. CONS-01 and the style check, if neither SikhRI-supplied nor Eko-published references provide applicable evidence (the reason flow still shows on any flag)
 2. Duplicate and scope-change warnings in the drift check
 3. Per-rule breakdown on the eval card (keep overall catch and false-flag rates)
 4. LAYER-06's confirmation tier for ambiguous words

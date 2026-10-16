@@ -20,13 +20,16 @@ Eko's rules come from the team's draft ruleset v0.1, built from SikhRI's publish
 "resolution": {
   "active": true,
   "scope": "p0_check",
-  "severity": "error",
-  "blocks_publish": true,
+  "severity": "warning",
+  "blocks_publish": false,
   "layers": ["transcreation"],
-  "conditional": null,
-  "decision": "Plain-language judgment call"
+  "conditional": "needs applicable reference with explicit term-to-rendering mapping",
+  "publish_requires_reason": true,
+  "decision": "CONS-01 decision from resolve.py"
 }
 ```
+
+`publish_requires_reason` appears only on CONS-01; other rules default to false. It is separate from `blocks_publish`, so CONS-01 remains a warning rather than an error or flag.
 
 | `scope` | Meaning |
 |---|---|
@@ -61,7 +64,7 @@ Severity follows the draft's own strength table.
 |---|---|---|
 | **Error** | MUST, checked by code with near-zero false positives | Blocks publishing until fixed or waived with a reason |
 | **Flag** | MUST, confirmed by the LLM against the BaniDB line | Blocks publishing until fixed or overridden with a reason |
-| **Warning** | SHOULD | Needs a reason to dismiss; never blocks |
+| **Warning** | SHOULD | Needs a reason to dismiss; ordinary warnings do not block. A CONS-01 departure also needs a recorded reason before publish (CONS-03) |
 | **Hint** | Anything Eko can't verify | Shown; no action needed (none active in this build) |
 | **Lens** | GUIDE | Shown to reviewers as guidance; never flagged |
 
@@ -76,7 +79,7 @@ Severity follows the draft's own strength table.
 | LAYER-06 | Contemporary English | MUST | Code for a closed archaism list; LLM for ambiguous words | Flag |
 | TERM-03 | "IkOankar", glossed on first use in the Sabad | SHOULD | Code | Warning |
 | TERM-07 | Core terms kept transcribed (Sabad, Nam, Bani …) | SHOULD | Code for spellings; LLM for substitutes like "the Word" | Warning |
-| CONS-01 | Default to the reference rendering | SHOULD | Code, once SikhRI's sample arrives | Warning |
+| CONS-01 | Default to the reference rendering | SHOULD | Code only when an applicable reference has an explicit term-to-rendering mapping; otherwise the separate cited English-reference style check may run | Warning; reason before publish |
 | CONS-03 | Every departure has a recorded reason | MUST | Warnings can't be dismissed without a written reason | By design |
 | CONS-02 | Depart when context requires | MUST | A written reason clears a consistency warning | Suppressor |
 
@@ -95,12 +98,13 @@ Prefilter patterns for each active rule are proposals in `rules.seed.json` (`pre
 6. Open questions for SikhRI never become flags.
 7. Eko never generates translation text.
 8. No roles: anyone may resolve a finding, propose a rule, or approve one, always with a written reason.
+9. Eko-published renderings have equal source weight to SikhRI-supplied references in future style checks. Show source and exception marks; do not silently hide a waiver or reasoned departure.
 
 ## Judgment calls
 
 | Ambiguity | Current call | Reviewer question |
 |---|---|---|
-| CONS-01 vs CONS-02 (stay consistent vs. depart for context) | A departure is a warning that needs a reason, never an error. CONS-02 clears it; the stored reason satisfies CONS-03 | Q11 |
+| CONS-01 vs CONS-02 (stay consistent vs. depart for context) | A departure is a warning, never an error. Publishing it requires a recorded reason; CONS-02 clears it and the reason satisfies CONS-03 | Q11 |
 | TERM-01 scope (rule says "the Divine"; checklist says "anywhere") | The rule text governs. A worldly lord or another tradition's deity passes once the LLM confirms the referent | Q2 |
 | TERM-02 without a Divine-names table | Only names whose attribute is explicit in the word are checked (Kartar → Creator, the rule's own example). A collapse detector warns when 3+ different Divine names in one Sabad share one English word | Q3 |
 | Gloss format (TERM-03/07 vs. LAYER-07) | In the transcreation the gloss follows a comma or dash, because parentheses aren't allowed | Q4 |

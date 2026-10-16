@@ -19,7 +19,7 @@ Every issue Eko raises has one of three strengths. The rule's level (MUST, SHOUL
 | Strength | What it means | Comes from |
 | --- | --- | --- |
 | **Must-fix** | Blocks publishing until the text is changed, or someone overrides it with a written reason. | MUST rules |
-| **Needs a reason** | A warning. The text can be published, but the person keeping it writes a short reason. | SHOULD rules |
+| **Needs a reason** | A warning. Ordinary warnings do not block publishing. A departure from a reference rendering needs a recorded reason before publishing because CONS-03 requires it. | SHOULD rules; CONS-03 for departures |
 | **Guidance** | Shown to reviewers as something to keep in mind. Eko never raises it as an issue. | GUIDE rules, and rules no automated check can judge |
 
 Anyone on the team can resolve an issue, always with a written reason.
@@ -87,7 +87,7 @@ All 66 rules, with their text exactly as in the team's draft (v0.1, drawn from S
 
 | ID | Rule | Level | In this build |
 | --- | --- | --- | --- |
-| CONS-01 | Default to the English rendering already used for the same or a similar term elsewhere in the project. | SHOULD | Checked: Needs a reason (once SikhRI reference renderings are loaded) |
+| CONS-01 | Default to the English rendering already used for the same or a similar term elsewhere in the project. | SHOULD | Checked when an applicable SikhRI-supplied or Eko-published reference exists; Needs a reason before publish |
 | CONS-02 | Depart from the default when context requires it. Rigid consistency that ignores context is a misrepresentation. | MUST | Guides other checks |
 | CONS-03 | Never vary a rendering without a reason. Each departure from the default needs a recorded justification. | MUST | Met by design |
 | CONS-04 | Decide, per case, whether an explanatory footnote is needed, weighing the audience's expectations. | SHOULD | Reviewer guidance |
@@ -399,7 +399,7 @@ If B or C: can SikhRI share its published literals for this?
 
 **In brief:** Default to the rendering already used in the project; depart when context requires it; record a reason for every departure.
 
-**Our current call:** Once SikhRI's reference renderings are loaded, Eko raises Needs a reason when a transcreation renders a term differently: "differs from reference rendering, add a reason". Writing a reason clears it (CONS-02). Eko keeps the reason as the record (CONS-03).
+**Our current call:** When an applicable SikhRI-supplied or Eko-published rendering exists, Eko raises Needs a reason if a transcreation differs: "differs from reference rendering, add a reason". A recorded reason is required before publishing the departure and clears the warning (CONS-02/03). Eko-published references have equal source weight, while their source and any exception marks stay visible.
 
 **Question:**
 
@@ -428,7 +428,7 @@ If B or C: can SikhRI share its published literals for this?
 
 **In brief:** The draft rules are MUST, SHOULD or GUIDE.
 
-**Our current call:** MUST rules are Must-fix: they block publishing until fixed or overridden with a written reason. SHOULD rules are Needs a reason: they never block. GUIDE rules are Guidance and are never raised.
+**Our current call:** MUST rules are Must-fix: they block publishing until fixed or overridden with a written reason. SHOULD rules are Needs a reason: ordinary warnings do not block. A CONS-01 departure needs a reason before publish because the separate MUST rule CONS-03 requires a recorded justification. GUIDE rules are Guidance and are never raised.
 
 **Question:**
 

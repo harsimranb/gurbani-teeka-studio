@@ -100,13 +100,15 @@ res("LAYER-10", scope="review_lens", severity="lens",
     decision="Umbrella over TERM-01 to 03. Never raises its own flag; Eko cites the specific TERM rule.")
 
 # ---------- CONS ----------
-res("CONS-01", scope="p0_check", severity="warning", layers=["literal", "transcreation"], conditional="needs SikhRI reference set",
-    decision="Active once the SikhRI sample arrives: a stem whose reference rendering differs from the draft -> warning "
-             "'differs from reference rendering, add a reason'. Absorbs TERM-09.")
+res("CONS-01", scope="p0_check", severity="warning", layers=["literal", "transcreation"], conditional="needs applicable reference with explicit term-to-rendering mapping",
+    publish_requires_reason=True,
+    decision="Active only when an applicable SikhRI-supplied or Eko-published reference explicitly maps a source term to its English rendering: a differing draft rendering -> warning "
+             "'differs from reference rendering, add a reason'. A departure must have a recorded reason before publish "
+             "(CONS-03); the warning remains non-error severity. Absorbs TERM-09.")
 res("CONS-02", scope="p0_suppressor", severity="none",
     decision="Precedence rule: a reviewer's context reason clears any consistency warning (TERM-08, CONS-01). It never raises a flag itself.")
 res("CONS-03", scope="p0_by_design", severity="none",
-    decision="Satisfied by workflow: Eko won't let a consistency warning be waived without a written reason, and stores that reason as the log.")
+    decision="Satisfied by workflow: Eko requires a written reason before publishing a CONS-01 departure and stores that reason as the log.")
 res("CONS-04", decision="Review lens only.")
 
 # ---------- ANNO / TRAN ----------
@@ -161,7 +163,7 @@ for r in seed:
     active = scope in ("p0_check", "p0_by_design", "p0_suppressor")
     blocks = o.get("blocks_publish", active and sev in ("error", "flag"))
     r2 = dict(r)
-    r2["resolution"] = {
+    resolution = {
         "active": active,
         "scope": scope,
         "severity": sev,
@@ -170,13 +172,17 @@ for r in seed:
         "conditional": o.get("conditional"),
         "decision": o.get("decision"),
     }
+    if o.get("publish_requires_reason"):
+        resolution["publish_requires_reason"] = True
+    r2["resolution"] = resolution
     out.append(r2)
 
 doc = {
     "version": "0.1-resolved",
     "global_decisions": [
         "Severity follows the draft's strength table: MUST -> flag (blocks publish until fixed or waived with a reason); "
-        "SHOULD -> warning (needs a reason, doesn't block); GUIDE -> review lens (never flagged). Deterministic MUST checks with near-zero false positives are 'error'.",
+        "SHOULD -> warning (needs a reason to dismiss; CONS-01 also needs a recorded reason before publish); "
+        "GUIDE -> review lens (never flagged). Deterministic MUST checks with near-zero false positives are 'error'.",
         "Precedence: PRIN rules win conflicts (as the draft says); a specific rule is cited over an umbrella rule; "
         "a reviewer's context reason (CONS-02) clears consistency warnings.",
         "Review unit is the Sabad: 'first use' and 'same word' are scoped to one Sabad.",
