@@ -15,7 +15,7 @@ Built by Team BJ13 for Sarbat Build Day, problem statement [sikhri-1](https://sa
 | UI mockups | Eight supplied screens mapped to P0/P1 tasks: [`_docs/09-ui-mockups.md`](_docs/09-ui-mockups.md) |
 | Feature plan | Task breakdown and acceptance criteria: [`_docs/10-feature-breakdown.md`](_docs/10-feature-breakdown.md) |
 | Kickoff readiness | Decisions and external inputs before workstream split: [`_docs/11-execution-readiness.md`](_docs/11-execution-readiness.md) |
-| Code | C-01 minimal scaffold complete; product features begin with C-02 in [`WORKING_LOG.md`](WORKING_LOG.md) |
+| Code | C-01 scaffold and C-02 contracts/stubs complete; C-03 private API fixture ready, local source export blocked by the partial dev seed: [`WORKING_LOG.md`](WORKING_LOG.md) |
 
 ## Start here
 
@@ -61,9 +61,11 @@ The minimal app scaffold is available. Product data, checks and evaluation arriv
 pnpm install
 pnpm dev                                                 # http://localhost:3000
 pnpm typecheck
-pnpm test                                                # no feature tests until C-02
+pnpm test
 pnpm build
 ```
+
+C-02 supplies review-only schemas, 18 P0 API contracts, and explicitly synthetic engine/client stubs. Real review workflows arrive in later tasks. For local BaniDB setup and the private complete demo fixture, follow [C-03 setup](_docs/c03-banidb.md); the pinned development database is partial, so its documented API fallback is needed for the demo.
 
 One-time setup per clone so the ownership hook runs (see [`CLAUDE.md`](CLAUDE.md)):
 

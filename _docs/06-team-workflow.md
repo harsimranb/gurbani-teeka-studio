@@ -116,6 +116,7 @@ type CheckResult = {
 type CheckInput = {
   sabad: { lines: Line[] };            // Gurmukhi from BaniDB, NFC
   draft: Draft;                        // transcreation text + line IDs
+  sabadDrafts: Draft[];                // current authored units, including draft
   changedLineIds: string[];
   rules: Rule[];                       // current ruleset version, from the DB
   rulesetVersion: number;
@@ -123,7 +124,7 @@ type CheckInput = {
 };
 ```
 
-`changedLineIds` contains all BaniDB line IDs covered by each edited authored tukk/group; the engine also re-evaluates any Sabad-scoped checks whose result depends on them. Finding offsets are end-exclusive UTF-16 code-unit positions into the authored English draft: `draft.text.slice(start, end) === quoted_span`. The API passes the current reference snapshot on each check, so a process restart cannot leave the in-memory retrieval index empty. `indexReferences` may warm/update the engine-private index after import or publish, but correctness cannot depend on that warm state. The API stores a `CheckRun` for each phase and persists results only when draft and ruleset versions still match the request. The publish gate requires successful code and model `CheckRun` records for those same versions. A per-rule `notEvaluable` result is visible but is not a finding or a failed phase.
+`changedLineIds` contains all BaniDB line IDs covered by each edited authored tukk/group; the engine also re-evaluates any Sabad-scoped checks whose result depends on them. `sabadDrafts` supplies the current authored-unit snapshot, including the selected `draft`, so first-use and collapse checks can inspect other units without database access. Units belong to this Sabad and cannot overlap source line IDs. Finding offsets are end-exclusive UTF-16 code-unit positions into the authored English draft: `draft.text.slice(start, end) === quoted_span`. The API passes the current reference snapshot on each check, so a process restart cannot leave the in-memory retrieval index empty. `indexReferences` may warm/update the engine-private index after import or publish, but correctness cannot depend on that warm state. The API stores a `CheckRun` for each affected authored unit and phase, and persists results only when the captured Sabad draft snapshot and ruleset versions still match the request. A sibling edit can invalidate a dependent check even if the selected draft version is unchanged. The publish gate requires successful code and model `CheckRun` records for those same versions. A per-rule `notEvaluable` result is visible but is not a finding or a failed phase.
 
 ### Contract change protocol
 

@@ -23,7 +23,7 @@ Mark a feature complete only when its acceptance paragraph in [`_docs/10-feature
 
 | Feature | Status | Evidence / next dependency |
 |---|---|---|
-| **F0 · Foundation, contracts and source data** | In progress | C-01 complete (`9adc8f0`); C-05 guardrail files landed, Person A clone setup pending. Next: C-02 contracts, C-03 BaniDB fixture, C-04 fixtures and DATA/API foundation. |
+| **F0 · Foundation, contracts and source data** | In progress | C-01/C-02 complete; C-03 service and private API fallback delivered, local export blocked by partial source. C-05 Person A clone setup, C-04 fixtures and DATA/API foundation remain. |
 | **F1 · Workspace** | Not started | Needs F0 contracts, data and API. |
 | **F2 · Checks and report card** | Not started | Needs C-02 contracts and C-03 BaniDB fixture. |
 | **F3 · Reference and style evidence** | Not started | Eko-published references can exercise mechanics; SikhRI sample and term mappings remain pending. |
@@ -74,6 +74,10 @@ Append-only. Record decisions that add, remove or change planned behavior here *
 | D-64 | The approved-task agent harness in `CLAUDE.md` governs implementation, review, commit and push. |
 | D-65 | C-01 uses current Tailwind/PostCSS setup and webpack for production build. |
 | D-66 | Future task/feature status and plan-changing decisions are updated here before commit/push. |
+| D-67 | Harsimran authorized separate C-02/C-03 subagents and both workstreams for C-02 (2026-10-16); contracts, engine stub and client remain separate commits with ownership checks enabled. |
+| D-68 | C-02 includes the current Sabad authored-unit snapshot in `CheckInput.sabadDrafts`, so Sabad-scoped checks can inspect other drafts without engine database access. Rule contracts retain source prefilter metadata. |
+| D-69 | Drift `affected_count` counts unique source lines; per-source unique-line counts may overlap. C-02 exposes reference lookup for cited evidence, and affected-unit phase results retain their own draft versions. |
+| D-70 | C-03 verified the dev database is partial and cannot export a complete metadata-valid Sabad. Keep local-export acceptance open; use the documented explicit API fallback for private demo development, with separate provenance. |
 
 ---
 
@@ -95,6 +99,7 @@ Append-only. Record decisions that add, remove or change planned behavior here *
 - [ ] **P-03** Receive SikhRI style guide → fold settled items into `resolve.py`
 - [ ] **P-04** Ask SikhRI organizers for the sample: reference transcreations, review history with pre-edit drafts, ID scheme, format
 - [ ] **P-05** Verify `khalisfoundation/banidb-dev` holds the full Guru Granth Sahib; if not, request a database copy from Khalis Foundation
+  - Verified partial (2026-10-16): 20,134 G-source verses and 39,977 missing mapped verses. A fuller copy is still needed; no external request has been sent.
 - [ ] **P-06** Confirm whether BaniDB's monthly contribution requirement applies to a hackathon prototype
 - [ ] **P-07** Pick 1–3 demo Sabads: one with a Kartar/Karta name (TERM-02), one opening with ੴ (TERM-03)
 - [ ] **P-08** API keys for 2–3 LLM providers
@@ -111,8 +116,10 @@ Append-only. Record decisions that add, remove or change planned behavior here *
 The private-data ignore patterns and executable hook are committed. Verify the ignore rules before C-03 exports source data; configure `core.hooksPath` and `eko.person` in each clone at M0.
 
 - [x] **C-01** PLATFORM scaffold (Harsimran/Person B; `9adc8f0`): Next.js (App Router, TS strict), Tailwind, shadcn (utils alias → `lib/utils.ts`), pnpm, Vitest, tsx. Full package list pinned; dev/build/typecheck/test verified, later scripts wired; `.env.example` and B-owned folder placeholders added. A-owned folders wait for their tasks
-- [ ] **C-02** CONTRACTS v1: `domain.ts`, `api.ts` (every route), `ports.ts` (`Engine`). Include grouped line IDs, draft/check phase versions, exact English span offsets, `FindingBatch`/`DriftAssessment` review schemas, engine `CheckResult`, persisted `CheckRun`, current-vs-cleared findings, decision history, reference snapshot and exception marks, and ruleset version. Plus the `lib/engine/index.ts` stub (returns fixtures) and the `lib/client` mock-mode skeleton
+- [x] **C-02** CONTRACTS v1: `domain.ts`, `api.ts` (every route), `ports.ts` (`Engine`). Include grouped line IDs, draft/check phase versions, exact English span offsets, `FindingBatch`/`DriftAssessment` review schemas, engine `CheckResult`, persisted `CheckRun`, current-vs-cleared findings, decision history, reference snapshot and exception marks, and ruleset version. Plus the `lib/engine/index.ts` stub (returns fixtures) and the `lib/client` mock-mode skeleton
+  - Complete (2026-10-16): 18 P0 route contracts, current Sabad authored-unit snapshot, source-labelled evidence, minimal labelled fixtures and explicit synthetic engine/client stubs. Fresh subagent correctness review completed; substantiated issues fixed. Integrated typecheck and all 34 tests pass (29 C-02, five C-03). C-04's broader scenarios remain separate; no real checks or backtest are claimed.
 - [ ] **C-03** BaniDB up (`data/banidb/docker-compose.yml`); export the demo Sabads to a local, git-ignored `lib/contracts/fixtures/sabad.demo.json`. **Critical path.** Fallback after 30 min: export from the BaniDB API once. Never hand-type Gurmukhi or commit the export without permission
+  - Partial delivery (2026-10-16): healthy pinned local database, strict exporters and complete private API-fallback Sabad 55 (15 lines, NFC) delivered and independently reviewed. The dev seed is missing verses, and its three complete one-line Sabads lack writer metadata, so local-export acceptance remains blocked. Reproduction and evidence: `_docs/c03-banidb.md`. Private source, provenance and credentials remain ignored.
 - [ ] **C-04** Fixtures: `check-result.json` and `findings.json` (spans from the SYNTHETIC cases), `references.json` and `corrections.json` (labelled test data), `eval-run.json`. All validate against `domain.ts`
 - [ ] **C-05** Guardrails: map, executable hook and private-data ignores landed in `690f614` and `257c0c3`. Each person still runs the clone setup in `CLAUDE.md`; fill in names above before marking complete
 - [ ] **M0** checkpoint: `pnpm dev` and `pnpm test` pass; contracts v1 on `main`
