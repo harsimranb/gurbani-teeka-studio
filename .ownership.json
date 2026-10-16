@@ -1,0 +1,96 @@
+{
+  "$comment": "Folder ownership by workstream. Read by scripts/dev/check-ownership.mjs (pre-commit). Paths are prefixes relative to the repo root; a path ending in / matches everything under it. Change only by agreement, in a commit of its own. See _docs/06-team-workflow.md.",
+  "people": {
+    "A": [
+      "CHECKS",
+      "LLM",
+      "EVAL"
+    ],
+    "B": [
+      "DATA",
+      "API",
+      "FE",
+      "PLATFORM"
+    ]
+  },
+  "streams": {
+    "CHECKS": [
+      "lib/engine/checks/",
+      "lib/engine/gurmukhi/",
+      "lib/engine/rules/",
+      "lib/engine/index.ts"
+    ],
+    "LLM": [
+      "lib/engine/llm/",
+      "lib/engine/retrieval/",
+      "lib/engine/drift/",
+      "data/cache/",
+      "scripts/engine/bakeoff.ts"
+    ],
+    "EVAL": [
+      "lib/engine/eval/",
+      "scripts/engine/eval.ts",
+      "data/eval/"
+    ],
+    "DATA": [
+      "lib/server/db/",
+      "lib/server/ingest/",
+      "scripts/app/",
+      "data/banidb/",
+      "data/sikhri-sample/"
+    ],
+    "API": [
+      "app/api/",
+      "lib/server/services/"
+    ],
+    "FE": [
+      "app/(studio)/",
+      "app/layout.tsx",
+      "app/globals.css",
+      "app/favicon.ico",
+      "components/",
+      "lib/client/",
+      "public/",
+      "app/page.tsx",
+      "lib/utils.ts"
+    ],
+    "PLATFORM": [
+      "package.json",
+      "pnpm-lock.yaml",
+      "pnpm-workspace.yaml",
+      "tsconfig.json",
+      "next.config.js",
+      "next.config.mjs",
+      "next.config.ts",
+      "next-env.d.ts",
+      "tailwind.config.js",
+      "tailwind.config.ts",
+      "postcss.config.js",
+      "postcss.config.mjs",
+      "drizzle.config.ts",
+      "vitest.config.ts",
+      "components.json",
+      "eslint.config.mjs",
+      ".eslintrc.json",
+      ".prettierrc",
+      ".env.example",
+      ".gitignore",
+      ".githooks/",
+      "scripts/dev/",
+      ".github/",
+      ".nvmrc",
+      ".npmrc"
+    ]
+  },
+  "shared": [
+    "lib/contracts/",
+    "_docs/",
+    "README.md",
+    "WORKING_LOG.md",
+    "CLAUDE.md",
+    ".ownership.json"
+  ],
+  "appendOnly": [
+    ".env.example"
+  ]
+}
