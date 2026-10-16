@@ -32,8 +32,8 @@ Everything else: [`_docs/README.md`](_docs/README.md). Why a decision was made: 
 
 ## Agent model policy
 
-- **Planning and design:** Opus 5.5 or GPT 6 Sol High.
-- **Implementation:** Sonnet 5.5 High or Luna High.
+- **Planning, design, and review:** Opus 5.5 or GPT 6 Sol High.
+- **Implementation and Testing:** Sonnet 5.5 High or Luna High.
 - These are the team's model preferences, not the application's review-model choice (LLM-02 still requires a bake-off). Resolve display names to the exact model IDs available in the active harness and use High reasoning where specified. For Codex, GPT 6 Sol High maps to `gpt-6-sol` with `high`, and Luna High maps to `gpt-6-luna` with `high`.
 - When delegating implementation, explicitly select an available implementation model and High reasoning. Do not silently substitute a different model or claim to have changed the current chat's model. Report an unavailable requested model before choosing an alternative.
 
