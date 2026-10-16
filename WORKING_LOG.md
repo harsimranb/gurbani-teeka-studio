@@ -8,12 +8,29 @@ Each feature's ordered tasks and acceptance checks are in [`_docs/10-feature-bre
 
 Before the two builders split, review the decision gates and M0 contract checklist in [`_docs/11-execution-readiness.md`](_docs/11-execution-readiness.md). It records which work can proceed while external data is absent.
 
-- **Edit only your own streams' sections**, so this file never conflicts. *Decisions* is append-only; anyone may add. In *Seams*, only the provider ticks its row.
+- **Edit only your own stream's task section**. *Feature status* is shared and updated by the person completing a related task; *Decisions* is append-only and anyone may add. In *Seams*, only the provider ticks its row.
 - Each task: `ID · what · FR · Needs`. *Needs* names the task or seam it depends on, and the stub to use until then.
-- Finished a task: tick it and record any follow-ups in the task commit. Report that commit's final hash to the user after pushing; a commit cannot contain its own hash.
+- Before committing a finished task: tick it, update the feature status below, record follow-ups and mirror any plan-changing decision in *Decisions*. Report that commit's final hash to the user after pushing; a commit cannot contain its own hash. Add a known hash to the log in a later commit only if useful.
 - Checkpoints M0–M3 are in [`_docs/06-team-workflow.md`](_docs/06-team-workflow.md#checkpoints).
 
 **Person A** (CHECKS, LLM, EVAL) = _(name)_ · **Person B** (DATA, API, FE, PLATFORM) = Harsimran
+
+---
+
+## Feature status
+
+Mark a feature complete only when its acceptance paragraph in [`_docs/10-feature-breakdown.md`](_docs/10-feature-breakdown.md) passes. A completed task does not complete its parent feature.
+
+| Feature | Status | Evidence / next dependency |
+|---|---|---|
+| **F0 · Foundation, contracts and source data** | In progress | C-01 complete (`9adc8f0`); C-05 guardrail files landed, Person A clone setup pending. Next: C-02 contracts, C-03 BaniDB fixture, C-04 fixtures and DATA/API foundation. |
+| **F1 · Workspace** | Not started | Needs F0 contracts, data and API. |
+| **F2 · Checks and report card** | Not started | Needs C-02 contracts and C-03 BaniDB fixture. |
+| **F3 · Reference and style evidence** | Not started | Eko-published references can exercise mechanics; SikhRI sample and term mappings remain pending. |
+| **F4 · Review and publishing** | Not started | Needs current check results and app storage. |
+| **F5 · Rules catalog** | Not started | Needs seeded rules and API. |
+| **F6 · Proposals and drift** | Not started | Needs rules, references and the engine/API contracts. |
+| **F7 · Backtest and evaluation** | Not started; real-data acceptance blocked | SikhRI pre-edit review history has not arrived (P-04). |
 
 ---
 
@@ -37,9 +54,26 @@ Cross-person dependencies. The provider ticks a row when the real implementation
 
 ## Decisions
 
-Append-only. Format: `- YYYY-MM-DD HH:MM · name · decision (why)`. Contract changes go here too. Planning decisions: [`_docs/07-decisions.md`](_docs/07-decisions.md).
+Append-only. Record decisions that add, remove or change planned behavior here **before the related commit** and update the affected task/feature rows. Keep lasting rationale in [`_docs/07-decisions.md`](_docs/07-decisions.md). Contract changes also go here.
 
-- _(none yet on build day)_
+| Decision | Effect reflected in this work queue |
+|---|---|
+| D-35 | LLM-01 uses the pinned AI SDK's current structured-output API. |
+| D-52 | FE-01 to FE-09 follow the supplied UI mockups; P1 details remain separate. |
+| D-53 | C-02/FE show stored ruleset version 1 as `v1`. |
+| D-54 | CHK-10/API-03 recheck affected Sabad rules and reject stale results. |
+| D-55 | API-05 blocks publish until current code/model checks succeed. |
+| D-56 | CHK-12/API-05 require a reason before publishing a CONS-01 departure. |
+| D-57 | LLM-07/API-05 rank Eko-published and SikhRI-supplied references equally, retaining source/exception marks. |
+| D-58 | CHK-12 stays silent without explicit term mapping; LLM-09 may compare cited English references. |
+| D-59 | C-02/LLM-01 use strict `FindingBatch` and `DriftAssessment` review schemas. |
+| D-60 | LLM-06 attempts any approved free-text rule and reports `not_evaluable` when evidence is insufficient. |
+| D-61 | M0–M4 clock hours are estimates; milestone acceptance remains the gate. |
+| D-62 | C-02/DATA-01/API-03 use `CheckResult` and durable `CheckRun` state. |
+| D-63 | LLM-10 starts with a drift replay block at one affected approved reference line. |
+| D-64 | The approved-task agent harness in `CLAUDE.md` governs implementation, review, commit and push. |
+| D-65 | C-01 uses current Tailwind/PostCSS setup and webpack for production build. |
+| D-66 | Future task/feature status and plan-changing decisions are updated here before commit/push. |
 
 ---
 
@@ -53,6 +87,7 @@ Append-only. Format: `- YYYY-MM-DD HH:MM · name · decision (why)`. Contract ch
 - [x] Data source research → `_docs/05`
 - [x] Workstream design and guardrail files → `_docs/06`, `.ownership.json`, `.githooks/`, `.gitignore`
 - [x] **P-11** Consolidate the UI mockups, feature acceptance, readiness decisions and end-to-end agent workflow into the planning docs
+- [x] **P-12** Add feature-level status and require plan-changing decisions in this work log before commit/push
 
 ### Next
 - [ ] **P-01** Review the 4 flagged additions in the reviewer doc (Q1 option B, Q10, Q11, TERM-02 split), then send it
@@ -75,7 +110,7 @@ Append-only. Format: `- YYYY-MM-DD HH:MM · name · decision (why)`. Contract ch
 
 The private-data ignore patterns and executable hook are committed. Verify the ignore rules before C-03 exports source data; configure `core.hooksPath` and `eko.person` in each clone at M0.
 
-- [x] **C-01** PLATFORM scaffold (Harsimran/Person B): Next.js (App Router, TS strict), Tailwind, shadcn (utils alias → `lib/utils.ts`), pnpm, Vitest, tsx. Full package list pinned; dev/build/typecheck/test verified, later scripts wired; `.env.example` and B-owned folder placeholders added. A-owned folders wait for their tasks
+- [x] **C-01** PLATFORM scaffold (Harsimran/Person B; `9adc8f0`): Next.js (App Router, TS strict), Tailwind, shadcn (utils alias → `lib/utils.ts`), pnpm, Vitest, tsx. Full package list pinned; dev/build/typecheck/test verified, later scripts wired; `.env.example` and B-owned folder placeholders added. A-owned folders wait for their tasks
 - [ ] **C-02** CONTRACTS v1: `domain.ts`, `api.ts` (every route), `ports.ts` (`Engine`). Include grouped line IDs, draft/check phase versions, exact English span offsets, `FindingBatch`/`DriftAssessment` review schemas, engine `CheckResult`, persisted `CheckRun`, current-vs-cleared findings, decision history, reference snapshot and exception marks, and ruleset version. Plus the `lib/engine/index.ts` stub (returns fixtures) and the `lib/client` mock-mode skeleton
 - [ ] **C-03** BaniDB up (`data/banidb/docker-compose.yml`); export the demo Sabads to a local, git-ignored `lib/contracts/fixtures/sabad.demo.json`. **Critical path.** Fallback after 30 min: export from the BaniDB API once. Never hand-type Gurmukhi or commit the export without permission
 - [ ] **C-04** Fixtures: `check-result.json` and `findings.json` (spans from the SYNTHETIC cases), `references.json` and `corrections.json` (labelled test data), `eval-run.json`. All validate against `domain.ts`
