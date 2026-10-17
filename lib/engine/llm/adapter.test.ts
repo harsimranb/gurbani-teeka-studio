@@ -6,7 +6,7 @@ import { MockLanguageModelV4 } from "ai/test";
 import { afterEach, describe, expect, it } from "vitest";
 import { z } from "zod";
 import { createLlmClient, LlmSchemaError } from "./adapter";
-import { createLlmCache } from "./cache";
+import { createLlmCache, type LlmCache } from "./cache";
 
 const usage = { inputTokens: { total: 1, noCache: 1, cacheRead: undefined, cacheWrite: undefined }, outputTokens: { total: 1, text: 1, reasoning: undefined } };
 const mockModel = (text: string) => new MockLanguageModelV4({
@@ -16,8 +16,14 @@ const schema = z.object({ verdict: z.enum(["confirm", "reject"]) });
 const request = { schemaName: "test", schema, system: "SYNTHETIC SYSTEM", prompt: "SYNTHETIC PROMPT", promptVersion: "test-v1", evidence: { marker: 1 } };
 
 const dirs: string[] = [];
-const tempCache = () => { const dir = mkdtempSync(join(tmpdir(), "eko-llm-")); dirs.push(dir); return createLlmCache(join(dir, "nested", "llm.sqlite")); };
-afterEach(() => { for (const dir of dirs.splice(0)) rmSync(dir, { recursive: true, force: true }); });
+const caches: LlmCache[] = [];
+const track = (cache: LlmCache) => { caches.push(cache); return cache; };
+const tempCache = () => { const dir = mkdtempSync(join(tmpdir(), "eko-llm-")); dirs.push(dir); return track(createLlmCache(join(dir, "nested", "llm.sqlite"))); };
+// Close every cache before deleting its directory: Windows refuses to delete an open SQLite file (EBUSY).
+afterEach(() => {
+  for (const cache of caches.splice(0)) cache.close?.();
+  for (const dir of dirs.splice(0)) rmSync(dir, { recursive: true, force: true });
+});
 
 describe("LLM-01 adapter", () => {
   it("returns no client without an injected model or API key", () => {
@@ -65,7 +71,7 @@ describe("LLM-01 adapter", () => {
     const dir = mkdtempSync(join(tmpdir(), "eko-llm-"));
     dirs.push(dir);
     const path = join(dir, "llm.sqlite");
-    createLlmCache(path).set("k", { v: 1 });
+    track(createLlmCache(path)).set("k", { v: 1 });
     const db = new Database(path, { readonly: true });
     expect(db.pragma("journal_mode", { simple: true })).toBe("wal");
     db.close();

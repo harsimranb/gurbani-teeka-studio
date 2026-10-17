@@ -2,7 +2,7 @@ import Database from "better-sqlite3";
 import { mkdirSync } from "node:fs";
 import { dirname } from "node:path";
 
-export interface LlmCache { get(key: string): unknown | undefined; set(key: string, value: unknown): void }
+export interface LlmCache { get(key: string): unknown | undefined; set(key: string, value: unknown): void; close?(): void }
 
 export const DEFAULT_CACHE_PATH = "data/cache/llm.sqlite";
 
@@ -26,6 +26,11 @@ export function createLlmCache(path = DEFAULT_CACHE_PATH): LlmCache {
     },
     set(key, value) {
       open().prepare("INSERT OR REPLACE INTO llm_cache (key, value) VALUES (?, ?)").run(key, JSON.stringify(value));
+    },
+    /** Releases the file handle (Windows cannot delete an open SQLite file); a later call reopens it. */
+    close() {
+      db?.close();
+      db = undefined;
     },
   };
 }
