@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { ApiErrorSchema, CheckResponseSchema, ReportSchema, routes } from "./api";
+import { mockResponses } from "./fixtures";
 
 const at = "2026-10-16T12:00:00.000Z";
 const draft = { id: "synthetic-draft", shabad_id: "synthetic-sabad", line_ids: ["line-1"], layer: "transcreation", text: "SYNTHETIC TEST: [sample]", author: "Test author", status: "draft", version: 2, updated_at: at };
@@ -27,5 +28,16 @@ describe("P0 API contracts", () => {
   it("makes version conflicts and publish blockers explicit HTTP error payloads", () => {
     expect(ApiErrorSchema.safeParse({ error: { code: "version_conflict", reason: "Draft changed; reload the current report." } }).success).toBe(true);
     expect(ApiErrorSchema.safeParse({ error: { code: "publish_blocked", reason: "Current model phase is missing.", blockers: [{ kind: "check_phase", draft_id: draft.id, phase: "llm", status: "missing" }] } }).success).toBe(true);
+  });
+  it("lists published records by Sabad as a read route with a contract-valid fixture", () => {
+    expect(Object.keys(routes)).toHaveLength(19);
+    expect(routes.listPublications).toMatchObject({ method: "GET", path: "/api/sabads/:shabad_id/publications" });
+    expect(routes.listPublications.request.safeParse({ shabad_id: "s" }).success).toBe(true);
+    expect(routes.listPublications.request.safeParse({ shabad_id: " " }).success).toBe(false);
+    expect(routes.listPublications.response.safeParse(mockResponses.listPublications).success).toBe(true);
+    const gate = { draft_id: draft.id, draft_version: 2, ruleset_version: 3, can_publish: true, blockers: [], warning_ids: [] };
+    const publication = { reference: { id: "PUB-0001", line_ids: ["line-1"], english: draft.text, source: "published", exceptions: [] }, draft_id: draft.id, approver: "Approver", at, gate };
+    expect(routes.listPublications.response.safeParse({ publications: [publication] }).success).toBe(true);
+    expect(routes.listPublications.response.safeParse({ publications: [{ ...publication, gate: { ...gate, can_publish: false } }] }).success).toBe(false);
   });
 });

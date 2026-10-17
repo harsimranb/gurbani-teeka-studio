@@ -2,7 +2,7 @@ import { z } from "zod";
 import {
   CheckResultSchema, CheckRunSchema, DecisionSchema, DraftSchema, DriftResultSchema,
   EvalRunSchema, ExactSpanSchema, FindingSchema, GroupedLineIdsSchema, IdSchema,
-  NonblankSchema, ProposalSchema, PublishBlockerSchema, PublishGateSchema,
+  NonblankSchema, ProposalSchema, PublicationSchema, PublishBlockerSchema, PublishGateSchema,
   ReferenceSchema, RuleApprovalSchema, RuleSchema, SabadSchema, VersionSchema,
 } from "./domain";
 
@@ -53,6 +53,7 @@ export const DecisionResponseSchema = z.strictObject({ decision: DecisionSchema,
 export const PublishResponseSchema = z.strictObject({ draft: DraftSchema, reference: ReferenceSchema, gate: PublishGateSchema }).refine((response) => response.draft.status === "published" && response.reference.source === "published" && response.gate.can_publish && response.gate.draft_id === response.draft.id && response.gate.draft_version === response.draft.version, "Published response needs a published reference and a clear current gate");
 
 // P0 inventory only. No generation, P1 browsing/lookup or backtest execution route.
+// listPublications is a read route for published records (reference, approver, time and the gate that allowed it).
 export const routes = {
   listSabads: { method: "GET", path: "/api/sabads", request: EmptySchema, response: z.strictObject({ sabads: z.array(z.strictObject({ shabad_id: IdSchema, ang: z.number().int().min(1).max(1430), raag: NonblankSchema, writer: NonblankSchema })) }) },
   getSabad: { method: "GET", path: "/api/sabads/:shabad_id", request: z.strictObject({ shabad_id: IdSchema }), response: SabadResponseSchema },
@@ -65,6 +66,7 @@ export const routes = {
   decide: { method: "POST", path: "/api/findings/:finding_id/decisions", request: z.strictObject({ ...CurrentVersionFields, finding_id: IdSchema, action: z.enum(["accept", "override", "waive"]), reason: NonblankSchema, reviewer: NonblankSchema }), response: DecisionResponseSchema },
   getPublishGate: { method: "GET", path: "/api/drafts/:draft_id/publish-gate", request: DraftIdSchema, response: PublishGateSchema },
   publish: { method: "POST", path: "/api/drafts/:draft_id/publish", request: z.strictObject({ ...CurrentVersionFields, actor: NonblankSchema, departure_reasons: z.array(z.strictObject({ finding_id: IdSchema, reason: NonblankSchema })) }), response: PublishResponseSchema },
+  listPublications: { method: "GET", path: "/api/sabads/:shabad_id/publications", request: z.strictObject({ shabad_id: IdSchema }), response: z.strictObject({ publications: z.array(PublicationSchema) }) },
   getReference: { method: "GET", path: "/api/references/:reference_id", request: z.strictObject({ reference_id: IdSchema }), response: z.strictObject({ reference: ReferenceSchema }) },
   listRules: { method: "GET", path: "/api/rules", request: EmptySchema, response: RulesResponseSchema },
   listProposals: { method: "GET", path: "/api/proposals", request: EmptySchema, response: z.strictObject({ proposals: z.array(ProposalSchema) }) },

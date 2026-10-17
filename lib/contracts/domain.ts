@@ -145,6 +145,9 @@ export const PublishBlockerSchema = z.discriminatedUnion("kind", [
 ]);
 export const PublishGateSchema = z.strictObject({ draft_id: IdSchema, draft_version: VersionSchema, ruleset_version: VersionSchema, can_publish: z.boolean(), blockers: z.array(PublishBlockerSchema), warning_ids: IdsSchema }).refine((gate) => gate.can_publish === (gate.blockers.length === 0), "Publish permission must agree with its blockers");
 
+// A published record: who approved which draft, when, and the gate that allowed it.
+export const PublicationSchema = z.strictObject({ reference: ReferenceSchema, draft_id: IdSchema, approver: NonblankSchema, at: TimestampSchema, gate: PublishGateSchema });
+
 export const ReviewCorrectionSchema = z.strictObject({
   id: IdSchema, line_ids: GroupedLineIdsSchema, pre_edit: z.string(), post_edit: z.string(), reviewer: NonblankSchema,
   source_id: IdSchema, label: z.enum(["unclassified", "in_scope", "typo", "out_of_scope", "unmatched"]),
@@ -184,5 +187,6 @@ export type DriftResult = z.infer<typeof DriftResultSchema>;
 export type DriftContext = z.infer<typeof DriftContextSchema>;
 export type RuleApproval = z.infer<typeof RuleApprovalSchema>;
 export type PublishGate = z.infer<typeof PublishGateSchema>;
+export type Publication = z.infer<typeof PublicationSchema>;
 export type ReviewCorrection = z.infer<typeof ReviewCorrectionSchema>;
 export type EvalRun = z.infer<typeof EvalRunSchema>;

@@ -42,6 +42,7 @@ export const mockResponses: Record<RouteName, unknown> = {
   decide: { decision: { id: "synthetic-decision-1", finding_id: finding.id, draft_id: draftFixture.id, draft_version: 1, ruleset_version: 1, action: "accept", reason: "Synthetic test evidence accepted; this finding stays open for editing.", reviewer: "Synthetic test reviewer", at: draftFixture.updated_at }, finding },
   getPublishGate: gate,
   publish: { error: { code: "publish_blocked", reason: "Synthetic fixture gate is blocked; no publication was performed.", blockers: gate.blockers } },
+  listPublications: { publications: [] },
   getReference: { error: { code: "unavailable", reason: "Synthetic mock has no real reference evidence; no reference rendering is synthesized." } },
   listRules: { ruleset_version: 1, rules: rulesFixture },
   listProposals: { proposals: [proposalFixture] },
