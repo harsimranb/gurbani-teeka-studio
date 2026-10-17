@@ -1,5 +1,6 @@
-import { fixtureRoute } from "../../../lib/server/services/fixture-route";
+import { handleRoute } from "../../../lib/server/services/http";
+import { saveDraft } from "../../../lib/server/services/drafts";
 
-export function POST(request: Request) {
-  return fixtureRoute("saveDraft", request);
+export async function POST(request: Request) {
+  return handleRoute("saveDraft", request, {}, (req) => saveDraft(req));
 }

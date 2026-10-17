@@ -1,7 +1,8 @@
-import { fixtureRoute } from "../../../../../lib/server/services/fixture-route";
+import { handleRoute } from "../../../../../lib/server/services/http";
+import { markReady } from "../../../../../lib/server/services/review";
 
 type Params = { draft_id: string };
 
 export async function POST(request: Request, { params }: { params: Promise<Params> }) {
-  return fixtureRoute("markReady", request, await params);
+  return handleRoute("markReady", request, await params, (req) => markReady(req));
 }

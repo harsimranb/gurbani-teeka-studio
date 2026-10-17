@@ -1,7 +1,8 @@
-import { fixtureRoute } from "../../../../lib/server/services/fixture-route";
+import { handleRoute } from "../../../../lib/server/services/http";
+import { getReference } from "../../../../lib/server/services/review";
 
 type Params = { reference_id: string };
 
 export async function GET(request: Request, { params }: { params: Promise<Params> }) {
-  return fixtureRoute("getReference", request, await params);
+  return handleRoute("getReference", request, await params, (req) => getReference(req));
 }

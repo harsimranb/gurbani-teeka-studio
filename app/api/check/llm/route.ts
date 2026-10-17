@@ -1,5 +1,8 @@
-import { fixtureRoute } from "../../../../lib/server/services/fixture-route";
+import { runLlmChecks } from "../../../../lib/server/services/checks";
+import { handleRoute } from "../../../../lib/server/services/http";
 
-export function POST(request: Request) {
-  return fixtureRoute("runLlmChecks", request);
+export const dynamic = "force-dynamic";
+
+export async function POST(request: Request) {
+  return handleRoute("runLlmChecks", request, {}, (req) => runLlmChecks(req));
 }

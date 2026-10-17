@@ -1,7 +1,8 @@
-import { fixtureRoute } from "../../../../lib/server/services/fixture-route";
+import { handleRoute } from "../../../../lib/server/services/http";
+import { getProposal } from "../../../../lib/server/services/proposals";
 
 type Params = { proposal_id: string };
 
 export async function GET(request: Request, { params }: { params: Promise<Params> }) {
-  return fixtureRoute("getProposal", request, await params);
+  return handleRoute("getProposal", request, await params, (req) => getProposal(req));
 }

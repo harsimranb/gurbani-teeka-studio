@@ -78,6 +78,7 @@ export function UnitCard({ unit, sabad, rules, rulesetVersion, numbers, name, re
   const grouped = lines.length > 1;
   const where = positionsLabel(positions);
   const bothSucceeded = (["code", "llm"] as const).every((phase) => report.check_runs.some((run) => run.phase === phase && run.status === "succeeded"));
+  const notEvaluable = new Set(report.check_runs.filter((run) => run.status === "succeeded").flatMap((run) => run.not_evaluable.map((n) => n.ruleId))).size;
   const ordered = [...report.findings].sort((a, b) => (numbers.get(a.id) ?? 0) - (numbers.get(b.id) ?? 0));
   const findingNumber = numbers;
 
@@ -114,7 +115,11 @@ export function UnitCard({ unit, sabad, rules, rulesetVersion, numbers, name, re
         />
         {ordered.length === 0 && decided.length === 0 ? (
           <p className="m-0 text-xs text-muted">
-            {bothSucceeded ? "No open findings for this unit." : "No current findings, but the checks for this version are not all complete."}
+            {!bothSucceeded
+              ? "No current findings, but the checks for this version are not all complete."
+              : notEvaluable > 0
+                ? `No open findings, but ${notEvaluable} ${notEvaluable === 1 ? "rule" : "rules"} could not be evaluated, so this is not a pass.`
+                : "No open findings for this unit."}
           </p>
         ) : null}
       </div>

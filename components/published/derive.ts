@@ -1,6 +1,5 @@
 import type { ApiResponse } from "@/lib/contracts/api";
-import type { Draft, PublishGate, Reference, Sabad } from "@/lib/contracts/domain";
-import type { Publication } from "./mock-adapter";
+import type { Draft, Publication, PublishGate, Sabad } from "@/lib/contracts/domain";
 
 export type Report = ApiResponse<"getReport">;
 
@@ -46,7 +45,7 @@ export interface GateSummary {
 }
 
 /** Counted from the gate recorded at publish time (never the current gate). A CONS-01 departure with a recorded reference exception counts as having its reason. */
-export function summarizeGate(units: UnitData[], references: Reference[]): GateSummary {
+export function summarizeGate(units: UnitData[]): GateSummary {
   const summary: GateSummary = { errors: 0, flags: 0, incompletePhases: 0, departuresWithoutReason: 0, warnings: 0 };
   for (const unit of units) {
     const gate = unit.publication?.gate;
@@ -57,8 +56,7 @@ export function summarizeGate(units: UnitData[], references: Reference[]): GateS
       else if (blocker.kind === "check_phase") summary.incompletePhases += 1;
       else departures += 1;
     }
-    const reference = references.find((r) => r.id === unit.publication?.reference_id);
-    const recorded = reference?.exceptions.filter((e) => e.rule_id === "CONS-01" && e.action === "context_reason").length ?? 0;
+    const recorded = unit.publication?.reference.exceptions.filter((e) => e.rule_id === "CONS-01" && e.action === "context_reason").length ?? 0;
     summary.departuresWithoutReason += Math.max(0, departures - recorded);
     summary.warnings += gate.warning_ids.length;
   }
@@ -68,7 +66,7 @@ export function summarizeGate(units: UnitData[], references: Reference[]): GateS
 export interface DecisionLine { key: string; rule_id: string; kind: "overridden" | "waived" | "departure"; reviewer: string; reason: string; at: string }
 
 /** Override and waive decisions on the published version, plus recorded CONS-01 departure reasons. */
-export function collectDecisions(units: UnitData[], references: Reference[]): DecisionLine[] {
+export function collectDecisions(units: UnitData[]): DecisionLine[] {
   const lines: DecisionLine[] = [];
   for (const unit of units) {
     const findings = [...unit.report.findings, ...unit.report.history];
@@ -81,7 +79,7 @@ export function collectDecisions(units: UnitData[], references: Reference[]): De
         reviewer: decision.reviewer, reason: decision.reason, at: decision.at,
       });
     }
-    const reference = references.find((r) => r.id === unit.publication?.reference_id);
+    const reference = unit.publication?.reference;
     for (const exception of reference?.exceptions ?? []) {
       if (exception.action !== "context_reason") continue;
       lines.push({ key: `${reference?.id}:${exception.decision_id}`, rule_id: exception.rule_id, kind: "departure", reviewer: exception.reviewer, reason: exception.reason, at: exception.at });

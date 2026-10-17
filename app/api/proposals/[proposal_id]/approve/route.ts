@@ -1,7 +1,8 @@
-import { fixtureRoute } from "../../../../../lib/server/services/fixture-route";
+import { handleRoute } from "../../../../../lib/server/services/http";
+import { approveProposal } from "../../../../../lib/server/services/proposals";
 
 type Params = { proposal_id: string };
 
 export async function POST(request: Request, { params }: { params: Promise<Params> }) {
-  return fixtureRoute("approveProposal", request, await params);
+  return handleRoute("approveProposal", request, await params, (req) => approveProposal(req));
 }

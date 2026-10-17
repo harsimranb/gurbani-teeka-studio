@@ -36,6 +36,7 @@ export function PublishCard({ sabad, units, name, refresh }: { sabad: Sabad; uni
     const all = [...u.report.findings];
     return u.gate.warning_ids.flatMap((id) => all.filter((f) => f.id === id));
   });
+  const notEvaluable = new Set(open.flatMap((u) => u.report.check_runs.filter((run) => run.status === "succeeded").flatMap((run) => run.not_evaluable.map((n) => n.ruleId)))).size;
   const notReady = open.filter((u) => u.draft.status === "draft");
   const needsChecks = blockers.some((b) => b.kind === "check_phase");
   const allPublished = units.length > 0 && open.length === 0;
@@ -72,6 +73,7 @@ export function PublishCard({ sabad, units, name, refresh }: { sabad: Sabad; uni
         {warnings.length > 0
           ? <>Open warnings don&apos;t block: {unique(warnings.map((w) => `${w.rule_id} “${w.quoted_span}”`)).join(", ")}.</>
           : <>Warnings don&apos;t block.</>}
+        {notEvaluable > 0 ? <>{" "}{notEvaluable} {notEvaluable === 1 ? "rule was" : "rules were"} not evaluable in the current runs (see the report card); that is not a pass.</> : null}
         {" "}Publishing records {name || "your name"} as the approver.
       </>
     );

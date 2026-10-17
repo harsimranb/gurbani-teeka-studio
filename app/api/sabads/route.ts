@@ -1,5 +1,6 @@
-import { fixtureRoute } from "../../../lib/server/services/fixture-route";
+import { handleRoute } from "../../../lib/server/services/http";
+import { listSabads } from "../../../lib/server/services/drafts";
 
-export function GET(request: Request) {
-  return fixtureRoute("listSabads", request);
+export async function GET(request: Request) {
+  return handleRoute("listSabads", request, {}, () => listSabads());
 }

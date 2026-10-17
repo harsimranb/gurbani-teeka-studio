@@ -51,9 +51,11 @@ function Findings({ data }: { data: ReportPageData }) {
       ) : null}
       {entries.length === 0 && !data.anyLlmPending ? (
         <Card className="text-sm text-muted">
-          {units.every((u) => u.codeRun?.status === "succeeded" && u.llmRun?.status === "succeeded")
-            ? "No current findings."
-            : "No current findings, but not every check phase has completed, so this is not a pass."}
+          {!units.every((u) => u.codeRun?.status === "succeeded" && u.llmRun?.status === "succeeded")
+            ? "No current findings, but not every check phase has completed, so this is not a pass."
+            : units.some((u) => (u.codeRun?.not_evaluable.length ?? 0) + (u.llmRun?.not_evaluable.length ?? 0) > 0)
+              ? "No current findings, but some rules could not be evaluated (listed under Not evaluable), so this is not a pass."
+              : "No current findings."}
         </Card>
       ) : null}
       {entries.map((entry) => (
@@ -103,7 +105,7 @@ function LeftColumn({ data }: { data: ReportPageData }) {
         {notEvaluable.size === 0 ? (
           <p className="m-0 text-[13px] text-muted">{anyRuns ? "The current runs report none." : "No check has run yet."}</p>
         ) : (
-          <ul className="m-0 flex list-none flex-col gap-1 p-0 text-[13px] text-body">
+          <ul tabIndex={0} aria-label="Rules that could not be evaluated" className="m-0 flex max-h-80 list-none flex-col gap-1 overflow-y-auto p-0 text-[13px] text-body">
             {[...notEvaluable.values()].map((n) => (
               <li key={`${n.ruleId}${n.reason}`} className="flex flex-wrap gap-x-2"><RuleId id={n.ruleId} link /><span>{n.reason}</span></li>
             ))}

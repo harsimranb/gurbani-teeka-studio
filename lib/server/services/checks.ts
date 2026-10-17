@@ -1,0 +1,173 @@
+import type { ApiResponse } from "../../contracts/api";
+import { CheckInputSchema, type CheckInput, type CheckResult, type CheckRun, type Draft, type Finding } from "../../contracts/domain";
+import type { Engine } from "../../contracts/ports";
+import { codePhaseScope, isCodeFinding, runChecks } from "../../engine/index";
+import { getStore, nextId, nowIso } from "./context";
+import { ServiceError, type ParsedRequest } from "./http";
+import type { AppStore } from "./memory-repo";
+import { clearFindings, currentRuleset, sabadDrafts } from "./state";
+
+/**
+ * API-03: run one check phase for a draft. Calls the real engine (`lib/engine/index.ts`) and persists
+ * findings and runs in the store. The engine call is injectable (`runChecksWith`) so tests can substitute
+ * a slow or failing engine; routes use the default.
+ */
+type Phase = CheckRun["phase"];
+type CheckRequest = ParsedRequest<"runCodeChecks">;
+type CheckResponse = ApiResponse<"runCodeChecks">;
+type EngineRunChecks = Engine["runChecks"];
+
+const MAX_ERROR_LENGTH = 300;
+
+export const runCodeChecks = (req: CheckRequest): Promise<CheckResponse> => runChecksWith(runChecks, "code", req);
+export const runLlmChecks = (req: CheckRequest): Promise<CheckResponse> => runChecksWith(runChecks, "llm", req);
+
+/** The authored units this request re-checks: the selected draft plus every unit covering a changed source line. */
+function changedUnits(draft: Draft, units: Draft[], changedLineIds: string[]): Draft[] {
+  const changed = new Set(changedLineIds);
+  return units.filter((unit) => unit.id === draft.id || unit.line_ids.some((id) => changed.has(id)));
+}
+
+/**
+ * True when a result computed from `snapshot` can no longer be trusted: the ruleset moved on, or any authored
+ * unit of the Sabad was added, removed or edited since the snapshot was taken. Exported for unit tests.
+ */
+export function isSnapshotStale(store: AppStore, snapshot: { shabadId: string; rulesetVersion: number; drafts: Draft[] }): boolean {
+  if (currentRuleset(store).version !== snapshot.rulesetVersion) return true;
+  const now = store.listDraftsForSabad(snapshot.shabadId);
+  if (now.length !== snapshot.drafts.length) return true;
+  const versions = new Map(now.map((draft) => [draft.id, draft.version]));
+  return snapshot.drafts.some((draft) => versions.get(draft.id) !== draft.version);
+}
+
+/** Saves `next` only if the stored run for its key is still `previous` (a concurrent re-check owns it otherwise). */
+function settleRun(store: AppStore, previous: CheckRun, next: CheckRun): void {
+  const owner = store.listCheckRunsForDraft(previous.draft_id)
+    .find((run) => run.draft_version === previous.draft_version && run.ruleset_version === previous.ruleset_version && run.phase === previous.phase);
+  if (owner?.id === previous.id) store.saveCheckRun(next);
+}
+
+/** Ids of findings a reviewer overrode or waived at the finding's own draft and ruleset version; they are never resurrected. */
+function reviewerClearedIds(store: AppStore, drafts: Draft[]): Set<string> {
+  const ids = new Set<string>();
+  for (const draft of drafts) {
+    const cleared = new Map(store.listFindingsForDraft(draft.id).filter((finding) => finding.state === "cleared").map((finding) => [finding.id, finding]));
+    for (const decision of store.listDecisionsForDraft(draft.id)) {
+      const finding = cleared.get(decision.finding_id);
+      if (finding && decision.action !== "accept" && decision.draft_version === finding.draft_version && decision.ruleset_version === finding.ruleset_version) ids.add(finding.id);
+    }
+  }
+  return ids;
+}
+
+function neutralError(error: unknown): string {
+  const detail = error instanceof Error && error.message.trim() ? error.message.trim() : "unknown error";
+  return `Check failed before completing: ${detail}`.slice(0, MAX_ERROR_LENGTH);
+}
+
+export async function runChecksWith(engineRunChecks: EngineRunChecks, phase: Phase, req: CheckRequest): Promise<CheckResponse> {
+  const store = getStore();
+  const draft = store.getDraft(req.draft_id);
+  if (!draft) throw new ServiceError("not_found", "Draft not found.");
+  const ruleset = currentRuleset(store);
+  if (req.draft_version !== draft.version) throw new ServiceError("version_conflict", "Draft changed since this check was requested; reload and re-run.");
+  if (req.ruleset_version !== ruleset.version) throw new ServiceError("version_conflict", "Ruleset changed since this check was requested; reload and re-run.");
+  const sabad = store.getSabad(draft.shabad_id);
+  if (!sabad) throw new ServiceError("not_found", "Source Sabad for this draft is not available.");
+  if (draft.line_ids.some((id) => !req.changed_line_ids.includes(id))) {
+    throw new ServiceError("invalid_request", "changed_line_ids must include every source line of the draft's group.");
+  }
+
+  const drafts = sabadDrafts(store, draft.shabad_id);
+  // The request itself must not split a group; checked before the code phase widens the changed set below.
+  for (const unit of drafts) {
+    const covered = unit.line_ids.filter((id) => req.changed_line_ids.includes(id)).length;
+    if (covered > 0 && covered < unit.line_ids.length) throw new ServiceError("invalid_request", "changed_line_ids must cover every source line of any group they touch.");
+  }
+  // Code phase: a sibling with no succeeded code run for its current draft and ruleset version has never been fully
+  // checked, so re-check it in full. That keeps its persisted "succeeded" run truthful and the publish gate honest.
+  const changedLineIds = phase === "code"
+    ? [...new Set([...req.changed_line_ids, ...drafts
+        .filter((unit) => !store.listCheckRunsForDraft(unit.id).some((run) => run.phase === "code" && run.status === "succeeded" && run.draft_version === unit.version && run.ruleset_version === ruleset.version))
+        .flatMap((unit) => unit.line_ids)])]
+    : req.changed_line_ids;
+  const parsed = CheckInputSchema.safeParse({
+    sabad, draft, sabadDrafts: drafts, changedLineIds,
+    rules: ruleset.rules, rulesetVersion: ruleset.version, references: store.listReferences(),
+  });
+  if (!parsed.success) {
+    // Paths and rule messages only: never echo source or draft text.
+    const detail = parsed.error.issues.slice(0, 3).map((issue) => `${issue.path.join(".") || "(input)"}: ${issue.message}`).join("; ");
+    throw new ServiceError("invalid_request", `Check input does not match its contract. ${detail}`);
+  }
+  const input: CheckInput = parsed.data;
+  const snapshot = { shabadId: draft.shabad_id, rulesetVersion: ruleset.version, drafts };
+
+  // Units this phase re-checks. Their runs go `pending` now, so the publish gate blocks until the phase settles.
+  const unitIds = new Set((phase === "code" ? codePhaseScope(input).draftIds : changedUnits(draft, drafts, input.changedLineIds).map((unit) => unit.id)));
+  unitIds.add(draft.id);
+  const units = drafts.filter((unit) => unitIds.has(unit.id));
+  const startedAt = nowIso();
+  const pending = units.map((unit): CheckRun => ({
+    id: nextId("run"), draft_id: unit.id, draft_version: unit.version, ruleset_version: ruleset.version, phase,
+    status: "pending", started_at: startedAt, completed_at: null, error: null, cached: false, not_evaluable: [],
+  }));
+  for (const run of pending) store.saveCheckRun(run);
+
+  let result: CheckResult;
+  try {
+    result = await engineRunChecks(input, phase);
+  } catch (error) {
+    const message = neutralError(error);
+    if (isSnapshotStale(store, snapshot)) return supersede(store, pending);
+    const failed = pending.map((run): CheckRun => ({ ...run, status: "failed", completed_at: nowIso(), error: message }));
+    pending.forEach((run, index) => settleRun(store, run, failed[index]));
+    // A failed run is a valid, retryable outcome: 200 with the failed runs and an empty result.
+    return { affected_drafts: units, check_runs: failed, result: { findings: [], notEvaluable: [] } };
+  }
+
+  // The store may have moved while the engine ran: drop the result rather than persist stale findings.
+  if (isSnapshotStale(store, snapshot)) return supersede(store, pending);
+
+  // Never resurrect a reviewer's override/waive: collect before clearing, since clearing re-labels findings.
+  const reviewerCleared = reviewerClearedIds(store, drafts);
+  const saved: Finding[] = result.findings.filter((finding) => !reviewerCleared.has(finding.id));
+  const at = nowIso();
+  const byId = new Map(drafts.map((unit) => [unit.id, unit]));
+  const current = (finding: Finding) => {
+    const unit = byId.get(finding.draft_id);
+    return !!unit && finding.draft_version === unit.version && finding.ruleset_version === ruleset.version;
+  };
+  const cleared = phase === "code"
+    ? (() => {
+        const scope = codePhaseScope(input);
+        // Own units: all code rules. Every unit: only Sabad-scoped rules, whose result depends on sibling units.
+        return clearFindings(store, (finding) => isCodeFinding(finding) && current(finding)
+          && (scope.draftIds.includes(finding.draft_id) || scope.ruleIds.includes(finding.rule_id)), at);
+      })()
+    : clearFindings(store, (finding) => !isCodeFinding(finding) && current(finding) && units.some((unit) => unit.id === finding.draft_id), at);
+  for (const finding of saved) store.saveFinding(finding);
+
+  // Affected = re-checked units, plus any sibling that received or lost findings under Sabad scope.
+  const affectedIds = new Set([...unitIds, ...saved.map((finding) => finding.draft_id), ...cleared.map((finding) => finding.draft_id)]);
+  const affected = drafts.filter((unit) => affectedIds.has(unit.id));
+  const pendingByDraft = new Map(pending.map((run) => [run.draft_id, run]));
+  const completedAt = nowIso();
+  const runs = affected.map((unit): CheckRun => ({
+    id: pendingByDraft.get(unit.id)?.id ?? nextId("run"), draft_id: unit.id, draft_version: unit.version, ruleset_version: ruleset.version, phase,
+    status: "succeeded", started_at: pendingByDraft.get(unit.id)?.started_at ?? startedAt, completed_at: completedAt, error: null, cached: false,
+    not_evaluable: result.notEvaluable,
+  }));
+  for (const run of runs) store.saveCheckRun(run);
+  return { affected_drafts: affected, check_runs: runs, result: { findings: saved, notEvaluable: result.notEvaluable } };
+}
+
+/** Marks this attempt's pending runs failed ("superseded") when still ours, then reports a version conflict. */
+function supersede(store: AppStore, pending: CheckRun[]): never {
+  const stored = new Set(store.listSabads().flatMap((sabad) => store.listDraftsForSabad(sabad.shabad_id)).map((draft) => draft.id));
+  for (const run of pending) {
+    if (!stored.has(run.draft_id)) continue;
+    settleRun(store, run, { ...run, status: "failed", completed_at: nowIso(), error: "Superseded: the draft or ruleset changed while this check ran; the result was discarded." });
+  }
+  throw new ServiceError("version_conflict", "The draft or ruleset changed while the check ran; the result was discarded. Re-run the check.");
+}

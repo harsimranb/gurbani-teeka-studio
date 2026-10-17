@@ -2,18 +2,17 @@
 
 import { useEffect, useState } from "react";
 import type { ApiResponse } from "@/lib/contracts/api";
-import type { Reference } from "@/lib/contracts/domain";
+import type { Publication } from "@/lib/contracts/domain";
 import { DATA_CHANGED_EVENT, callApi } from "@/lib/client/hooks";
 import type { UnitData } from "./derive";
-import { readPublishSeams } from "./mock-adapter";
 
 type SabadResponse = ApiResponse<"getSabad">;
-interface Loaded { shabadId: string; key: string; units: UnitData[]; references: Reference[] }
+interface Loaded { shabadId: string; key: string; units: UnitData[] }
 
 /**
- * Loads the report and publish gate of every authored unit in the Sabad, then reads the mock
- * publication seams. Re-runs on every `eko:data-changed` and whenever the Sabad's drafts change.
- * Pass the `getSabad` response (so the mock store has already been seeded by that first call).
+ * Loads the report and publish gate of every authored unit in the Sabad, plus the Sabad's
+ * publications (`listPublications`, newest last). Re-runs on every `eko:data-changed` and
+ * whenever the Sabad's drafts change.
  */
 export function usePublishedData(shabadId: string, sabad: SabadResponse | null): { loaded: Loaded | null; error: Error | null } {
   const [loaded, setLoaded] = useState<Loaded | null>(null);
@@ -28,13 +27,18 @@ export function usePublishedData(shabadId: string, sabad: SabadResponse | null):
     const load = async () => {
       const ticket = ++latest;
       try {
-        const units = await Promise.all(ids.map(async (id) => {
-          const [report, gate] = await Promise.all([callApi("getReport", { draft_id: id }), callApi("getPublishGate", { draft_id: id })]);
-          return { draft: report.draft, report, gate, publication: null } as UnitData;
-        }));
+        const [publicationsRes, units] = await Promise.all([
+          callApi("listPublications", { shabad_id: shabadId }),
+          Promise.all(ids.map(async (id) => {
+            const [report, gate] = await Promise.all([callApi("getReport", { draft_id: id }), callApi("getPublishGate", { draft_id: id })]);
+            return { draft: report.draft, report, gate, publication: null } as UnitData;
+          })),
+        ]);
         if (cancelled || ticket !== latest) return;
-        const seams = readPublishSeams(shabadId, units.map((u) => u.draft.id));
-        setLoaded({ shabadId, key: draftsKey, units: units.map((u) => ({ ...u, publication: seams.publications[u.draft.id] ?? null })), references: seams.references });
+        // Newest last: a later publication of the same draft replaces an earlier one.
+        const byDraft = new Map<string, Publication>();
+        for (const publication of publicationsRes.publications) byDraft.set(publication.draft_id, publication);
+        setLoaded({ shabadId, key: draftsKey, units: units.map((u) => ({ ...u, publication: byDraft.get(u.draft.id) ?? null })) });
         setError(null);
       } catch (e) {
         if (!cancelled && ticket === latest) setError(e instanceof Error ? e : new Error(String(e)));

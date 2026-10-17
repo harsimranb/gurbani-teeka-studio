@@ -7,7 +7,9 @@ import { lineLabel, type FindingEntry, type UnitData } from "./data";
 export function UnitCard({ unit, entries }: { unit: UnitData; entries: FindingEntry[] }) {
   const numbers = unit.lines.map((l) => l.number);
   const grouped = unit.lines.length > 1;
-  const clear = unit.findings.length === 0 && unit.codeRun?.status === "succeeded" && unit.llmRun?.status === "succeeded";
+  // "Clear" only when both phases ran and judged every rule; not-evaluable results are never a pass.
+  const fullyJudged = (run: UnitData["codeRun"]) => run?.status === "succeeded" && run.not_evaluable.length === 0;
+  const clear = unit.findings.length === 0 && fullyJudged(unit.codeRun) && fullyJudged(unit.llmRun);
   const spans = entries.filter((e) => e.unit.draft.id === unit.draft.id).map((e) => ({ start: e.finding.start, end: e.finding.end, tone: e.finding.severity, label: e.number }));
   return (
     <section className="overflow-hidden rounded-xl border border-line bg-card" aria-label={lineLabel(numbers)}>

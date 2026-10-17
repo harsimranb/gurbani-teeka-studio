@@ -28,7 +28,9 @@ export function UnitStatus({ unit, dirty, report, inflight, shabadId, onRetry }:
   const code = runOf(report, "code");
   const llm = runOf(report, "llm");
   const running = { code: inflight.code === true, llm: inflight.llm === true };
-  if (report.findings.length === 0 && code?.status === "succeeded" && llm?.status === "succeeded" && !running.code && !running.llm) {
+  // "All checks clear" only when both phases ran AND judged every rule; not-evaluable results are never a pass.
+  const fullyJudged = (run: typeof code) => run?.status === "succeeded" && run.not_evaluable.length === 0;
+  if (report.findings.length === 0 && fullyJudged(code) && fullyJudged(llm) && !running.code && !running.llm) {
     return <span className={`${base} text-ok`}><Check className="size-4" aria-hidden="true" />All checks clear</span>;
   }
   const href = `/workspace/${encodeURIComponent(shabadId)}/report`;

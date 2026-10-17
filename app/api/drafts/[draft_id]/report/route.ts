@@ -1,7 +1,8 @@
-import { fixtureRoute } from "../../../../../lib/server/services/fixture-route";
+import { handleRoute } from "../../../../../lib/server/services/http";
+import { getReport } from "../../../../../lib/server/services/drafts";
 
 type Params = { draft_id: string };
 
 export async function GET(request: Request, { params }: { params: Promise<Params> }) {
-  return fixtureRoute("getReport", request, await params);
+  return handleRoute("getReport", request, await params, (req) => getReport(req));
 }

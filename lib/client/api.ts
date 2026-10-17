@@ -29,8 +29,17 @@ export function createApiClient(options: { useMocks?: boolean; fetcher?: typeof 
           method: route.method,
           ...(route.method === "GET" ? {} : { headers: { "Content-Type": "application/json" }, body: JSON.stringify(request) }),
         });
-        payload = await response.json();
-        if (!response.ok) throw new ApiClientError(ApiErrorSchema.parse(payload));
+        try {
+          payload = await response.json();
+        } catch {
+          // Not JSON (for example a framework error page): still surface a readable ApiClientError.
+          if (!response.ok) throw new ApiClientError({ error: { code: response.status === 404 ? "not_found" : "internal_error", reason: `The server returned HTTP ${response.status} without a readable error body.` } });
+          throw new Error("The server returned a response that was not valid JSON.");
+        }
+        if (!response.ok) {
+          const parsedError = ApiErrorSchema.safeParse(payload);
+          throw new ApiClientError(parsedError.success ? parsedError.data : { error: { code: "internal_error", reason: `The server returned HTTP ${response.status} with an unexpected error body.` } });
+        }
       }
       const error = ApiErrorSchema.safeParse(payload);
       if (error.success) throw new ApiClientError(error.data);

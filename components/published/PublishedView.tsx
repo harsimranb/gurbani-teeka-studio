@@ -56,9 +56,9 @@ export function PublishedView({ shabadId }: { shabadId: string }) {
     );
   }
 
-  const publishedRefs: Reference[] = published.flatMap((u) => loaded.references.filter((r) => r.id === u.publication?.reference_id));
-  const gate = summarizeGate(published, loaded.references);
-  const decisions = collectDecisions(published, loaded.references);
+  const publishedRefs: Reference[] = published.flatMap((u) => (u.publication ? [u.publication.reference] : []));
+  const gate = summarizeGate(published);
+  const decisions = collectDecisions(published);
   const maxVersion = Math.max(...published.map((u) => u.draft.version));
   const authors = [...new Set(published.map((u) => u.draft.author))].join(", ");
   const publications = published.map((u) => u.publication).filter((p) => p !== null);

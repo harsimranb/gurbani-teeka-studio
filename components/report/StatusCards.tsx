@@ -75,10 +75,13 @@ function ModelChecksCard({ units }: { units: UnitData[] }) {
   }
 
   const running = pending.length > 0;
-  const icon = failed.length ? <TriangleAlert className="size-3.5" aria-hidden="true" /> : running ? <Loader2 className="size-3.5 animate-spin" aria-hidden="true" /> : missing.length ? <CircleDashed className="size-3.5" aria-hidden="true" /> : <Check className="size-3.5" strokeWidth={3} aria-hidden="true" />;
+  // A completed run that could not judge some rules is not a pass: show it neutral, with the count.
+  const unjudged = new Set(done.flatMap((r) => r.not_evaluable.map((n) => n.ruleId))).size;
+  const icon = failed.length ? <TriangleAlert className="size-3.5" aria-hidden="true" /> : running ? <Loader2 className="size-3.5 animate-spin" aria-hidden="true" /> : missing.length || unjudged > 0 ? <CircleDashed className="size-3.5" aria-hidden="true" /> : <Check className="size-3.5" strokeWidth={3} aria-hidden="true" />;
   return (
-    <StatusCard icon={icon} tone={failed.length ? "error" : running || missing.length ? "neutral" : "ok"} title={<span className="inline-flex flex-wrap items-center gap-2">Model checks{took && !running ? ` · ${took}` : ""}{cached ? <StatusPill>cached</StatusPill> : null}</span>}>
+    <StatusCard icon={icon} tone={failed.length ? "error" : running || missing.length || unjudged > 0 ? "neutral" : "ok"} title={<span className="inline-flex flex-wrap items-center gap-2">Model checks{took && !running ? ` · ${took}` : ""}{cached ? <StatusPill>cached</StatusPill> : null}</span>}>
       <div>{done.length} of {units.length} authored units checked</div>
+      {unjudged > 0 ? <div>Completed with {unjudged} {unjudged === 1 ? "rule" : "rules"} not evaluable (listed under Not evaluable). This is not a pass.</div> : null}
       {running ? <div role="status">Running for {names(pending)}; model findings will appear here.</div> : null}
       {missing.length ? <div>Not run for {names(missing)}</div> : null}
       {failed.map((u) => (
