@@ -23,7 +23,7 @@ Mark a feature complete only when its acceptance paragraph in [`_docs/10-feature
 
 | Feature | Status | Evidence / next dependency |
 |---|---|---|
-| **F0 · Foundation, contracts and source data** | Complete for approved Mac/source-only scope | C-01 to C-04, DATA-01 to DATA-05 and API-01 pass. C-05 Mac privacy verified; Windows validation remains open by user direction. Human-authored draft is deferred to P-09/F1. M0 checks, production build and fresh review with fixes pass; P-05 corpus currency/coverage remains open. |
+| **F0 · Foundation, contracts and source data** | Complete for approved Mac/source-only scope | C-01 to C-04, DATA-01 to DATA-05 and API-01 pass. C-05 Mac privacy verified; Windows validation remains open by user direction. Human-authored draft is deferred to P-09/F1. M0 checks, production build and fresh review with fixes pass. P-05: SQLite copy internally consistent and fully ingested (5,542 Sabads, D-86); live sample parity 43/44; currency not certified. |
 | **F1 · Workspace** | In progress | FE-01/FE-03 screens run against the stateful mock (D-78); API-02 and real persistence remain. |
 | **F2 · Checks and report card** | In progress: CHECKS code phase complete | CHK-01 to CHK-11 pass (193 tests; commit `a08a81d` on `main`); CHK-12 cut (D-77). Model phase real: LLM-01 to LLM-06 pass (D-79–D-83); persistence and report card need API-03 and FE-04. TERM-02 and CONS-01 have no transcreation golden cases. FE-04 report card UI runs against the mock (D-78). |
 | **F3 · Reference and style evidence** | In progress | LLM-07/08/09 pass in the engine (D-81); Eko-published references can exercise mechanics once API-05 publishes; SikhRI sample (DATA-06) and term mappings (CHK-12, cut) remain pending. |
@@ -92,6 +92,8 @@ Append-only. Record decisions that add, remove or change planned behavior here *
 | D-83 | LLM-02: Claude-only bake-off; `claude-sonnet-5-5` is the default (`EKO_LLM_MODEL` overrides). |
 | D-84 | LLM-12 is blocked: no citable grammar rule and no sourced ending-matra table (OQ-18). |
 | D-85 | LLM-10/11: drift never passes on missing evidence; replay blocks at one affected line; glossary `not_evaluable` until OQ-13. |
+| D-86 | P-05: full-corpus ingest from the internally consistent SQLite copy; null writer/raag inherits a single Sabad value, else "Not recorded in BaniDB"; currency not certified (live sample 43/44). |
+| D-87 | P-07 provisional demo Sabads 1356, 1568, 693 pending Harsimran's confirmation; P-02/P-03 blocked (no reviewer answers or style guide); fold-in map in `_docs/rules/reviewer-answers-map.md`. |
 | D-78 | FE-01 to FE-09 are built against a stateful, browser-storage mock of the 18 contract routes (`lib/client/mock-*`) with a labelled synthetic checker, plus a dev-only `/api/dev/demo-sabad` route that serves the private BaniDB fixture. FE tasks stay *In progress* until the real API passes their acceptance. P1 items render as labelled placeholders. |
 
 ---
@@ -112,18 +114,22 @@ Append-only. Record decisions that add, remove or change planned behavior here *
 ### Next
 - [ ] **P-01** Review the 4 flagged additions in the reviewer doc (Q1 option B, Q10, Q11, TERM-02 split), then send it
 - [ ] **P-02** Receive reviewer answers → update `resolve.py`, regenerate, log in `_docs/07`
+  - Blocked (2026-10-16, D-87): the review document's answers are blank. Fold-in map: `_docs/rules/reviewer-answers-map.md`; the local copy in Downloads predates `_docs/reviewer-questions.md` (Q11/Q12, CONS-01 wording)
 - [ ] **P-03** Receive SikhRI style guide → fold settled items into `resolve.py`
+  - Blocked (2026-10-16, D-87): not received. Intake table in `_docs/rules/reviewer-answers-map.md`
 - [ ] **P-04** Ask SikhRI organizers for the sample: reference transcreations, review history with pre-edit drafts, ID scheme, format
-- [ ] **P-05** Verify `khalisfoundation/banidb-dev` holds the full Guru Granth Sahib; if not, request a database copy from Khalis Foundation
-  - Verified partial (2026-10-16): 20,134 G-source verses and 39,977 missing mapped verses. A fuller copy is still needed; no external request has been sent.
+- [x] **P-05** Verify `khalisfoundation/banidb-dev` holds the full Guru Granth Sahib; if not, request a database copy from Khalis Foundation
+  - The Docker image is partial (20,134 G-source verses). Done (2026-10-16, D-86) with the user-supplied SQLite copy: `audit-banidb-coverage.ts` passes internal consistency (60,403 G lines, IDs 1–60,403, 1,430 angs, 5,542 fully mapped Sabads, NFC, no verse in two Sabads); live BaniDB sample 43/44 (Sabad 4281: two lines with two marks in opposite order). Rows are stamped 2019-12; currency and the 90-day refresh term are not certified (P-06/OQ-05). No request sent to Khalis Foundation
 - [ ] **P-06** Confirm whether BaniDB's monthly contribution requirement applies to a hackathon prototype
 - [ ] **P-07** Pick 1–3 demo Sabads: one with a Kartar/Karta name (TERM-02), one opening with ੴ (TERM-03)
+  - Provisional (2026-10-16, D-87), awaiting Harsimran: 1356 (ang 339, kept), 1568 (ang 404, Kartar/Karta form), 693 (ang 219, opens with Ik Onkar); `find-demo-sabads.ts` → ignored `data/banidb/demo-sabads.json`
 - [ ] **P-08** API keys for 2–3 LLM providers
 - [ ] **P-09** Write demo transcreations with planted issues, one per featured rule (TERM-01, TERM-02, LAYER-07, plus one to override)
 - [ ] **P-10** Make the eight-page UI PDF available to both builders; keep it outside the public repo and use only BaniDB-exported Gurmukhi in demo fixtures · UI reference: `_docs/09-ui-mockups.md`
 
 ### Blocked
 - P-04 waits on SikhRI organizers
+- P-02 waits on reviewer answers (P-01 send); P-03 waits on SikhRI's style guide
 
 ---
 
@@ -215,7 +221,7 @@ Related folders: `lib/server/db/`, `lib/server/ingest/`, `scripts/app/`, `data/b
 ### Next
 - [x] **DATA-01** Drizzle schema + first migration: lines, drafts, findings, check runs, decisions, versioned rules, proposals, drift results and references. Empty-file migration verified on Mac; focused and full tests (37) plus TypeScript pass (2026-10-16)
 - [x] **DATA-02** Repository functions in `lib/server/db/repo.ts` save/load the contract records, including grouped drafts, findings, check phases, decisions, versioned rules, references and source lines. Temporary SQLite round-trip tests and all 40 tests pass (2026-10-16)
-- [x] **DATA-03** BaniDB local export → app lines with ang, raag, writer, Rahao and NFC Gurmukhi; `pnpm ingest` is idempotent. Full-corpus ingest remains outside this demo until P-05 confirms it. All 43 tests and TypeScript pass (2026-10-16) · FR-01 · **Provides S2**
+- [x] **DATA-03** BaniDB local export → app lines with ang, raag, writer, Rahao and NFC Gurmukhi; `pnpm ingest` is idempotent. Since P-05 (D-86), ingest loads the full corpus (5,542 Sabads) when the SQLite copy is present, else the demo fixture. All 43 tests and TypeScript pass (2026-10-16) · FR-01 · **Provides S2**
 - [x] **DATA-04** Rules seed reads `_docs/rules/rules.resolved.json` verbatim as version 1; repeat ingest keeps 66 unique IDs and 10 active resolutions. Focused, TypeScript and all 44 tests pass (2026-10-16)
 - [x] **DATA-05** Source-only demo seed (`scripts/app/seed-demo.ts`) per D-75; preserves the private BaniDB lines on repeat and creates no draft or decision. Human-authored draft seeding is deferred to P-09/F1. Focused, TypeScript and all 45 tests pass (2026-10-16)
 - [ ] **DATA-06** SikhRI sample import: raw → `data/sikhri-sample/normalized/references.json` and `corrections.json` (contract schemas); map IDs by normalized Gurmukhi if they differ from BaniDB, quarantine ambiguous repeated-line matches, and load only resolved references into the DB · Needs: P-04 · **Provides S3**
