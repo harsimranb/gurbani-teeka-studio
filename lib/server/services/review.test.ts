@@ -94,10 +94,14 @@ describe("decide", () => {
     expect(getStore().getDraft("draft-t1")?.status).toBe("changes_requested");
     expect(getStore().getFinding("finding-t1")?.state).toBe("current");
   });
-  it("accept leaves a published draft published", async () => {
+  it("refuses any decision on a published draft and changes nothing (D-96)", async () => {
     getStore().saveDraft(makeDraft({ status: "published" }));
-    await ok("decide", await run(decideBody({ action: "accept" })));
+    for (const action of ["accept", "override", "waive"] as const) {
+      await fail(await run(decideBody({ action })), 400, "invalid_request");
+    }
     expect(getStore().getDraft("draft-t1")?.status).toBe("published");
+    expect(getStore().getFinding("finding-t1")?.state).toBe("current");
+    expect(getStore().listDecisionsForDraft("draft-t1")).toEqual([]);
   });
   it("override and waive clear the finding", async () => {
     const overridden = await ok("decide", await run(decideBody()));

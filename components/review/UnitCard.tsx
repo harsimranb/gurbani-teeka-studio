@@ -129,7 +129,8 @@ export function UnitCard({ unit, sabad, rules, rulesetVersion, numbers, name, re
 
       {ordered.map((finding) => {
         const index = findingNumber.get(finding.id) ?? 0;
-        if (finding.severity === "hint" && finding.rule_id !== "CONS-01") return <HintRow key={finding.id} finding={finding} index={index} />;
+        // A published unit's findings are a read-only record (D-96): no decision controls.
+        if (draft.status === "published" || (finding.severity === "hint" && finding.rule_id !== "CONS-01")) return <HintRow key={finding.id} finding={finding} index={index} />;
         return (
           <FindingCard
             key={finding.id}

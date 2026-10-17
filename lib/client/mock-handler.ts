@@ -307,6 +307,7 @@ const handlers: { [N in RouteName]: Handler<N> } = {
     if (!draft) return err("not_found", "That draft does not exist.");
     const finding = s.findings.find((f) => f.id === req.finding_id && f.draft_id === req.draft_id);
     if (!finding) return err("not_found", "That finding does not exist.");
+    if (draft.status === "published") return err("invalid_request", "This transcreation is published; its findings are a record. Edit the unit to reopen it before deciding.");
     if (draft.version !== req.draft_version || s.rulesetVersion !== req.ruleset_version || finding.draft_version !== req.draft_version || finding.ruleset_version !== req.ruleset_version || finding.state !== "current") {
       return err("version_conflict", "The finding is no longer current; reload the report.");
     }
@@ -314,7 +315,7 @@ const handlers: { [N in RouteName]: Handler<N> } = {
     s.decisions.push(decision);
     let result = finding;
     if (req.action === "accept") {
-      if (draft.status !== "published") s.drafts = s.drafts.map((d) => (d.id === draft.id ? { ...d, status: "changes_requested" as const } : d));
+      s.drafts = s.drafts.map((d) => (d.id === draft.id ? { ...d, status: "changes_requested" as const } : d));
     } else {
       result = { ...finding, state: "cleared", cleared_at: nowIso() };
       s.findings = s.findings.map((f) => (f.id === finding.id ? result : f));

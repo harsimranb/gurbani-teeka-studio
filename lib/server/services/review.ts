@@ -34,6 +34,8 @@ export function decide(req: ParsedRequest<"decide">): { decision: Decision; find
   const draft = requireDraft(req.draft_id);
   const finding = store.getFinding(req.finding_id);
   if (!finding || finding.draft_id !== draft.id) throw new ServiceError("not_found", "That finding does not exist for this draft.");
+  // D-96: a published unit is approved work; its findings and decisions are a record. Editing it reopens it as a draft.
+  if (draft.status === "published") throw new ServiceError("invalid_request", "This transcreation is published; its findings are a record. Edit the unit to reopen it before deciding.");
   const rulesetVersion = currentRuleset(store).version;
   if (draft.version !== req.draft_version || rulesetVersion !== req.ruleset_version
     || finding.draft_version !== req.draft_version || finding.ruleset_version !== req.ruleset_version || finding.state !== "current") {
