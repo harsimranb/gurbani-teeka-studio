@@ -4,7 +4,7 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import seed from "../../_docs/rules/rules.resolved.json";
 import type { Sabad } from "../../lib/contracts/domain";
-import { NOT_RECORDED, loadSqliteSabads, useFullSqlite } from "./banidb-source";
+import { NOT_RECORDED, loadSqliteSabads, useFullSqlite } from "../../lib/server/ingest/banidb-source";
 
 /** Alternatives of the TERM-02 prefilter pattern; the karta/kartar family is the pair where one extends the other by a base letter (not a vowel sign). */
 export function kartarFamily(pattern: string): string[] {

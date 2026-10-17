@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { ingestBanidb } from "../../../scripts/app/banidb-source";
+import { ingestBanidb } from "../ingest/banidb-source";
 import type { Sabad } from "../../contracts/domain";
 import { __closeStoreForTests, __setSourceForTests, __setStoreForTests, demoSabadSummaries, getSourceStatus, getStore, nextId, nowIso, resetStore, seedSyntheticDrafts } from "./context";
 import { openAppDb } from "../db/client";

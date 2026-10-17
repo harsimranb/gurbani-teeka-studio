@@ -4,9 +4,9 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { SabadSchema } from "../../lib/contracts/domain";
-import { openAppDb } from "../../lib/server/db/client";
-import { createRepository } from "../../lib/server/db/repo";
+import { SabadSchema } from "../../contracts/domain";
+import { openAppDb } from "../db/client";
+import { createRepository } from "../db/repo";
 import { NOT_RECORDED, fillGap, planSabads, type SourceRow } from "./banidb-source";
 
 const row = (ShabadID: number, ID: number, WriterEnglish: string | null, RaagEnglish: string | null = "Raag X"): SourceRow =>
@@ -42,9 +42,9 @@ describe("duplicate verses", () => {
   });
 });
 
-const root = fileURLToPath(new URL("../..", import.meta.url));
-const fixture = new URL("../../lib/contracts/fixtures/sabad.demo.json", import.meta.url);
-const sqlite = new URL("../../data/banidb/banidb.sqlite", import.meta.url);
+const root = fileURLToPath(new URL("../../..", import.meta.url));
+const fixture = new URL("../../contracts/fixtures/sabad.demo.json", import.meta.url);
+const sqlite = new URL("../../../data/banidb/banidb.sqlite", import.meta.url);
 const fullTest = existsSync(sqlite) && existsSync(fixture) ? it : it.skip;
 
 describe("full-corpus ingest", () => {

@@ -1,7 +1,7 @@
 import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { assertPrivateAppDbPath, openAppDb, migrateAppDb } from "../../lib/server/db/client";
-import { ingestBanidb } from "./banidb-source";
+import { ingestBanidb } from "../../lib/server/ingest/banidb-source";
 
 // Source lines only (full corpus when the private SQLite copy exists, else the demo fixture).
 // Human-authored English drafts arrive later.

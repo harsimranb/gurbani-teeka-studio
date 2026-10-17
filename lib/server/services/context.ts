@@ -4,7 +4,7 @@ import { rulesFixture } from "../../contracts/fixtures";
 import { assertPrivateAppDbPath, migrateAppDb, openAppDb } from "../db/client";
 import { createRepository } from "../db/repo";
 import { buildResolvedRules, seedResolvedRules } from "../ingest/rules";
-import { ingestBanidb, useFullSqlite } from "../../../scripts/app/banidb-source";
+import { ingestBanidb, useFullSqlite } from "../ingest/banidb-source";
 import { createMemoryRepository, type AppStore } from "./memory-repo";
 
 /**

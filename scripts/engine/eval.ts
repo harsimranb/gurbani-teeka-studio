@@ -44,7 +44,7 @@ export async function loadSabads(base: string, corrections: ReviewCorrection[]):
   const sabads: Sabad[] = existsSync(demo) ? [SabadSchema.parse(JSON.parse(readFileSync(demo, "utf8")))] : [];
   const have = new Set(sabads.flatMap((sabad) => sabad.lines.map((line) => line.line_id)));
   if (corrections.every((correction) => correction.line_ids.every((id) => have.has(id)))) return sabads;
-  const source = await import("../app/banidb-source");
+  const source = await import("../../lib/server/ingest/banidb-source");
   if (!source.useFullSqlite(base)) return sabads;
   return [...sabads, ...source.loadSqliteSabads(base).sabads];
 }
