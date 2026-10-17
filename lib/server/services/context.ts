@@ -36,7 +36,8 @@ export const nowIso = (): string => new Date().toISOString();
 
 /** Neutral, source-text-free reason for a failed bootstrap ingest (`fullCopy`: it read the local BaniDB SQLite copy). */
 function ingestFailureReason(error: unknown, fullCopy: boolean): string {
-  if (fullCopy) return "The local BaniDB copy failed its coverage check, so no source lines were loaded.";
+  // Loading the full copy also runs its coverage check and a git private-path check (git must be on PATH).
+  if (fullCopy) return "The local BaniDB copy could not be loaded (coverage or private-path check failed, or git is unavailable), so no source lines were loaded.";
   return (error as NodeJS.ErrnoException | null)?.code === "ENOENT"
     ? "The demo source fixture is not provisioned in this clone."
     : "The demo source fixture failed its provenance check.";
