@@ -95,8 +95,8 @@
 
 **Interfaces:** Read the ignored locally exported BaniDB demo Sabad and save its source lines through DATA-02. A later human-authored draft can extend the seed under P-09/F1.
 
-- [ ] Test that the seed preserves source IDs/text exactly and does not duplicate lines on repeat; it creates no English draft or decision.
-- [ ] Implement the source-only seed. Record the user-directed deferral of the original DATA-05 authored-draft criterion in `WORKING_LOG.md` and the feature plan before marking F0 complete.
+- [x] Test that the seed preserves source IDs/text exactly and does not duplicate lines on repeat; it creates no English draft or decision.
+- [x] Implement the source-only seed. Record the user-directed deferral of the original DATA-05 authored-draft criterion in `WORKING_LOG.md` and the feature plan before marking F0 complete.
 
 ### Task 8: API-01 — P0 route skeletons
 

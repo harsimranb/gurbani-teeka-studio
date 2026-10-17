@@ -23,7 +23,7 @@ Mark a feature complete only when its acceptance paragraph in [`_docs/10-feature
 
 | Feature | Status | Evidence / next dependency |
 |---|---|---|
-| **F0 · Foundation, contracts and source data** | In progress | C-01 to C-04 and DATA-01 to DATA-04 complete; C-05 Mac privacy checked, Windows deferred. Source-only demo seed and API skeletons remain. |
+| **F0 · Foundation, contracts and source data** | In progress | C-01 to C-04 and DATA-01 to DATA-05 complete for the approved Mac/source-only scope; C-05 Mac privacy checked, Windows deferred. API route skeletons remain. |
 | **F1 · Workspace** | Not started | Needs F0 contracts, data and API. |
 | **F2 · Checks and report card** | Not started | Needs C-02 contracts and C-03 BaniDB fixture. |
 | **F3 · Reference and style evidence** | Not started | Eko-published references can exercise mechanics; SikhRI sample and term mappings remain pending. |
@@ -82,6 +82,7 @@ Append-only. Record decisions that add, remove or change planned behavior here *
 | D-72 | Planning uses Opus 5.5 or GPT 6 Sol High; implementation uses Sonnet 5.5 High or Luna High, resolved to available harness IDs without silent substitutions. |
 | D-73 | Support macOS and Windows development with shared Node/pnpm versions, LF text, platform-appropriate commands and per-machine dependencies/private data; verify each OS separately. |
 | D-74 | Use the user-supplied, ignored BaniDB SQLite copy's validated `tmp_Verse` table for the local demo export. Its mapped-line coverage and shared-text parity unblock C-03/DATA-03, but do not establish corpus currency or full textual completeness. Keep the partial Docker image and API fallback provenance distinct. |
+| D-75 | Harsimran directed F0's demo seed to include source lines only. Defer a human-written English draft to P-09/F1; do not generate one or silently treat synthetic test markers as a demo transcreation. |
 
 ---
 
@@ -206,7 +207,7 @@ Related folders: `lib/server/db/`, `lib/server/ingest/`, `scripts/app/`, `data/b
 - [x] **DATA-02** Repository functions in `lib/server/db/repo.ts` save/load the contract records, including grouped drafts, findings, check phases, decisions, versioned rules, references and source lines. Temporary SQLite round-trip tests and all 40 tests pass (2026-10-16)
 - [x] **DATA-03** BaniDB local export → app lines with ang, raag, writer, Rahao and NFC Gurmukhi; `pnpm ingest` is idempotent. Full-corpus ingest remains outside this demo until P-05 confirms it. All 43 tests and TypeScript pass (2026-10-16) · FR-01 · **Provides S2**
 - [x] **DATA-04** Rules seed reads `_docs/rules/rules.resolved.json` verbatim as version 1; repeat ingest keeps 66 unique IDs and 10 active resolutions. Focused, TypeScript and all 44 tests pass (2026-10-16)
-- [ ] **DATA-05** Demo seed (`scripts/app/seed-demo.ts`) · Needs: P-09
+- [x] **DATA-05** Source-only demo seed (`scripts/app/seed-demo.ts`) per D-75; preserves the private BaniDB lines on repeat and creates no draft or decision. Human-authored draft seeding is deferred to P-09/F1. Focused, TypeScript and all 45 tests pass (2026-10-16)
 - [ ] **DATA-06** SikhRI sample import: raw → `data/sikhri-sample/normalized/references.json` and `corrections.json` (contract schemas); map IDs by normalized Gurmukhi if they differ from BaniDB, quarantine ambiguous repeated-line matches, and load only resolved references into the DB · Needs: P-04 · **Provides S3**
 
 ### Blocked

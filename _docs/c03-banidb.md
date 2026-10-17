@@ -11,7 +11,10 @@ With the supplied SQLite copy in place, run these repository-relative commands f
 ```text
 node --import tsx scripts/app/export-banidb-sqlite-demo.ts
 node --import tsx scripts/app/ingest.ts
+node --import tsx scripts/app/seed-demo.ts
 ```
+
+`seed-demo.ts` deliberately seeds the source Sabad only. It adds no English draft or review decision; a human-authored demo draft is a later P-09/F1 input (D-75).
 
 ## Earlier Docker-image assessment on 2026-10-16
 

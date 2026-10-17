@@ -72,7 +72,7 @@ The hour labels below are estimates, not hard stop times; pass each milestone's 
 | DATA-02 | Repository functions save/load the contract records without engine imports; a temporary SQLite file exercises draft, finding, decision, rule and reference operations. |
 | DATA-03 | Ingest creates BaniDB-backed lines and metadata with NFC text from the verified local export; re-running does not duplicate rows. |
 | DATA-04 | Rules seed reads `rules.resolved.json` in place and preserves all 66 rule IDs and 10 active resolutions; re-running does not duplicate versions. |
-| DATA-05 | Demo seed loads only the chosen BaniDB-exported Sabads and authored English drafts; it is repeatable without duplicating drafts or decisions. |
+| DATA-05 | For F0, demo seed loads only the chosen BaniDB-exported source Sabad and is repeatable without duplicating lines (D-75). A human-written English draft is deferred to P-09/F1; no synthetic marker is presented as a transcreation. |
 | API-01 | Every route declared in `api.ts` has a handler skeleton with a contract-valid fixture response and a response-schema test. |
 
 **Feature acceptance:** A builder with the documented local BaniDB source can run the app/tests, export the demo Sabad and inspect real source IDs, metadata and read-only Gurmukhi. The shared contract shape and labelled synthetic English fixtures work before the private export is available. `git status` never offers SikhRI or BaniDB content or database files for commit. No app route queries BaniDB at request time. M0 passes only when the contract fixtures and Mac guardrail checks pass; Windows validation remains separately open by user direction.
