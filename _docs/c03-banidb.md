@@ -44,8 +44,11 @@ Ignored private artifacts:
 - `data/banidb/export-metadata.json`: provenance, source IDs, normalization and hashes of the current canonical fixture.
 - `data/banidb/api-sabad-55.json`: original API response, private and ignored; includes upstream fields the fixture deliberately omits.
 - `data/banidb/.env`: generated local credentials, private and ignored.
+- `data/banidb/banidb.sqlite`: user-provided local BaniDB copy, private and ignored; its source assessment is separate from the pinned Docker image.
 
 Only `data/banidb/docker-compose.yml` may be tracked under `data/banidb/`. Both exporters verify Git ignores before writing. Database data stays in Docker's volume outside Git. Stop the service without deleting its volume:
+
+On macOS, C-05 checked the ignored paths above, SQLite sidecar files, `.env.local`, nested SikhRI samples, cache and eval output, and local app database names with `git check-ignore`. `git status` offered none of the existing private files, and `git ls-files` showed only `docker-compose.yml` under `data/banidb/`. Windows clone validation remains open by user direction.
 
 ```text
 docker compose --env-file data/banidb/.env -f data/banidb/docker-compose.yml down

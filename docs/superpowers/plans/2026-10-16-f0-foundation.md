@@ -45,9 +45,9 @@
 
 **Interfaces:** Consume the private path inventory in `_docs/c03-banidb.md` and `CLAUDE.md`; produce a repeatable ignore/status check.
 
-- [ ] Check ignored paths for source exports, raw API response, credentials, SikhRI samples, caches, eval output, and SQLite files, including nested files.
-- [ ] Verify `git status` does not offer existing private files; test any newly discovered ignore gap without exposing file contents.
-- [ ] Record C-05 as Mac-verified with Windows validation open, rather than claiming cross-platform acceptance.
+- [x] Check ignored paths for source exports, raw API response, credentials, SikhRI samples, caches, eval output, and SQLite files, including nested files.
+- [x] Verify `git status` does not offer existing private files; test any newly discovered ignore gap without exposing file contents.
+- [x] Record C-05 as Mac-verified with Windows validation open, rather than claiming cross-platform acceptance.
 
 ### Task 3: DATA-01 — SQLite schema and first migration
 
