@@ -13,7 +13,7 @@
     "start": "next start",
     "typecheck": "next typegen && tsc --noEmit",
     "test": "vitest run --passWithNoTests",
-    "ingest": "tsx scripts/app/ingest.ts",
+    "ingest": "node --import tsx scripts/app/ingest.ts",
     "eval": "tsx scripts/engine/eval.ts",
     "bakeoff": "tsx scripts/engine/bakeoff.ts"
   },

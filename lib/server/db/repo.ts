@@ -17,6 +17,11 @@ export function createRepository(db: AppDb) {
     saveSabad(raw: Sabad): void {
       const sabad = SabadSchema.parse(raw);
       db.transaction((tx) => {
+        const existingIds = tx.select({ id: lines.id }).from(lines).where(eq(lines.shabadId, sabad.shabad_id)).all();
+        const incomingIds = new Set(sabad.lines.map((line) => line.line_id));
+        if (existingIds.length && (existingIds.length !== incomingIds.size || existingIds.some((row) => !incomingIds.has(row.id)))) {
+          throw new Error(`BaniDB source line set changed for Sabad ${sabad.shabad_id}; refusing a mixed export.`);
+        }
         for (const line of sabad.lines) {
           const existing = tx.select().from(lines).where(eq(lines.id, line.line_id)).get();
           const row = {

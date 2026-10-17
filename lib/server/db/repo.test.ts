@@ -80,6 +80,8 @@ describe("app repository", () => {
     repo.saveSabad(privateSabad!);
     repo.saveSabad(privateSabad!);
     expect(repo.getSabad(privateSabad!.shabad_id)).toEqual(privateSabad);
+    expect(() => repo.saveSabad({ ...privateSabad!, lines: privateSabad!.lines.slice(0, -1) })).toThrow("source line set");
+    expect(repo.getSabad(privateSabad!.shabad_id)).toEqual(privateSabad);
     expect(repo.listSabads()).toEqual([{ shabad_id: privateSabad!.shabad_id,
       ang: privateSabad!.lines[0].ang, raag: privateSabad!.lines[0].raag, writer: privateSabad!.lines[0].writer }]);
   }));
