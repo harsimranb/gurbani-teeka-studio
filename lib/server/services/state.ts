@@ -31,6 +31,11 @@ export function latestRun(store: Store, draft: Draft, phase: CheckRun["phase"], 
  * Publish gate. Blockers: current error/flag findings; code or llm runs that are missing, pending or
  * failed for this draft and ruleset version; current CONS-01 findings with no departure reason.
  * Warnings and hints never block. Uses the store's latest ruleset version.
+ *
+ * CONS-01 departure: a reviewer's `override` or `waive` decision with its written reason clears the finding
+ * (`state: "cleared"`, see `decide`), so it is no longer current and no longer blocks; the decision is then the
+ * recorded departure reason and publish copies it into the reference's `exceptions`. An `accept` leaves the finding
+ * current, so it still blocks. `departureReasonFindingIds` is the alternative: publish-time `departure_reasons`.
  */
 export function computeGate(store: Store, draft: Draft, departureReasonFindingIds: Set<string> = new Set()): PublishGate {
   const rulesetVersion = currentRuleset(store).version;

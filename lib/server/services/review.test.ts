@@ -187,6 +187,52 @@ describe("publish", () => {
     ]);
     expect(getStore().getReference("PUB-0001")).toEqual(result.reference);
   });
+  describe("CONS-01 departure (a reasoned override or waive is the recorded departure reason)", () => {
+    const consBlocker = [{ kind: "departure_reason", finding_id: "finding-cons", rule_id: "CONS-01" }];
+    const decideCons = (action: string, over: Record<string, unknown> = {}) =>
+      decideRoute(post(decideBody({ action, ...over })), ctx({ finding_id: "finding-cons" }));
+    beforeEach(() => {
+      bothRuns();
+      getStore().saveFinding(makeFinding({ id: "finding-cons", rule_id: "CONS-01", severity: "warning", reference_ids: ["PUB-0000"] }));
+    });
+
+    it("blocks an open CONS-01 finding with a departure_reason blocker", async () => {
+      const gate = await ok("getPublishGate", await gateRoute(get(), ctx({ draft_id: "draft-t1" })));
+      expect(gate.blockers).toEqual(consBlocker);
+      const error = await fail(await run(publishBody()), 409, "publish_blocked");
+      expect(error.blockers).toEqual(consBlocker);
+    });
+    it("does not clear the blocker on accept", async () => {
+      await ok("decide", await decideCons("accept"));
+      expect(getStore().getFinding("finding-cons")?.state).toBe("current");
+      const error = await fail(await run(publishBody()), 409, "publish_blocked");
+      expect(error.blockers).toEqual(consBlocker);
+    });
+    it("does not clear the blocker for an override without a written reason", async () => {
+      await fail(await decideCons("override", { reason: "  " }), 400, "invalid_request");
+      const error = await fail(await run(publishBody()), 409, "publish_blocked");
+      expect(error.blockers).toEqual(consBlocker);
+    });
+    for (const action of ["override", "waive"] as const) {
+      it(`publishes with departure_reasons: [] after a reasoned ${action}, and records it as the exception`, async () => {
+        await ok("decide", await decideCons(action, { reason: "Synthetic departure rationale.", reviewer: "Reviewer B" }));
+        const gate = await ok("getPublishGate", await gateRoute(get(), ctx({ draft_id: "draft-t1" })));
+        expect(gate.can_publish).toBe(true);
+        const result = await ok("publish", await run(publishBody({ departure_reasons: [] })));
+        expect(result.draft.status).toBe("published");
+        expect(result.reference.exceptions).toEqual([
+          expect.objectContaining({ rule_id: "CONS-01", decision_id: "dec-1", action, reason: "Synthetic departure rationale.", reviewer: "Reviewer B" }),
+        ]);
+        expect(getStore().getReference(result.reference.id)).toEqual(result.reference);
+      });
+    }
+    it("still accepts departure_reasons as an alternative to a decision", async () => {
+      const result = await ok("publish", await run(publishBody({ departure_reasons: [{ finding_id: "finding-cons", reason: "Synthetic departure reason." }] })));
+      expect(result.reference.exceptions).toEqual([
+        expect.objectContaining({ rule_id: "CONS-01", action: "context_reason", reason: "Synthetic departure reason.", reviewer: "Approver" }),
+      ]);
+    });
+  });
   it("lists publications oldest first and returns an empty list for unknown Sabads", async () => {
     getStore().saveDraft(makeDraft({ id: "draft-t2", line_ids: ["TEST-SABAD-L2"] }));
     bothRuns();
