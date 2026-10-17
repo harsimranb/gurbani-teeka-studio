@@ -78,8 +78,11 @@ export async function submitProposal(req: ParsedRequest<"submitProposal">, optio
     results = stubDriftCheck(proposal, store).map((assessment) =>
       DriftResultSchema.parse({ id: nextId("drift"), proposal_id: proposal.id, assessment, override: null }));
   }
-  store.saveProposal(proposal);
-  for (const result of results) store.saveDriftResult(result);
+  // The (async) drift check is done; the proposal and its drift results are written together or not at all.
+  store.transaction((tx) => {
+    tx.saveProposal(proposal);
+    for (const result of results) tx.saveDriftResult(result);
+  });
   return { proposal, drift_results: results };
 }
 
@@ -113,9 +116,12 @@ export function approveProposal(req: ParsedRequest<"approveProposal">): ApiRespo
   const approved = ProposalSchema.parse({ ...proposal, status: "approved" });
   const overridden = driftOverride ? blocking.map((result) => DriftResultSchema.parse({ ...result, override: driftOverride })) : [];
 
-  store.saveRuleset(newVersion, rules);
-  store.saveProposal(approved);
-  for (const result of overridden) store.saveDriftResult(result);
+  // New ruleset + approved proposal + drift overrides: one unit, so a failure leaves the ruleset version unchanged.
+  store.transaction((tx) => {
+    tx.saveRuleset(newVersion, rules);
+    tx.saveProposal(approved);
+    for (const result of overridden) tx.saveDriftResult(result);
+  });
   // Old findings and runs stay tied to the old ruleset version; gates and reports show checks as missing until re-run.
   return { rule, approval: { proposal_id: proposal.id, ruleset_version: newVersion, provenance, drift_override: driftOverride }, ruleset_version: newVersion };
 }

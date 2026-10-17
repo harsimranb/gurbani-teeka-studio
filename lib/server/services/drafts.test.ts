@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { z } from "zod";
 import { ApiErrorSchema, routes, type RouteName } from "../../contracts/api";
 import { GET as listSabadsRoute } from "../../../app/api/sabads/route";
@@ -6,8 +6,11 @@ import { GET as getSabadRoute } from "../../../app/api/sabads/[shabad_id]/route"
 import { POST as saveDraftRoute } from "../../../app/api/drafts/route";
 import { GET as reportRoute } from "../../../app/api/drafts/[draft_id]/report/route";
 import { __setSourceForTests, __setStoreForTests, getStore } from "./context";
+import { saveDraft as saveDraftService } from "./drafts";
+import type { AppStore } from "./memory-repo";
 import { currentRuns } from "./state";
 import { makeFinding, makeRun, TEST_AT, testSabad } from "./testing";
+import type { Draft, Finding } from "../../contracts/domain";
 
 const SABAD = "TEST-SABAD";
 const L = (n: number) => `${SABAD}-L${n}`;
@@ -127,6 +130,51 @@ describe("saveDraft", () => {
   });
 });
 
+
+/**
+ * Rollback-test double: delegates to `base` but makes `method` throw when `when(firstArg)` is true.
+ * `transaction` hands the callback this wrapper, so the failure fires inside the transaction.
+ */
+function failingStore(base: AppStore, method: keyof AppStore, when: (arg: never) => boolean = () => true): AppStore {
+  const wrapped: AppStore = {
+    ...base,
+    [method]: (...args: unknown[]) => {
+      if (when(args[0] as never)) throw new Error("SYNTHETIC TEST: injected write failure");
+      return (base[method] as (...a: unknown[]) => unknown)(...args);
+    },
+    transaction: (fn) => base.transaction(() => fn(wrapped)),
+  };
+  return wrapped;
+}
+
+describe("saveDraft atomicity", () => {
+  const request = (over: Record<string, unknown> = {}) => ({
+    draft_id: null, expected_version: null, shabad_id: SABAD, line_ids: [L(1)], text: "SYNTHETIC TEST: x", author: "Writer", ...over,
+  }) as Parameters<typeof saveDraftService>[0];
+
+  it("a failing regroup leaves the replaced drafts and their findings untouched", async () => {
+    const base = getStore();
+    const a = (await ok("saveDraft", await save({ line_ids: [L(1)] }))).draft;
+    const b = (await ok("saveDraft", await save({ line_ids: [L(2)] }))).draft;
+    base.saveFinding(makeFinding({ id: "fa", draft_id: a.id }));
+    __setStoreForTests(failingStore(base, "saveDraft", (draft) => (draft as Draft).text.includes("group")));
+    expect(() => saveDraftService(request({ line_ids: [L(1), L(2)], text: "SYNTHETIC TEST: group" }))).toThrow("injected write failure");
+    expect(base.getDraft(a.id)).toEqual(a);
+    expect(base.getDraft(b.id)).toEqual(b);
+    expect(base.getFinding("fa")?.state).toBe("current");
+    expect(base.listDraftsForSabad(SABAD)).toHaveLength(2);
+  });
+  it("a failing update leaves the old version and its current findings", async () => {
+    const base = getStore();
+    const { draft } = await ok("saveDraft", await save());
+    base.saveFinding(makeFinding({ id: "f1", draft_id: draft.id, draft_version: 1 }));
+    __setStoreForTests(failingStore(base, "saveFinding", (finding) => (finding as Finding).state === "cleared"));
+    expect(() => saveDraftService(request({ draft_id: draft.id, expected_version: 1, text: "SYNTHETIC TEST: edited" }))).toThrow("injected write failure");
+    expect(base.getDraft(draft.id)).toEqual(draft);
+    expect(base.getFinding("f1")?.state).toBe("current");
+  });
+});
+
 describe("getReport", () => {
   it("returns not_found for an unknown draft", async () => {
     await failure(await getReport("draft-nope"), 404, "not_found");
@@ -151,5 +199,40 @@ describe("getReport", () => {
     expect(report.history.map((finding) => finding.id)).toEqual(["old"]);
     expect(report.decisions.map((decision) => decision.id)).toEqual(["dec-t1"]);
     expect(report.check_runs.map((run) => run.id)).toEqual(["run-new"]);
+  });
+});
+
+import { createMemoryRepository } from "./memory-repo";
+
+describe("sabad list: demo Sabads and any ingested ID", () => {
+  const ids = async () => (await ok("listSabads", await sabadList())).sabads.map((entry) => entry.shabad_id);
+  const withSabads = (...shabadIds: string[]) => {
+    const repo = createMemoryRepository();
+    for (const id of shabadIds) repo.saveSabad(testSabad(id, 3));
+    __setStoreForTests(repo);
+    return repo;
+  };
+  afterEach(() => { vi.unstubAllEnvs(); });
+
+  it("lists only the demo Sabads that exist, in demo order (1356, 1568, 693)", async () => {
+    withSabads("9999", "693", "1356");
+    expect(await ids()).toEqual(["1356", "693"]);
+  });
+  it("lists every ingested Sabad when no demo Sabad exists", async () => {
+    withSabads("9999", "8888");
+    expect(await ids()).toEqual(["9999", "8888"]);
+  });
+  it("lets EKO_DEMO_SABADS override the list", async () => {
+    withSabads("9999", "693", "8888");
+    vi.stubEnv("EKO_DEMO_SABADS", "8888, 9999,0000");
+    expect(await ids()).toEqual(["8888", "9999"]);
+    vi.stubEnv("EKO_DEMO_SABADS", "0000");
+    expect(await ids()).toEqual(["9999", "693", "8888"]);
+  });
+  it("returns any ingested Sabad by ID, and 200 unavailable for an unknown one", async () => {
+    withSabads("9999", "693");
+    const body = await ok("getSabad", await getSabad("9999"));
+    expect(body.status).toBe("available");
+    expect((await ok("getSabad", await getSabad("1568"))).status).toBe("unavailable");
   });
 });

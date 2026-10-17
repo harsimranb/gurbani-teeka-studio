@@ -11,4 +11,11 @@ describe("app database privacy boundary", () => {
     expect(() => assertPrivateAppDbPath(root, resolve(root, "eko.db"))).not.toThrow();
     expect(() => assertPrivateAppDbPath(root, resolve(tmpdir(), "eko-test.db"))).not.toThrow();
   });
+
+  it("resolves the migrations folder at call time and fails clearly when it is missing", async () => {
+    const { resolveMigrationsFolder } = await import("./client");
+    expect(resolveMigrationsFolder()).toBe(resolve(process.cwd(), "lib/server/db/migrations"));
+    expect(resolveMigrationsFolder(resolve(process.cwd(), "lib/server/db/migrations"))).toContain("migrations");
+    expect(() => resolveMigrationsFolder(resolve(tmpdir(), "eko-no-such-migrations"))).toThrow("expected");
+  });
 });

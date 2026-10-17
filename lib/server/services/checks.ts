@@ -132,60 +132,93 @@ export async function runChecksWith(
     id: nextId("run"), draft_id: unit.id, draft_version: unit.version, ruleset_version: ruleset.version, phase,
     status: "pending", started_at: startedAt, completed_at: null, error: null, cached: false, not_evaluable: [],
   }));
-  for (const run of pending) store.saveCheckRun(run);
+  store.transaction((tx) => { for (const run of pending) tx.saveCheckRun(run); });
 
+  // The engine call is async, so it runs here, outside any transaction. Everything below that writes is synchronous
+  // and runs inside one transaction that first re-reads the store and re-checks staleness (race-free check-then-write).
   let result: CheckResult;
   try {
     result = await engineRunChecks(input, phase);
   } catch (error) {
     const message = neutralError(error);
-    if (isSnapshotStale(store, snapshot)) return supersede(store, pending);
-    const failed = pending.map((run): CheckRun => ({ ...run, status: "failed", completed_at: nowIso(), error: message }));
-    pending.forEach((run, index) => settleRun(store, run, failed[index]));
+    const failed = store.transaction((tx): CheckRun[] | null => {
+      if (isSnapshotStale(tx, snapshot)) { supersede(tx, pending); return null; }
+      const runs = pending.map((run): CheckRun => ({ ...run, status: "failed", completed_at: nowIso(), error: message }));
+      pending.forEach((run, index) => settleRun(tx, run, runs[index]));
+      return runs;
+    });
+    if (failed === null) throw supersededError();
     // A failed run is a valid, retryable outcome: 200 with the failed runs and an empty result.
     return { affected_drafts: units, check_runs: failed, result: { findings: [], notEvaluable: [] } };
   }
 
-  // The store may have moved while the engine ran: drop the result rather than persist stale findings.
-  if (isSnapshotStale(store, snapshot)) return supersede(store, pending);
-
   const notEvaluable = phase === "llm" && !(options.judgeConfigured ?? createLlmClient() !== null) ? withUnjudgedRules(result.notEvaluable, ruleset.rules) : result.notEvaluable;
+  const engineFindings = result.findings;
 
-  // Never resurrect a reviewer's override/waive: collect before clearing, since clearing re-labels findings.
-  const reviewerCleared = reviewerClearedIds(store, drafts);
-  const saved: Finding[] = result.findings.filter((finding) => !reviewerCleared.has(finding.id));
-  const at = nowIso();
-  const byId = new Map(drafts.map((unit) => [unit.id, unit]));
-  const current = (finding: Finding) => {
-    const unit = byId.get(finding.draft_id);
-    return !!unit && finding.draft_version === unit.version && finding.ruleset_version === ruleset.version;
-  };
-  // Own units: all rules of this phase. Every unit: only Sabad-scoped rules, whose result depends on sibling units.
-  // Code findings are replaced only by the code phase, model findings only by the model phase.
-  const cleared = clearFindings(store, (finding) => isCodeFinding(finding) === (phase === "code") && current(finding)
-    && (scope.draftIds.includes(finding.draft_id) || scope.ruleIds.includes(finding.rule_id)), at);
-  for (const finding of saved) store.saveFinding(finding);
+  let outcome: { saved: Finding[]; affected: Draft[]; runs: CheckRun[] } | null;
+  try {
+    outcome = store.transaction((tx) => {
+      // The store may have moved while the engine ran: drop the result rather than persist stale findings.
+      if (isSnapshotStale(tx, snapshot)) { supersede(tx, pending); return null; }
 
-  // Affected = re-checked units, plus any sibling that received or lost findings under Sabad scope.
-  const affectedIds = new Set([...unitIds, ...saved.map((finding) => finding.draft_id), ...cleared.map((finding) => finding.draft_id)]);
-  const affected = drafts.filter((unit) => affectedIds.has(unit.id));
-  const pendingByDraft = new Map(pending.map((run) => [run.draft_id, run]));
-  const completedAt = nowIso();
-  const runs = affected.map((unit): CheckRun => ({
-    id: pendingByDraft.get(unit.id)?.id ?? nextId("run"), draft_id: unit.id, draft_version: unit.version, ruleset_version: ruleset.version, phase,
-    status: "succeeded", started_at: pendingByDraft.get(unit.id)?.started_at ?? startedAt, completed_at: completedAt, error: null, cached: false,
-    not_evaluable: notEvaluable,
-  }));
-  for (const run of runs) store.saveCheckRun(run);
-  return { affected_drafts: affected, check_runs: runs, result: { findings: saved, notEvaluable } };
+      // Re-read the Sabad's units inside the transaction, so every decision below uses the state being written over.
+      const siblings = sabadDrafts(tx, draft.shabad_id);
+      // Never resurrect a reviewer's override/waive: collect before clearing, since clearing re-labels findings.
+      const reviewerCleared = reviewerClearedIds(tx, siblings);
+      const saved: Finding[] = engineFindings.filter((finding) => !reviewerCleared.has(finding.id));
+      const at = nowIso();
+      const byId = new Map(siblings.map((unit) => [unit.id, unit]));
+      const current = (finding: Finding) => {
+        const unit = byId.get(finding.draft_id);
+        return !!unit && finding.draft_version === unit.version && finding.ruleset_version === ruleset.version;
+      };
+      // Own units: all rules of this phase. Every unit: only Sabad-scoped rules, whose result depends on sibling units.
+      // Code findings are replaced only by the code phase, model findings only by the model phase.
+      const cleared = clearFindings(tx, (finding) => isCodeFinding(finding) === (phase === "code") && current(finding)
+        && (scope.draftIds.includes(finding.draft_id) || scope.ruleIds.includes(finding.rule_id)), at, siblings.map((unit) => unit.id));
+      for (const finding of saved) tx.saveFinding(finding);
+
+      // Affected = re-checked units, plus any sibling that received or lost findings under Sabad scope.
+      const affectedIds = new Set([...unitIds, ...saved.map((finding) => finding.draft_id), ...cleared.map((finding) => finding.draft_id)]);
+      const affected = siblings.filter((unit) => affectedIds.has(unit.id));
+      const pendingByDraft = new Map(pending.map((run) => [run.draft_id, run]));
+      const completedAt = nowIso();
+      const runs = affected.map((unit): CheckRun => ({
+        id: pendingByDraft.get(unit.id)?.id ?? nextId("run", tx), draft_id: unit.id, draft_version: unit.version, ruleset_version: ruleset.version, phase,
+        status: "succeeded", started_at: pendingByDraft.get(unit.id)?.started_at ?? startedAt, completed_at: completedAt, error: null, cached: false,
+        not_evaluable: notEvaluable,
+      }));
+      for (const run of runs) tx.saveCheckRun(run);
+      return { saved, affected, runs };
+    });
+  } catch (error) {
+    // The transaction rolled back, so nothing partial was written. Do not leave the gate stuck on `pending`.
+    failPending(store, pending, neutralError(error));
+    throw error;
+  }
+  if (outcome === null) throw supersededError();
+  return { affected_drafts: outcome.affected, check_runs: outcome.runs, result: { findings: outcome.saved, notEvaluable } };
 }
 
-/** Marks this attempt's pending runs failed ("superseded") when still ours, then reports a version conflict. */
-function supersede(store: AppStore, pending: CheckRun[]): never {
-  const stored = new Set(store.listSabads().flatMap((sabad) => store.listDraftsForSabad(sabad.shabad_id)).map((draft) => draft.id));
+/** Best effort after a rolled-back persist: settle this attempt's still-owned pending runs as failed. Never throws. */
+function failPending(store: AppStore, pending: CheckRun[], message: string): void {
+  try {
+    store.transaction((tx) => {
+      for (const run of pending) {
+        if (!tx.getDraft(run.draft_id)) continue;
+        settleRun(tx, run, { ...run, status: "failed", completed_at: nowIso(), error: message });
+      }
+    });
+  } catch { /* the original error is the one worth reporting */ }
+}
+
+/** Marks this attempt's pending runs failed ("superseded") when still ours. Writes only; the caller reports the conflict. */
+function supersede(store: AppStore, pending: CheckRun[]): void {
   for (const run of pending) {
-    if (!stored.has(run.draft_id)) continue;
+    if (!store.getDraft(run.draft_id)) continue; // the draft was deleted meanwhile; nothing to settle
     settleRun(store, run, { ...run, status: "failed", completed_at: nowIso(), error: "Superseded: the draft or ruleset changed while this check ran; the result was discarded." });
   }
-  throw new ServiceError("version_conflict", "The draft or ruleset changed while the check ran; the result was discarded. Re-run the check.");
 }
+
+const supersededError = (): ServiceError =>
+  new ServiceError("version_conflict", "The draft or ruleset changed while the check ran; the result was discarded. Re-run the check.");

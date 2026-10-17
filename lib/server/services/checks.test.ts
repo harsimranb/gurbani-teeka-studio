@@ -5,7 +5,9 @@ import { rulesFixture } from "../../contracts/fixtures";
 import { POST as postCode } from "../../../app/api/check/route";
 import { POST as postLlm } from "../../../app/api/check/llm/route";
 import { isSnapshotStale, runChecksWith } from "./checks";
-import { __setSourceForTests, getStore, resetStore } from "./context";
+import { runChecks } from "../../engine/index";
+import { __setSourceForTests, __setStoreForTests, getStore, resetStore } from "./context";
+import type { AppStore } from "./memory-repo";
 import { currentFindings, currentRuns } from "./state";
 import { makeDraft, makeFinding, testSabad, TEST_AT } from "./testing";
 
@@ -322,5 +324,39 @@ describe("isSnapshotStale", () => {
     store().deleteDraft("d1");
     expect(isSnapshotStale(store(), snapshot)).toBe(true);
     expect(isSnapshotStale(store(), { ...snapshot, sabadWide: false })).toBe(true);
+  });
+});
+
+/**
+ * Rollback-test double: delegates to `base` but makes `method` throw when `when(firstArg)` is true.
+ * `transaction` hands the callback this wrapper, so the failure fires inside the transaction.
+ */
+function failingStore(base: AppStore, method: keyof AppStore, when: (arg: never) => boolean = () => true): AppStore {
+  const wrapped: AppStore = {
+    ...base,
+    [method]: (...args: unknown[]) => {
+      if (when(args[0] as never)) throw new Error("SYNTHETIC TEST: injected write failure");
+      return (base[method] as (...a: unknown[]) => unknown)(...args);
+    },
+    transaction: (fn) => base.transaction(() => fn(wrapped)),
+  };
+  return wrapped;
+}
+
+describe("persist atomicity", () => {
+  it("rolls the whole persist step back and settles the runs failed when a write throws", async () => {
+    const draft = seed("d1", [1], LORD);
+    const first = await ok(await post(postCode, body(draft)));
+    expect(first.result.findings.length).toBeGreaterThan(0);
+    const before = store().listFindingsForDraft("d1");
+    expect(before.every((finding) => finding.state === "current")).toBe(true);
+    // Clearing the old findings succeeds, then saving the re-found ones throws: nothing may stay half-written.
+    __setStoreForTests(failingStore(store(), "saveFinding", (finding) => (finding as { state: string }).state === "current"));
+    await expect(runChecksWith(runChecks, "code", body(draft))).rejects.toThrow("injected write failure");
+    expect(store().listFindingsForDraft("d1")).toEqual(before);
+    const runs = store().listCheckRunsForDraft("d1");
+    expect(runs).toHaveLength(1);
+    expect(runs[0]).toMatchObject({ phase: "code", status: "failed" });
+    expect(runs[0].error).toContain("Check failed before completing");
   });
 });

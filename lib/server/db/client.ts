@@ -2,7 +2,8 @@ import Database from "better-sqlite3";
 import { drizzle } from "drizzle-orm/better-sqlite3";
 import { migrate } from "drizzle-orm/better-sqlite3/migrator";
 import { execFileSync } from "node:child_process";
-import { isAbsolute, relative, resolve, sep } from "node:path";
+import { existsSync } from "node:fs";
+import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import * as schema from "./schema";
 
@@ -31,6 +32,24 @@ export function openAppDb(path: string) {
 
 export type AppDb = ReturnType<typeof openAppDb>["db"];
 
-export function migrateAppDb(db: AppDb): void {
-  migrate(db, { migrationsFolder: fileURLToPath(new URL("./migrations", import.meta.url)) });
+/**
+ * Finds the drizzle migrations folder at call time (never via `new URL(literal, import.meta.url)`, which
+ * webpack would try to bundle). Order: explicit argument, EKO_MIGRATIONS_DIR, <cwd>/lib/server/db/migrations
+ * (Next dev/build/start, scripts and vitest all run from the repo root), then next to this source file.
+ */
+export function resolveMigrationsFolder(explicit?: string): string {
+  const candidates: string[] = [];
+  if (explicit) candidates.push(resolve(explicit));
+  else {
+    if (process.env.EKO_MIGRATIONS_DIR) candidates.push(resolve(process.env.EKO_MIGRATIONS_DIR));
+    candidates.push(resolve(process.cwd(), "lib/server/db/migrations"));
+    try { candidates.push(join(dirname(fileURLToPath(import.meta.url)), "migrations")); } catch { /* bundled: no file URL */ }
+  }
+  const found = candidates.find((candidate) => existsSync(join(candidate, "meta", "_journal.json")));
+  if (!found) throw new Error(`Cannot find the database migrations folder; expected ${candidates[0] ?? "lib/server/db/migrations"}. Set EKO_MIGRATIONS_DIR to override.`);
+  return found;
+}
+
+export function migrateAppDb(db: AppDb, migrationsFolder?: string): void {
+  migrate(db, { migrationsFolder: resolveMigrationsFolder(migrationsFolder) });
 }

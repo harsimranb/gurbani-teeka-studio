@@ -7,8 +7,9 @@ import { GET as gateRoute } from "../../../app/api/drafts/[draft_id]/publish-gat
 import { POST as publishRoute } from "../../../app/api/drafts/[draft_id]/publish/route";
 import { GET as referenceRoute } from "../../../app/api/references/[reference_id]/route";
 import { GET as publicationsRoute } from "../../../app/api/sabads/[shabad_id]/publications/route";
-import { __setSourceForTests, getStore, resetStore } from "./context";
-import { __setIndexReferencesForTests, publish } from "./review";
+import { __setSourceForTests, __setStoreForTests, getStore, resetStore } from "./context";
+import type { AppStore } from "./memory-repo";
+import { __setIndexReferencesForTests, decide, publish } from "./review";
 import { makeDraft, makeFinding, makeRun, testSabad } from "./testing";
 
 const post = (body: unknown) => new Request("http://test/x", { method: "POST", body: JSON.stringify(body), headers: { "Content-Type": "application/json" } });
@@ -221,5 +222,61 @@ describe("publish reference warm-up", () => {
 describe("getReference", () => {
   it("returns not_found for an unknown reference", async () => {
     await fail(await referenceRoute(get(), ctx({ reference_id: "PUB-9999" })), 404, "not_found");
+  });
+});
+
+/**
+ * Rollback-test double: delegates to `base` but makes `method` throw when `when(firstArg)` is true.
+ * `transaction` hands the callback this wrapper, so the failure fires inside the transaction.
+ */
+function failingStore(base: AppStore, method: keyof AppStore, when: (arg: never) => boolean = () => true): AppStore {
+  const wrapped: AppStore = {
+    ...base,
+    [method]: (...args: unknown[]) => {
+      if (when(args[0] as never)) throw new Error("SYNTHETIC TEST: injected write failure");
+      return (base[method] as (...a: unknown[]) => unknown)(...args);
+    },
+    transaction: (fn) => base.transaction(() => fn(wrapped)),
+  };
+  return wrapped;
+}
+
+describe("transaction atomicity", () => {
+  it("decide: a failing finding update leaves no decision behind", () => {
+    const base = getStore();
+    base.saveFinding(makeFinding());
+    __setStoreForTests(failingStore(base, "saveFinding"));
+    expect(() => decide({ finding_id: "finding-t1", ...decideBody() } as Parameters<typeof decide>[0])).toThrow("injected write failure");
+    expect(base.listDecisionsForDraft("draft-t1")).toEqual([]);
+    expect(base.getFinding("finding-t1")?.state).toBe("current");
+  });
+  it("decide: a failing draft update on accept leaves no decision behind", () => {
+    const base = getStore();
+    base.saveFinding(makeFinding());
+    __setStoreForTests(failingStore(base, "saveDraft"));
+    expect(() => decide({ finding_id: "finding-t1", ...decideBody({ action: "accept" }) } as Parameters<typeof decide>[0])).toThrow("injected write failure");
+    expect(base.listDecisionsForDraft("draft-t1")).toEqual([]);
+    expect(base.getDraft("draft-t1")?.status).toBe("draft");
+  });
+  it("publish: a failing publication leaves the draft unpublished with no reference, and skips the warm-up", async () => {
+    const base = getStore();
+    bothRuns();
+    __setStoreForTests(failingStore(base, "savePublication"));
+    const warm = vi.fn(async () => {});
+    await expect(publish({ draft_id: "draft-t1", ...publishBody() } as Parameters<typeof publish>[0], { indexReferences: warm })).rejects.toThrow("injected write failure");
+    expect(base.getDraft("draft-t1")?.status).toBe("draft");
+    expect(base.listReferences()).toEqual([]);
+    expect(base.listPublicationsForSabad("TEST-SABAD")).toEqual([]);
+    expect(warm).not.toHaveBeenCalled();
+  });
+  it("publish passes the Sabad ID to savePublication explicitly", async () => {
+    const base = getStore();
+    bothRuns();
+    const seen: unknown[][] = [];
+    const recording: AppStore = { ...base, savePublication: (...args) => { seen.push(args); base.savePublication(...args); }, transaction: (fn) => base.transaction(() => fn(recording)) };
+    __setStoreForTests(recording);
+    await publish({ draft_id: "draft-t1", ...publishBody() } as Parameters<typeof publish>[0], { indexReferences: async () => {} });
+    expect(seen).toHaveLength(1);
+    expect(seen[0][1]).toBe("TEST-SABAD");
   });
 });

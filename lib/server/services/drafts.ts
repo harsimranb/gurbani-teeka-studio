@@ -1,19 +1,15 @@
 import type { ApiResponse } from "../../contracts/api";
 import type { Draft } from "../../contracts/domain";
 import { getSourceStatus, getStore, nowIso, nextId } from "./context";
+import { demoSabadSummaries } from "./context";
 import { ServiceError, type ParsedRequest } from "./http";
 import { clearFindings, currentFindings, currentRuleset, currentRuns, sabadDrafts } from "./state";
 
 const sameList = (a: string[], b: string[]) => a.length === b.length && a.every((id, index) => id === b[index]);
 
-/** Every Sabad the store holds, summarised from its first line's metadata. */
+/** The offered Sabads: the demo list that exists in the store, else every ingested Sabad (see `demoSabadSummaries`). */
 export function listSabads(): ApiResponse<"listSabads"> {
-  const store = getStore();
-  const sabads = store.listSabads().flatMap((summary) => {
-    const first = store.getSabad(summary.shabad_id)?.lines[0];
-    return first ? [{ shabad_id: summary.shabad_id, ang: first.ang, raag: first.raag, writer: first.writer }] : [];
-  });
-  return { sabads };
+  return { sabads: demoSabadSummaries(getStore()) };
 }
 
 /** A missing source or unknown Sabad is a normal 200 "unavailable" answer, not an error. */
@@ -50,13 +46,16 @@ export function saveDraft(req: ParsedRequest<"saveDraft">): ApiResponse<"saveDra
       throw new ServiceError("invalid_request", `Line ${lineNumber} is part of a published transcreation; edit that unit instead of regrouping it.`);
     }
     const gone = new Set(replaced.map((draft) => draft.id));
-    clearFindings(store, (finding) => gone.has(finding.draft_id), at);
-    for (const id of gone) store.deleteDraft(id);
     const draft: Draft = {
       id: nextId("draft"), shabad_id: req.shabad_id, line_ids: req.line_ids, layer: "transcreation",
       text: req.text, author: req.author, status: "draft", version: 1, updated_at: at,
     };
-    store.saveDraft(draft);
+    // Clear + delete + save are one unit: a failure part-way leaves the replaced drafts and their findings intact.
+    store.transaction((tx) => {
+      clearFindings(tx, (finding) => gone.has(finding.draft_id), at, gone);
+      for (const id of gone) tx.deleteDraft(id);
+      tx.saveDraft(draft);
+    });
     return { draft };
   }
 
@@ -71,9 +70,12 @@ export function saveDraft(req: ParsedRequest<"saveDraft">): ApiResponse<"saveDra
     ...existing, text: req.text, line_ids: req.line_ids, author: req.author, status: "draft",
     version: existing.version + 1, updated_at: at,
   };
-  store.saveDraft(updated);
   // Findings of the old version are history now; old-version runs are ignored by the current-version helpers.
-  clearFindings(store, (finding) => finding.draft_id === existing.id, at);
+  // Save + clear are one unit, so a new version never exists next to still-current findings of the old one.
+  store.transaction((tx) => {
+    tx.saveDraft(updated);
+    clearFindings(tx, (finding) => finding.draft_id === existing.id, at, [existing.id]);
+  });
   return { draft: updated };
 }
 

@@ -7,7 +7,7 @@ export const devRoutesEnabled = (): boolean => process.env.NODE_ENV !== "product
 const notFound = () => Response.json(ApiErrorSchema.parse({ error: { code: "not_found", reason: "Not found." } }), { status: 404, headers: { "Cache-Control": "no-store" } });
 const ok = (body: unknown) => Response.json(body, { headers: { "Cache-Control": "no-store" } });
 
-/** POST /api/dev/reset: fresh store (ruleset v1, source reloaded, no drafts). */
+/** POST /api/dev/reset: clears app data (drafts, runs, decisions, proposals, rulesets above v1, ID sequences). Source lines and ruleset v1 stay. */
 export function devReset(): Response {
   if (!devRoutesEnabled()) return notFound();
   resetStore();

@@ -56,16 +56,27 @@ export function computeGate(store: Store, draft: Draft, departureReasonFindingId
   };
 }
 
-/** Every draft across all Sabads, in source order within each Sabad. */
+/**
+ * Every draft, grouped by Sabad (groups in first-draft order) and in source order within each Sabad.
+ * Reads `listDrafts()` once; it never iterates the Sabad table, so the cost follows drafts, not the corpus.
+ */
 export function allDrafts(store: Store): Draft[] {
-  return store.listSabads().flatMap((sabad) => sabadDrafts(store, sabad.shabad_id));
+  const shabadIds = [...new Set(store.listDrafts().map((draft) => draft.shabad_id))];
+  return shabadIds.flatMap((shabadId) => sabadDrafts(store, shabadId));
 }
 
-/** Marks every current finding matching `predicate` as cleared at `at`; returns the findings it cleared. */
-export function clearFindings(store: Store, predicate: (finding: Finding) => boolean, at: string): Finding[] {
+/**
+ * Marks every current finding matching `predicate` as cleared at `at`; returns the findings it cleared.
+ * `draftIds` scopes the scan to those drafts (pass what the caller knows); omitted, every stored draft is scanned.
+ * Writes go through `store`, so inside `store.transaction` pass the transaction's store.
+ */
+export function clearFindings(
+  store: Store, predicate: (finding: Finding) => boolean, at: string, draftIds?: Iterable<string>,
+): Finding[] {
   const cleared: Finding[] = [];
-  for (const draft of allDrafts(store)) {
-    for (const finding of store.listFindingsForDraft(draft.id)) {
+  const scope = draftIds === undefined ? store.listDrafts().map((draft) => draft.id) : [...new Set(draftIds)];
+  for (const draftId of scope) {
+    for (const finding of store.listFindingsForDraft(draftId)) {
       if (finding.state !== "current" || !predicate(finding)) continue;
       const next: Finding = { ...finding, state: "cleared", cleared_at: at };
       store.saveFinding(next);

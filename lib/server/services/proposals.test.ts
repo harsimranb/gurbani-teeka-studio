@@ -6,7 +6,8 @@ import { GET as listProposalsRoute, POST as submitRoute } from "../../../app/api
 import { GET as getProposalRoute } from "../../../app/api/proposals/[proposal_id]/route";
 import { POST as approveRoute } from "../../../app/api/proposals/[proposal_id]/approve/route";
 import type { DriftContext, DriftResult, Proposal } from "../../contracts/domain";
-import { submitProposal as submitService } from "./proposals";
+import { approveProposal as approveService, submitProposal as submitService } from "./proposals";
+import type { AppStore } from "./memory-repo";
 import { __setSourceForTests, __setStoreForTests, getStore, resetStore } from "./context";
 import { computeGate, currentFindings, currentRuns, currentRuleset } from "./state";
 import { makeDraft, makeFinding, makeRun, testSabad } from "./testing";
@@ -281,5 +282,52 @@ describe("submitProposal drift paths", () => {
     const runDriftCheck = vi.fn(async () => { throw new Error("simulated model failure"); });
     await expect(submitService(request, { hasModel: () => true, runDriftCheck })).rejects.toThrow("simulated model failure");
     expect(getStore().listProposals()).toEqual([]);
+  });
+});
+
+/**
+ * Rollback-test double: delegates to `base` but makes `method` throw when `when(firstArg)` is true.
+ * `transaction` hands the callback this wrapper, so the failure fires inside the transaction.
+ */
+function failingStore(base: AppStore, method: keyof AppStore, when: (arg: never) => boolean = () => true): AppStore {
+  const wrapped: AppStore = {
+    ...base,
+    [method]: (...args: unknown[]) => {
+      if (when(args[0] as never)) throw new Error("SYNTHETIC TEST: injected write failure");
+      return (base[method] as (...a: unknown[]) => unknown)(...args);
+    },
+    transaction: (fn) => base.transaction(() => fn(wrapped)),
+  };
+  return wrapped;
+}
+
+describe("transaction atomicity", () => {
+  it("approve: a failing proposal write leaves the ruleset version unchanged and the proposal pending", async () => {
+    await submit();
+    const base = getStore();
+    __setStoreForTests(failingStore(base, "saveProposal"));
+    expect(() => approveService({ proposal_id: "PR-001", ruleset_version: 1, actor: "Test approver", reason: "SYNTHETIC TEST approval reason", drift_override_reason: null }))
+      .toThrow("injected write failure");
+    expect(base.getLatestRulesetVersion()).toBe(1);
+    expect(base.getRuleset(2)).toEqual([]);
+    expect(base.getProposal("PR-001")?.status).toBe("pending");
+  });
+  it("approve: a failing drift override write rolls back the ruleset and proposal too", async () => {
+    addPublishedReference();
+    await submit();
+    const base = getStore();
+    __setStoreForTests(failingStore(base, "saveDriftResult"));
+    expect(() => approveService({ proposal_id: "PR-001", ruleset_version: 1, actor: "Test approver", reason: "SYNTHETIC TEST approval reason", drift_override_reason: "SYNTHETIC TEST override" }))
+      .toThrow("injected write failure");
+    expect(base.getLatestRulesetVersion()).toBe(1);
+    expect(base.getProposal("PR-001")?.status).toBe("pending");
+    expect(base.listDriftResultsForProposal("PR-001").every((result) => result.override === null)).toBe(true);
+  });
+  it("submit: a failing drift result write leaves no proposal and no drift results", async () => {
+    const base = getStore();
+    __setStoreForTests(failingStore(base, "saveDriftResult"));
+    await expect(submitService(submitBody, { hasModel: () => false })).rejects.toThrow("injected write failure");
+    expect(base.listProposals()).toEqual([]);
+    expect(base.listDriftResultsForProposal("PR-001")).toEqual([]);
   });
 });

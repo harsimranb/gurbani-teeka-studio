@@ -43,15 +43,18 @@ export function decide(req: ParsedRequest<"decide">): { decision: Decision; find
     id: nextId("decision"), finding_id: finding.id, draft_id: draft.id, draft_version: draft.version,
     ruleset_version: rulesetVersion, action: req.action, reason: req.reason, reviewer: req.reviewer, at,
   };
-  store.saveDecision(decision);
   let result = finding;
-  if (req.action === "accept") {
-    // Accepting keeps the finding open and asks the writer for changes (a published draft keeps its status).
-    if (draft.status !== "published") store.saveDraft({ ...draft, status: "changes_requested" });
-  } else {
-    result = { ...finding, state: "cleared", cleared_at: at };
-    store.saveFinding(result);
-  }
+  // Decision + finding clear / draft status change together: a decision never exists without its effect.
+  store.transaction((tx) => {
+    tx.saveDecision(decision);
+    if (req.action === "accept") {
+      // Accepting keeps the finding open and asks the writer for changes (a published draft keeps its status).
+      if (draft.status !== "published") tx.saveDraft({ ...draft, status: "changes_requested" });
+    } else {
+      result = { ...finding, state: "cleared", cleared_at: at };
+      tx.saveFinding(result);
+    }
+  });
   return { decision, finding: result };
 }
 
@@ -103,9 +106,12 @@ export async function publish(req: ParsedRequest<"publish">, deps: { indexRefere
   const published: Draft = { ...draft, status: "published" };
   const reference: Reference = { id: nextId("reference"), line_ids: draft.line_ids, english: draft.text, source: "published", exceptions };
   const publication: Publication = { reference, draft_id: draft.id, approver: req.actor, at, gate };
-  store.saveDraft(published);
-  store.saveReference(reference);
-  store.savePublication(publication);
+  // Status + reference + publication are one unit: a publish is all-or-nothing. The Sabad ID is passed explicitly.
+  store.transaction((tx) => {
+    tx.saveDraft(published);
+    tx.saveReference(reference);
+    tx.savePublication(publication, draft.shabad_id);
+  });
   // Warming the reference index is optional (correctness uses the references passed per check), so it runs in
   // the background: it never delays or fails the publish response.
   const warm = deps.indexReferences ?? indexOverride ?? engineIndexReferences;

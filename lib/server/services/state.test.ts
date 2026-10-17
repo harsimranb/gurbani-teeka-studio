@@ -1,7 +1,7 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { rulesFixture } from "../../contracts/fixtures";
 import { createMemoryRepository, type AppStore } from "./memory-repo";
-import { clearFindings, computeGate, currentFindings, currentRuleset, currentRuns, latestRun, sabadDrafts } from "./state";
+import { allDrafts, clearFindings, computeGate, currentFindings, currentRuleset, currentRuns, latestRun, sabadDrafts } from "./state";
 import { makeDraft, makeFinding, makeRun, testSabad, TEST_AT } from "./testing";
 
 let store: AppStore;
@@ -116,5 +116,37 @@ describe("clearFindings and sabadDrafts", () => {
     store.saveDraft(makeDraft({ id: "mid", line_ids: ["TEST-SABAD-L3", "TEST-SABAD-L2"] }));
     expect(sabadDrafts(store, "TEST-SABAD").map((d) => d.id)).toEqual([draft.id, "mid", "late"]);
     expect(sabadDrafts(store, "NOPE")).toEqual([]);
+  });
+});
+
+describe("scoped scans", () => {
+  it("clearFindings with draft IDs only touches those drafts", () => {
+    store.saveDraft(makeDraft({ id: "other", line_ids: ["TEST-SABAD-L2"] }));
+    store.saveFinding(makeFinding({ id: "mine" }));
+    store.saveFinding(makeFinding({ id: "theirs", draft_id: "other" }));
+    const cleared = clearFindings(store, () => true, TEST_AT, [draft.id]);
+    expect(cleared.map((f) => f.id)).toEqual(["mine"]);
+    expect(store.getFinding("mine")?.state).toBe("cleared");
+    expect(store.getFinding("theirs")?.state).toBe("current");
+    // An empty scope scans nothing; an unknown draft ID is harmless.
+    expect(clearFindings(store, () => true, TEST_AT, [])).toEqual([]);
+    expect(clearFindings(store, () => true, TEST_AT, ["nope"])).toEqual([]);
+  });
+  it("without draft IDs, scans every stored draft via listDrafts and never the Sabad table", () => {
+    store.saveDraft(makeDraft({ id: "other", line_ids: ["TEST-SABAD-L2"] }));
+    store.saveFinding(makeFinding({ id: "mine" }));
+    store.saveFinding(makeFinding({ id: "theirs", draft_id: "other" }));
+    const sabads = vi.spyOn(store, "listSabads");
+    const cleared = clearFindings(store, () => true, TEST_AT);
+    expect(cleared.map((f) => f.id).sort()).toEqual(["mine", "theirs"]);
+    expect(sabads).not.toHaveBeenCalled();
+  });
+  it("allDrafts reads drafts, not every Sabad, and keeps source order within a Sabad", () => {
+    store.saveSabad(testSabad("EMPTY-SABAD", 2));
+    store.saveDraft(makeDraft({ id: "late", line_ids: ["TEST-SABAD-L4"] }));
+    store.saveDraft(makeDraft({ id: "mid", line_ids: ["TEST-SABAD-L2"] }));
+    const sabads = vi.spyOn(store, "listSabads");
+    expect(allDrafts(store).map((d) => d.id)).toEqual([draft.id, "mid", "late"]);
+    expect(sabads).not.toHaveBeenCalled();
   });
 });
