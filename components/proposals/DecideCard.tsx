@@ -36,6 +36,15 @@ function errorText(error: unknown): string {
 /** The "Decide" card (pending proposals) or the recorded outcome (decided proposals). */
 export function DecideCard(props: DecideCardProps) {
   const { proposal, results, rules, onRevise } = props;
+  if (proposal.status === "pending" && proposal.source === "overrides") {
+    return (
+      <Card className="flex flex-col gap-3">
+        <h2 className="m-0 text-base font-semibold text-ink">Decide</h2>
+        <Banner tone="info">Eko drafted this from reviewer overrides, so it cannot be approved as it stands. Revise it into a rule and submit it; the drift check runs before anyone can approve it.</Banner>
+        <div><Button onClick={onRevise}>Revise proposal</Button></div>
+      </Card>
+    );
+  }
   if (proposal.status === "pending") return <PendingDecision {...props} />;
 
   const rule = ruleForProposal(proposal, rules);

@@ -43,7 +43,7 @@ export function ProposalForm({ draft, onChange, onSubmit, busy, error, canAct, s
           <Banner tone="info">
             <p className="m-0 font-semibold text-ink">Drafted from reviewer overrides</p>
             <p className="mt-1 mb-0">
-              Eko drafted this because two or more people overrode the same rule. It is not approved and carries no suggested wording; approving it needs a written reason.
+              Eko drafted this because two or more people overrode the same rule. It is not approved and carries no suggested wording. To approve a change, revise it into a rule and submit it, so the drift check runs.
             </p>
             <p className="mt-2 mb-0 font-semibold text-ink">Evidence</p>
             <ul aria-label="Evidence" className="m-0 mt-1 list-none p-0 font-mono text-xs">

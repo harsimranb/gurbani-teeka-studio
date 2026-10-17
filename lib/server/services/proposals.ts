@@ -91,6 +91,10 @@ export function approveProposal(req: ParsedRequest<"approveProposal">): ApiRespo
   const proposal = store.getProposal(req.proposal_id);
   if (!proposal) throw new ServiceError("not_found", "That proposal does not exist.");
   if (proposal.status !== "pending") throw new ServiceError("invalid_request", "This proposal has already been decided.");
+  // A proposal Eko drafted from overrides has had no drift check and its text is a prompt, not a rule (API-10).
+  if (proposal.source === "overrides") {
+    throw new ServiceError("invalid_request", "Eko drafted this proposal from overrides. Revise it into a rule and submit it, so the drift check runs before approval.");
+  }
   if (isBlank(req.reason) || isBlank(req.actor)) throw new ServiceError("invalid_request", "A name and a written reason are required to approve a rule.");
   const current = currentRuleset(store);
   if (req.ruleset_version !== current.version) throw new ServiceError("version_conflict", "The ruleset changed since you opened this proposal; reload before approving.");

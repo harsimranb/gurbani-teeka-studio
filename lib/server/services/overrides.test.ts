@@ -77,7 +77,7 @@ describe("proposals drafted from repeated overrides (FR-16b)", () => {
     expect(getStore().listDriftResultsForProposal(proposal.id)).toHaveLength(3);
   });
 
-  it("is not approved, does not change the ruleset, and approval still needs a reason", async () => {
+  it("is not approved, does not change the ruleset, and cannot be approved until revised and submitted", async () => {
     await override("finding-t1", "Asha");
     await override("finding-t2", "Ben");
     const proposal = drafted()[0];
@@ -86,10 +86,9 @@ describe("proposals drafted from repeated overrides (FR-16b)", () => {
 
     const approve = (reason: string) => approveRoute(post({ proposal_id: proposal.id, ruleset_version: 1, actor: "Approver", reason, drift_override_reason: null }), ctx({ proposal_id: proposal.id }));
     expect((await approve("  ")).status).toBe(400);
+    expect((await approve("SYNTHETIC approval reason")).status).toBe(400);
     expect(getStore().getLatestRulesetVersion()).toBe(1);
-    expect((await approve("SYNTHETIC approval reason")).status).toBe(200);
-    expect(getStore().getLatestRulesetVersion()).toBe(2);
-    expect(getStore().getProposal(proposal.id)?.status).toBe("approved");
+    expect(getStore().getProposal(proposal.id)?.status).toBe("pending");
   });
 
   it("rolls back the decision when drafting fails", async () => {
