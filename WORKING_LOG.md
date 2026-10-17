@@ -94,6 +94,7 @@ Append-only. Record decisions that add, remove or change planned behavior here *
 | D-85 | LLM-10/11: drift never passes on missing evidence; replay blocks at one affected line; glossary `not_evaluable` until OQ-13. |
 | D-86 | P-05: full-corpus ingest from the internally consistent SQLite copy; null writer/raag inherits a single Sabad value, else "Not recorded in BaniDB"; currency not certified (live sample 43/44). |
 | D-87 | P-07 provisional demo Sabads 1356, 1568, 693 pending Harsimran's confirmation; P-02/P-03 blocked (no reviewer answers or style guide); fold-in map in `_docs/rules/reviewer-answers-map.md`. |
+| D-88 | Harsimran confirmed P-07 demo Sabads 1356, 1568 and 693; P-09 demo transcreations target these three. |
 | D-78 | FE-01 to FE-09 are built against a stateful, browser-storage mock of the 18 contract routes (`lib/client/mock-*`) with a labelled synthetic checker, plus a dev-only `/api/dev/demo-sabad` route that serves the private BaniDB fixture. FE tasks stay *In progress* until the real API passes their acceptance. P1 items render as labelled placeholders. |
 
 ---
@@ -121,8 +122,8 @@ Append-only. Record decisions that add, remove or change planned behavior here *
 - [x] **P-05** Verify `khalisfoundation/banidb-dev` holds the full Guru Granth Sahib; if not, request a database copy from Khalis Foundation
   - The Docker image is partial (20,134 G-source verses). Done (2026-10-16, D-86) with the user-supplied SQLite copy: `audit-banidb-coverage.ts` passes internal consistency (60,403 G lines, IDs 1–60,403, 1,430 angs, 5,542 fully mapped Sabads, NFC, no verse in two Sabads); live BaniDB sample 43/44 (Sabad 4281: two lines with two marks in opposite order). Rows are stamped 2019-12; currency and the 90-day refresh term are not certified (P-06/OQ-05). No request sent to Khalis Foundation
 - [ ] **P-06** Confirm whether BaniDB's monthly contribution requirement applies to a hackathon prototype
-- [ ] **P-07** Pick 1–3 demo Sabads: one with a Kartar/Karta name (TERM-02), one opening with ੴ (TERM-03)
-  - Provisional (2026-10-16, D-87), awaiting Harsimran: 1356 (ang 339, kept), 1568 (ang 404, Kartar/Karta form), 693 (ang 219, opens with Ik Onkar); `find-demo-sabads.ts` → ignored `data/banidb/demo-sabads.json`
+- [x] **P-07** Pick 1–3 demo Sabads: one with a Kartar/Karta name (TERM-02), one opening with ੴ (TERM-03)
+  - Confirmed by Harsimran (2026-10-16, D-88): 1356 (ang 339, kept), 1568 (ang 404, Kartar/Karta form), 693 (ang 219, opens with Ik Onkar); `find-demo-sabads.ts` → ignored `data/banidb/demo-sabads.json`
 - [ ] **P-08** API keys for 2–3 LLM providers
 - [ ] **P-09** Write demo transcreations with planted issues, one per featured rule (TERM-01, TERM-02, LAYER-07, plus one to override)
 - [ ] **P-10** Make the eight-page UI PDF available to both builders; keep it outside the public repo and use only BaniDB-exported Gurmukhi in demo fixtures · UI reference: `_docs/09-ui-mockups.md`

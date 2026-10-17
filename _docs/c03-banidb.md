@@ -34,9 +34,9 @@ node --import tsx scripts/app/seed-demo.ts
 
 **Remaining limitation.** The audit proves internal consistency and sampled parity for roughly 0.8% of the Sabads. It does not prove the text is correct, that every composition is present, or that the copy meets BaniDB's 90-day refresh term; the sample covers 44 of 5,542 Sabads.
 
-## Provisional demo Sabads (P-07, D-87)
+## Demo Sabads (P-07, D-87, D-88)
 
-`node --import tsx scripts/app/find-demo-sabads.ts` needs the SQLite copy. It takes the Kartar/Karta forms from the TERM-02 seed prefilter and the opening glyph from the TERM-03 keywords, keeps complete Sabads with a Rahao line and recorded writer/raag, and writes IDs and English metadata only to the ignored `data/banidb/demo-sabads.json`. Provisional picks, awaiting Harsimran's confirmation: 1356 (ang 339, kept), 1568 (ang 404, Kartar/Karta form) and 693 (ang 219, opens with the Ik Onkar glyph).
+`node --import tsx scripts/app/find-demo-sabads.ts` needs the SQLite copy. It takes the Kartar/Karta forms from the TERM-02 seed prefilter and the opening glyph from the TERM-03 keywords, keeps complete Sabads with a Rahao line and recorded writer/raag, and writes IDs and English metadata only to the ignored `data/banidb/demo-sabads.json`. Harsimran confirmed the picks (D-88): 1356 (ang 339, kept), 1568 (ang 404, Kartar/Karta form) and 693 (ang 219, opens with the Ik Onkar glyph).
 
 ## Earlier Docker-image assessment on 2026-10-16
 
