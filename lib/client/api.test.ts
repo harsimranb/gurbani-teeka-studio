@@ -118,6 +118,10 @@ describe("stateful mock workflow", () => {
     expect(published.reference.id).toBe("PUB-0001");
     expect(published.reference.english).toBe(text);
     expect(published.reference.exceptions.map((e) => e.action)).toEqual(["override", "override"]);
+    const listed = await client.request("listPublications", { shabad_id: "TEST-SABAD" });
+    expect(listed.publications).toHaveLength(1);
+    expect(listed.publications[0]).toMatchObject({ draft_id: draft.id, approver: "Approver", reference: { id: "PUB-0001" }, gate: published.gate });
+    expect((await client.request("listPublications", { shabad_id: "OTHER" })).publications).toEqual([]);
     const publication = mockPublication(draft.id);
     expect(publication).toMatchObject({ reference_id: "PUB-0001", approver: "Approver" });
     expect(publication?.gate).toEqual(published.gate);

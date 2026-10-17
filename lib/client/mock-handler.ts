@@ -290,6 +290,19 @@ const handlers: { [N in RouteName]: Handler<N> } = {
     s.refMeta[reference.id] = { shabad_id: draft.shabad_id, draft_id: draft.id, approver: req.actor, at, gate };
     return { draft: published, reference, gate: computeGate(published, resolved) };
   },
+  async listPublications(req) {
+    const s = getState();
+    const publications: ApiResponse<"listPublications">["publications"] = [];
+    for (const reference of s.references) {
+      const meta = s.refMeta[reference.id];
+      if (!meta || meta.shabad_id !== req.shabad_id) continue;
+      const draft = s.drafts.find((d) => d.id === meta.draft_id);
+      // Stores saved by older builds have no gate: rebuild a clear one for the published version.
+      const gate: PublishGate = meta.gate ?? { draft_id: meta.draft_id, draft_version: draft?.version ?? 1, ruleset_version: s.rulesetVersion, can_publish: true, blockers: [], warning_ids: [] };
+      publications.push({ reference, draft_id: meta.draft_id, approver: meta.approver, at: meta.at, gate });
+    }
+    return { publications };
+  },
   async getReference(req) {
     const reference = getState().references.find((r) => r.id === req.reference_id);
     return reference ? { reference } : err("not_found", "That reference does not exist.");

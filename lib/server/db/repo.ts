@@ -66,6 +66,15 @@ export function createRepository(db: AppDb) {
       return db.select().from(drafts).where(eq(drafts.shabadId, shabadId)).all()
         .map((row) => DraftSchema.parse(decode(row.payload)));
     },
+    /** Removes the draft row and its findings, check runs and decisions (no foreign keys, so children go explicitly). */
+    deleteDraft(id: string): void {
+      db.transaction((tx) => {
+        tx.delete(findings).where(eq(findings.draftId, id)).run();
+        tx.delete(checkRuns).where(eq(checkRuns.draftId, id)).run();
+        tx.delete(decisions).where(eq(decisions.draftId, id)).run();
+        tx.delete(drafts).where(eq(drafts.id, id)).run();
+      });
+    },
     saveFinding(raw: Finding): void {
       const finding = FindingSchema.parse(raw);
       const row = { id: finding.id, draftId: finding.draft_id, draftVersion: finding.draft_version,
@@ -144,6 +153,9 @@ export function createRepository(db: AppDb) {
       const row = db.select().from(proposals).where(eq(proposals.id, id)).get();
       return row ? ProposalSchema.parse(decode(row.payload)) : undefined;
     },
+    listProposals(): Proposal[] {
+      return db.select().from(proposals).all().map((row) => ProposalSchema.parse(decode(row.payload)));
+    },
     saveDriftResult(raw: DriftResult): void {
       const result = DriftResultSchema.parse(raw);
       const row = { id: result.id, proposalId: result.proposal_id, payload: encode(result) };
@@ -171,3 +183,5 @@ export function createRepository(db: AppDb) {
     },
   };
 }
+
+export type Repository = ReturnType<typeof createRepository>;

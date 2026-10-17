@@ -68,6 +68,39 @@ describe("app repository", () => {
     expect(repo.listDriftResultsForProposal(proposalFixture.id)).toEqual([driftFixtures[0]]);
   }));
 
+  it("lists proposals and deletes a draft together with its findings, check runs and decisions only", async () => withTempDb(async (db) => {
+    const { createRepository } = await import("./repo");
+    const repo = createRepository(db);
+    const finding = checkResultFixture.findings[0];
+    const run = CheckRunSchema.parse((mockResponses.runCodeChecks as { check_runs: unknown[] }).check_runs[0]);
+    const decision = DecisionSchema.parse((mockResponses.decide as { decision: unknown }).decision);
+    const other = { ...draftFixture, id: "synthetic-other-draft" };
+    repo.saveDraft(draftFixture);
+    repo.saveDraft(other);
+    repo.saveFinding(finding);
+    repo.saveFinding({ ...finding, id: "other-finding", draft_id: other.id });
+    repo.saveCheckRun(run);
+    repo.saveCheckRun({ ...run, id: "other-run", draft_id: other.id });
+    repo.saveDecision(decision);
+    repo.saveDecision({ ...decision, id: "other-decision", draft_id: other.id });
+
+    expect(repo.listProposals()).toEqual([]);
+    repo.saveProposal(proposalFixture);
+    repo.saveProposal({ ...proposalFixture, id: "synthetic-proposal-2" });
+    expect(repo.listProposals().map((p) => p.id)).toEqual([proposalFixture.id, "synthetic-proposal-2"]);
+
+    repo.deleteDraft(draftFixture.id);
+    expect(repo.getDraft(draftFixture.id)).toBeUndefined();
+    expect(repo.listFindingsForDraft(draftFixture.id)).toEqual([]);
+    expect(repo.listCheckRunsForDraft(draftFixture.id)).toEqual([]);
+    expect(repo.listDecisionsForDraft(draftFixture.id)).toEqual([]);
+    expect(repo.getDraft(other.id)).toEqual(other);
+    expect(repo.listFindingsForDraft(other.id)).toHaveLength(1);
+    expect(repo.listCheckRunsForDraft(other.id)).toHaveLength(1);
+    expect(repo.listDecisionsForDraft(other.id)).toHaveLength(1);
+    expect(() => repo.deleteDraft("missing-draft")).not.toThrow();
+  }));
+
   let privateSabad: ReturnType<typeof SabadSchema.parse> | undefined;
   try {
     privateSabad = SabadSchema.parse(JSON.parse(readFileSync(new URL("../../contracts/fixtures/sabad.demo.json", import.meta.url), "utf8")));
