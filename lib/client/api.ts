@@ -24,8 +24,13 @@ export function createApiClient(options: { useMocks?: boolean; fetcher?: typeof 
         payload = await handleMock(name, request as ApiRequest<Name>);
       } else {
         const params = request as Record<string, unknown>;
-        const path = route.path.replace(/:([a-z_]+)/g, (_, key: string) => encodeURIComponent(String(params[key])));
-        const response = await fetcher(path, {
+        const used = new Set<string>();
+        const path = route.path.replace(/:([a-z_]+)/g, (_, key: string) => { used.add(key); return encodeURIComponent(String(params[key])); });
+        // GET inputs that are not path params travel in the query string.
+        const query = route.method === "GET"
+          ? new URLSearchParams(Object.entries(params).flatMap(([key, value]) => (used.has(key) || value === undefined ? [] : [[key, String(value)]]))).toString()
+          : "";
+        const response = await fetcher(query ? `${path}?${query}` : path, {
           method: route.method,
           ...(route.method === "GET" ? {} : { headers: { "Content-Type": "application/json" }, body: JSON.stringify(request) }),
         });

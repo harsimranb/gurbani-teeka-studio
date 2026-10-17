@@ -143,6 +143,34 @@ const cases: Array<[string, (repo: Repository) => void]> = [
     expect(repo.getSabad("B-SAB")?.lines.map((l) => l.line_id)).toEqual(["B-L2", "B-L1", "B-L10"]);
     expect(repo.getSabadSummary("B-SAB")?.ang).toBe(20);
   }],
+  ["browses Sabads by ang, raag and writer in corpus order, one page at a time, with the filter values", (repo) => {
+    const lineOf = (shabad: string, id: string, ang: number, raag: string, writer: string, text: string) => ({ line_id: id, shabad_id: shabad, ang, raag, writer, is_rahao: false, gurmukhi: text });
+    expect(repo.browseSabads({ limit: 10, offset: 0 })).toEqual({ total: 0, rows: [] });
+    expect(repo.listSourceFacets()).toEqual({ raags: [], writers: [] });
+    // Saved out of corpus order. Sabad 50 spans ang 5-6, Sabad 7 is on ang 5 too, 900 is on ang 2.
+    repo.saveSabad({ shabad_id: "50", lines: [lineOf("50", "21", 5, "RAAG-B", "WRITER-X", "TEST-A"), lineOf("50", "22", 6, "RAAG-B", "WRITER-Y", "TEST-B")] });
+    repo.saveSabad({ shabad_id: "7", lines: [lineOf("7", "30", 5, "RAAG-A", "WRITER-X", "TEST-C")] });
+    repo.saveSabad({ shabad_id: "900", lines: [lineOf("900", "5", 2, "RAAG-A", "WRITER-Z", "TEST-D")] });
+    const ids = (filters: Partial<Parameters<Repository["browseSabads"]>[0]> = {}) => repo.browseSabads({ limit: 10, offset: 0, ...filters }).rows.map((row) => row.shabad_id);
+    expect(ids()).toEqual(["900", "50", "7"]);                      // first ang, then first line ID
+    expect(ids({ ang: 5 })).toEqual(["50", "7"]);
+    expect(ids({ ang: 6 })).toEqual(["50"]);                         // a Sabad matches on any of its angs
+    expect(ids({ raag: "RAAG-A" })).toEqual(["900", "7"]);
+    expect(ids({ writer: "WRITER-X" })).toEqual(["50", "7"]);
+    expect(ids({ ang: 5, raag: "RAAG-A", writer: "WRITER-X" })).toEqual(["7"]);
+    expect(ids({ ang: 6, writer: "WRITER-X" })).toEqual([]);         // one line must satisfy every filter
+    expect(ids({ ang: 1430 })).toEqual([]);
+    // Rows describe the whole Sabad: ang span, line count, first line's raag, writer and text.
+    expect(repo.browseSabads({ ang: 6, limit: 10, offset: 0 })).toEqual({
+      total: 1,
+      rows: [{ shabad_id: "50", ang: 5, last_ang: 6, raag: "RAAG-B", writer: "WRITER-X", line_count: 2, first_line_gurmukhi: "TEST-A" }],
+    });
+    // Paging keeps the full total.
+    expect(repo.browseSabads({ limit: 2, offset: 0 })).toMatchObject({ total: 3, rows: [{ shabad_id: "900" }, { shabad_id: "50" }] });
+    expect(repo.browseSabads({ limit: 2, offset: 2 })).toMatchObject({ total: 3, rows: [{ shabad_id: "7" }] });
+    expect(repo.browseSabads({ limit: 2, offset: 4 })).toEqual({ total: 3, rows: [] });
+    expect(repo.listSourceFacets()).toEqual({ raags: ["RAAG-A", "RAAG-B"], writers: ["WRITER-X", "WRITER-Y", "WRITER-Z"] });
+  }],
   ["savePublication infers the Sabad from the draft, else from the first source line", (repo) => {
     const gate = (draftId: string) => ({ draft_id: draftId, draft_version: 1, ruleset_version: 1, can_publish: true, blockers: [], warning_ids: [] });
     const publication = (id: string, draftId: string, lineId: string): Publication => ({

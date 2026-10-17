@@ -55,19 +55,19 @@ export function WorkspaceView() {
   const params = useSearchParams();
   const { data, error } = useApi("listSabads", {});
   const sabads = data?.sabads ?? [];
-  const requested = params.get("sabad");
-  const selected = sabads.find((s) => s.shabad_id === requested) ?? sabads[0] ?? null;
+  // Any Sabad can be opened by ID (browse results are not limited to the demo list); with none requested, the first demo Sabad.
+  const selectedId = params.get("sabad") ?? sabads[0]?.shabad_id ?? null;
 
   return (
     <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[240px_minmax(0,1fr)] xl:grid-cols-[240px_minmax(0,1fr)_300px]">
       <aside aria-label="Browse the Guru Granth Sahib" className="min-w-0">
-        <SabadList sabads={sabads} selectedId={selected?.shabad_id ?? null} />
+        <SabadList sabads={sabads} selectedId={selectedId} />
       </aside>
       <section aria-label="Transcreation" className="flex min-w-0 flex-col gap-3.5">
         {error ? <Unavailable title="Sabads could not be loaded" reason={error.message} />
           : !data ? <p className="m-0 text-sm text-muted" role="status">Loading…</p>
-          : !selected ? <Unavailable title="No Sabad available" reason="No Sabad has been exported from BaniDB yet." />
-          : <Center key={selected.shabad_id} shabadId={selected.shabad_id} focus={params.get("focus")} />}
+          : !selectedId ? <Unavailable title="No Sabad available" reason="No Sabad has been exported from BaniDB yet." />
+          : <Center key={selectedId} shabadId={selectedId} focus={params.get("focus")} />}
       </section>
       <aside aria-label="Translator utilities" className="flex min-w-0 flex-col gap-3.5 lg:col-span-2 xl:col-span-1">
         <P1Placeholder title="Word lookup">Occurrences, prior renderings and similar lines will appear here once the reference data is loaded. Read-only; never a suggested translation.</P1Placeholder>

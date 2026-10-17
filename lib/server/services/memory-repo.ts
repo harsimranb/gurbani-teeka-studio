@@ -4,7 +4,7 @@ import {
   type CheckRun, type Decision, type Draft, type DriftResult, type Finding, type Line,
   type Proposal, type Publication, type Reference, type Rule, type Sabad,
 } from "../../contracts/domain";
-import { assertSyncTransactionResult, castInteger, compareShabadIds, type Repository, type SabadSummary } from "../db/repo";
+import { assertSyncTransactionResult, castInteger, compareShabadIds, type BrowseFilters, type BrowseRow, type Repository, type SabadSummary } from "../db/repo";
 
 /** The store type the services use: just the repository (it owns publications, sequences and transactions). */
 export type AppStore = Repository;
@@ -93,6 +93,24 @@ export function createMemoryRepository(): Repository {
       if (!ids?.length) return undefined;
       const first = sortedLines(ids)[0];
       return { shabad_id: shabadId, ang: first.ang, raag: first.raag, writer: first.writer };
+    },
+    browseSabads(filters: BrowseFilters): { total: number; rows: BrowseRow[] } {
+      const every = (line: Line) => (filters.ang === undefined || line.ang === filters.ang)
+        && (filters.raag === undefined || line.raag === filters.raag) && (filters.writer === undefined || line.writer === filters.writer);
+      const sabads = [...sabadLineIds.entries()].filter(([, ids]) => ids.length > 0).map(([shabadId, ids]) => ({ shabadId, lines: sortedLines(ids) }))
+        .filter(({ lines }) => lines.some(every));
+      const order = sabads.map(({ shabadId, lines }) => ({ shabadId, lines, firstAng: Math.min(...lines.map((line) => line.ang)), firstId: Math.min(...lines.map((line) => castInteger(line.line_id))) }))
+        .sort((a, b) => a.firstAng - b.firstAng || a.firstId - b.firstId || (a.shabadId < b.shabadId ? -1 : a.shabadId > b.shabadId ? 1 : 0));
+      const rows = order.slice(filters.offset, filters.offset + filters.limit).map(({ shabadId, lines, firstAng }) => ({
+        shabad_id: shabadId, ang: firstAng, last_ang: Math.max(...lines.map((line) => line.ang)), raag: lines[0].raag, writer: lines[0].writer,
+        line_count: lines.length, first_line_gurmukhi: lines[0].gurmukhi,
+      }));
+      return { total: order.length, rows };
+    },
+    listSourceFacets(): { raags: string[]; writers: string[] } {
+      const lines = [...lineRows.keys()].map(readLine);
+      const distinct = (values: string[]) => [...new Set(values)].sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
+      return { raags: distinct(lines.map((line) => line.raag)), writers: distinct(lines.map((line) => line.writer)) };
     },
     hasSourceLines(): boolean {
       return lineRows.size > 0;

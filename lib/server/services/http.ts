@@ -46,6 +46,8 @@ export async function handleRoute<N extends RouteName>(
   if (request.method !== route.method) return errorResponse("invalid_request", "HTTP method does not match this route.");
 
   let body: Record<string, unknown> = {};
+  // GET inputs beyond path params arrive as query-string text; the route's contract coerces numbers and rejects unknown keys.
+  if (route.method === "GET") body = Object.fromEntries(new URL(request.url).searchParams);
   if (route.method === "POST") {
     try {
       const raw: unknown = await request.json();

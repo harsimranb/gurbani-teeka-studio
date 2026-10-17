@@ -18,6 +18,9 @@ type Tx = Parameters<Parameters<AppDb["transaction"]>[0]>[0];
 type Exec = AppDb | Tx;
 
 export type SabadSummary = { shabad_id: string; ang: number; raag: string; writer: string };
+/** A Sabad as the browse view lists it: first-line raag/writer and Gurmukhi, the ang span, and the line count. */
+export type BrowseRow = SabadSummary & { last_ang: number; line_count: number; first_line_gurmukhi: string };
+export type BrowseFilters = { ang?: number; raag?: string; writer?: string; limit: number; offset: number };
 
 /** SQLite `CAST(text AS INTEGER)` (leading integer prefix, else 0); the memory double uses it to order like SQLite. */
 export function castInteger(value: string): number {
@@ -48,6 +51,14 @@ export interface Repository {
   listSabads(): SabadSummary[];
   /** Summary of one Sabad's first line (same rule as `listSabads`), or undefined if it has no source lines. Indexed. */
   getSabadSummary(shabadId: string): SabadSummary | undefined;
+  /**
+   * FE-10: Sabads that have a line matching EVERY given filter (one line must satisfy all of them), in corpus order
+   * (first ang, then first line ID, then Sabad ID). `total` counts all matches; `rows` is the requested page.
+   * Each row describes the whole Sabad, not just the matching line. Queries SQLite; never reads the full corpus into memory.
+   */
+  browseSabads(filters: BrowseFilters): { total: number; rows: BrowseRow[] };
+  /** Every distinct raag and writer in the source lines, sorted, for the browse filter controls. */
+  listSourceFacets(): { raags: string[]; writers: string[] };
   /** True when at least one source line is stored. */
   hasSourceLines(): boolean;
   saveDraft(raw: Draft): void;
@@ -171,6 +182,38 @@ function buildRepository(db: Exec): Repository {
       const row = db.select({ ang: lines.ang, raag: lines.raag, writer: lines.writer }).from(lines)
         .where(eq(lines.shabadId, shabadId)).orderBy(sql`CAST(${lines.id} AS INTEGER)`, sql`rowid`).limit(1).get();
       return row ? { shabad_id: shabadId, ang: row.ang, raag: row.raag, writer: row.writer } : undefined;
+    },
+    browseSabads(filters: BrowseFilters): { total: number; rows: BrowseRow[] } {
+      const conditions = [
+        filters.ang === undefined ? null : sql`ang = ${filters.ang}`,
+        filters.raag === undefined ? null : sql`raag = ${filters.raag}`,
+        filters.writer === undefined ? null : sql`writer = ${filters.writer}`,
+      ].filter((condition): condition is NonNullable<typeof condition> => condition !== null);
+      const filtered = conditions.length > 0;
+      const hits = sql`SELECT shabad_id FROM lines WHERE ${sql.join(conditions, sql` AND `)}`;
+      const total = db.get<{ n: number }>(filtered
+        ? sql`SELECT COUNT(DISTINCT shabad_id) AS n FROM lines WHERE ${sql.join(conditions, sql` AND `)}`
+        : sql`SELECT COUNT(DISTINCT shabad_id) AS n FROM lines`)?.n ?? 0;
+      // Page of Sabad IDs in corpus order, grouped over each Sabad's whole line set (not just its matching lines).
+      const page = db.all<{ shabad_id: string }>(sql`
+        SELECT shabad_id FROM lines ${filtered ? sql`WHERE shabad_id IN (${hits})` : sql``}
+        GROUP BY shabad_id ORDER BY MIN(ang), MIN(CAST(id AS INTEGER)), shabad_id
+        LIMIT ${filters.limit} OFFSET ${filters.offset}`).map((row) => row.shabad_id);
+      if (page.length === 0) return { total, rows: [] };
+      const found = db.all<{ shabad_id: string; ang: number; last_ang: number; raag: string; writer: string; line_count: number; first_line_gurmukhi: string }>(sql`
+        SELECT shabad_id, first_ang AS ang, last_ang, raag, writer, line_count, gurmukhi AS first_line_gurmukhi FROM (
+          SELECT shabad_id, raag, writer, gurmukhi,
+            ROW_NUMBER() OVER (PARTITION BY shabad_id ORDER BY CAST(id AS INTEGER), rowid) AS rn,
+            MIN(ang) OVER (PARTITION BY shabad_id) AS first_ang, MAX(ang) OVER (PARTITION BY shabad_id) AS last_ang,
+            COUNT(*) OVER (PARTITION BY shabad_id) AS line_count
+          FROM lines WHERE shabad_id IN (${sql.join(page.map((id) => sql`${id}`), sql`, `)})
+        ) WHERE rn = 1`);
+      const byId = new Map(found.map((row) => [row.shabad_id, row]));
+      return { total, rows: page.flatMap((id) => byId.get(id) ?? []) };
+    },
+    listSourceFacets(): { raags: string[]; writers: string[] } {
+      const distinct = (column: "raag" | "writer") => db.all<{ value: string }>(sql`SELECT DISTINCT ${sql.identifier(column)} AS value FROM lines ORDER BY value`).map((row) => row.value);
+      return { raags: distinct("raag"), writers: distinct("writer") };
     },
     hasSourceLines(): boolean {
       return db.select({ id: lines.id }).from(lines).limit(1).get() !== undefined;

@@ -1,4 +1,4 @@
-import type { ApiError, ApiRequest, ApiResponse, RouteName } from "../contracts/api";
+import { routes, type ApiError, type ApiRequest, type ApiResponse, type RouteName } from "../contracts/api";
 import { evalFixture } from "../contracts/fixtures";
 import {
   DriftResultSchema,
@@ -169,6 +169,28 @@ const handlers: { [N in RouteName]: Handler<N> } = {
     if (load.status === "unavailable") return { sabads: [] };
     const first = load.sabad.lines[0];
     return { sabads: [{ shabad_id: load.sabad.shabad_id, ang: first.ang, raag: first.raag, writer: first.writer }] };
+  },
+  /** MOCK ONLY: filters the one demo Sabad the mock knows; the real route queries the whole loaded corpus. */
+  async browseSabads(raw) {
+    const req = routes.browseSabads.request.parse(raw); // coerced fields are `unknown` on the input type
+    const load = await loadMockSabad();
+    if (load.status === "unavailable") return err("unavailable", load.reason);
+    const { sabad } = load;
+    const matches = sabad.lines.some((line) => (req.ang === undefined || line.ang === req.ang) && (req.raag === undefined || line.raag === req.raag) && (req.writer === undefined || line.writer === req.writer));
+    const first = sabad.lines[0];
+    const drafts = getState().drafts.filter((draft) => draft.shabad_id === sabad.shabad_id);
+    const published = drafts.filter((draft) => draft.status === "published").length;
+    const status = drafts.length === 0 ? "not_started" : published === drafts.length ? "published" : published > 0 ? "partly_published"
+      : drafts.some((draft) => draft.status === "changes_requested") ? "changes_requested" : drafts.some((draft) => draft.status === "draft") ? "draft" : "ready_for_review";
+    const all = matches ? [{
+      shabad_id: sabad.shabad_id, ang: Math.min(...sabad.lines.map((line) => line.ang)), last_ang: Math.max(...sabad.lines.map((line) => line.ang)),
+      raag: first.raag, writer: first.writer, line_count: sabad.lines.length, first_line_gurmukhi: first.gurmukhi, status,
+    }] : [];
+    const distinct = (values: string[]) => [...new Set(values)].sort();
+    return {
+      total: all.length, limit: req.limit, offset: req.offset, sabads: all.slice(req.offset, req.offset + req.limit),
+      raags: distinct(sabad.lines.map((line) => line.raag)), writers: distinct(sabad.lines.map((line) => line.writer)),
+    };
   },
   async getSabad(req) {
     const found = await requireSabad(req.shabad_id);

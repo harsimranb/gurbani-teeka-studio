@@ -169,4 +169,33 @@ describe("stateful mock workflow", () => {
     await client.request("saveDraft", { draft_id: draft.id, expected_version: 1, shabad_id: "TEST-SABAD", line_ids: ["TEST-L1"], text: "second", author: "Tester" });
     await expect(running).rejects.toMatchObject({ code: "version_conflict" });
   });
+
+  it("sends GET inputs that are not path parameters as a query string", async () => {
+    const urls: string[] = [];
+    const real = createApiClient({ useMocks: false, fetcher: async (input) => {
+      urls.push(String(input));
+      return Response.json({ total: 0, limit: 25, offset: 0, sabads: [], raags: [], writers: [] });
+    } });
+    await real.request("browseSabads", {});
+    await real.request("browseSabads", { ang: 12, raag: "TEST RAAG/1", limit: 50 });
+    expect(urls).toEqual(["/api/browse?limit=25&offset=0", "/api/browse?ang=12&raag=TEST+RAAG%2F1&limit=50&offset=0"]);
+  });
+
+  it("serves browse in mock mode from the one demo Sabad", async () => {
+    const repeated: Sabad = {
+      shabad_id: "TEST-SABAD",
+      lines: [1, 2, 3].map((n) => ({ line_id: `TEST-L${n}`, shabad_id: "TEST-SABAD", ang: n, raag: "TEST-RAAG", writer: "TEST-WRITER", is_rahao: false, gurmukhi: n === 3 ? "TEST-OTHER" : `TEST-WORD TEST-X${n}` })),
+    };
+    __setMockSabadForTests(repeated);
+    const all = await client.request("browseSabads", {});
+    expect(all).toMatchObject({ total: 1, raags: ["TEST-RAAG"], writers: ["TEST-WRITER"] });
+    expect(all.sabads[0]).toMatchObject({ shabad_id: "TEST-SABAD", ang: 1, last_ang: 3, line_count: 3, status: "ready_for_review" });
+    expect((await client.request("browseSabads", { ang: 2 })).total).toBe(1);
+    expect((await client.request("browseSabads", { ang: 99 })).sabads).toEqual([]);
+    expect((await client.request("browseSabads", { writer: "OTHER" })).total).toBe(0);
+  });
+
+  it("reports browse as unavailable in mock mode without the demo Sabad", async () => {
+    await expect(client.request("browseSabads", {})).rejects.toMatchObject({ code: "unavailable" });
+  });
 });
