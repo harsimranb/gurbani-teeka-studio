@@ -1,0 +1,7 @@
+import { fixtureRoute } from "../../../../lib/server/services/fixture-route";
+
+type Params = { reference_id: string };
+
+export async function GET(request: Request, { params }: { params: Promise<Params> }) {
+  return fixtureRoute("getReference", request, await params);
+}

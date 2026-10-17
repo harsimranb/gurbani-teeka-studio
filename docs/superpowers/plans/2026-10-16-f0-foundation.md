@@ -104,9 +104,9 @@
 
 **Interfaces:** Each route accepts the declared request shape and returns a schema-valid fixture response or `ApiErrorSchema` error. Real draft/check/review behavior remains assigned to API-02 onward.
 
-- [ ] Test the 18 method/path handlers and parse every response or error against its declared schema.
-- [ ] Implement the minimal handlers. Return explicit unavailable responses where the synthetic stub lacks real evidence; do not imply persistence or review occurred.
-- [ ] Run route tests and typecheck.
+- [x] Test the 18 method/path handlers and parse every response or error against its declared schema.
+- [x] Implement the minimal handlers. Return explicit unavailable responses where the synthetic stub lacks real evidence; do not imply persistence or review occurred.
+- [x] Run route tests and typecheck.
 
 ### Task 9: F0/M0 verification and status
 

@@ -23,7 +23,7 @@ Mark a feature complete only when its acceptance paragraph in [`_docs/10-feature
 
 | Feature | Status | Evidence / next dependency |
 |---|---|---|
-| **F0 · Foundation, contracts and source data** | In progress | C-01 to C-04 and DATA-01 to DATA-05 complete for the approved Mac/source-only scope; C-05 Mac privacy checked, Windows deferred. API route skeletons remain. |
+| **F0 · Foundation, contracts and source data** | In progress | C-01 to C-04, DATA-01 to DATA-05 and API-01 complete for the approved Mac/source-only scope; C-05 Mac privacy checked, Windows deferred. Final M0 setup and review gate remain. |
 | **F1 · Workspace** | Not started | Needs F0 contracts, data and API. |
 | **F2 · Checks and report card** | Not started | Needs C-02 contracts and C-03 BaniDB fixture. |
 | **F3 · Reference and style evidence** | Not started | Eko-published references can exercise mechanics; SikhRI sample and term mappings remain pending. |
@@ -83,6 +83,7 @@ Append-only. Record decisions that add, remove or change planned behavior here *
 | D-73 | Support macOS and Windows development with shared Node/pnpm versions, LF text, platform-appropriate commands and per-machine dependencies/private data; verify each OS separately. |
 | D-74 | Use the user-supplied, ignored BaniDB SQLite copy's validated `tmp_Verse` table for the local demo export. Its mapped-line coverage and shared-text parity unblock C-03/DATA-03, but do not establish corpus currency or full textual completeness. Keep the partial Docker image and API fallback provenance distinct. |
 | D-75 | Harsimran directed F0's demo seed to include source lines only. Defer a human-written English draft to P-09/F1; do not generate one or silently treat synthetic test markers as a demo transcreation. |
+| D-76 | F0 route skeletons validate every request. Safe read endpoints return labelled contract fixtures; stateful and evidence-dependent endpoints return a contract-valid unavailable error until their actual persistence/check behavior is built, avoiding false success claims. |
 
 ---
 
@@ -223,7 +224,7 @@ Related folders: `app/api/`, `lib/server/services/`.
 - _(none)_
 
 ### Next
-- [ ] **API-01** Route skeletons for every route in `api.ts`, returning validated fixtures; contract tests · Needs: C-02
+- [x] **API-01** All 18 P0 method/path actions have route handlers and contract tests. Safe reads return labelled fixtures; stateful/evidence-dependent actions return validated unavailable errors after request validation (D-76). Focused, TypeScript and all 47 tests pass (2026-10-16)
 - [ ] **API-02** Get Sabad; save draft · FR-01, FR-02 · Needs: DATA-02
 - [ ] **API-03** `POST /api/check` (code) and `/api/check/llm`: build `CheckInput` with current references → `engine.runChecks` (`CheckResult`) → store validated findings and per-rule `notEvaluable` only if versions match; persist `CheckRun` phase status/failure · FR-06, FR-12 · Needs: S1 (stub until M1/M2)
 - [ ] **API-04** Decisions: accept, override, waive with a required reason; ready for review; re-check replaces stale findings · FR-03, FR-11, FR-12
