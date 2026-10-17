@@ -4,7 +4,7 @@ import { GET as lookupRoute } from "../../../app/api/lines/[line_id]/words/[star
 import { ApiErrorSchema, routes } from "../../contracts/api";
 import { SabadSchema, type Line, type Reference, type Sabad } from "../../contracts/domain";
 import { rulesFixture } from "../../contracts/fixtures";
-import { divineNameFamilies, tokenize } from "../../engine/gurmukhi";
+import { divineNameFamilies, tokenize } from "../../engine/index";
 import { __setSourceForTests, __setStoreForTests } from "./context";
 import { createMemoryRepository } from "./memory-repo";
 import { OCCURRENCE_CAP, RENDERING_CAP } from "./words";
