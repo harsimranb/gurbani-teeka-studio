@@ -245,6 +245,30 @@ describe("saveDraft and sibling units' Sabad-scoped state (API-03)", () => {
     expect(gateBlockers(a.id)).toContainEqual({ kind: "check_phase", draft_id: a.id, phase: "llm", status: "failed" });
   });
 
+  it("leaves a published sibling's findings and runs untouched when another unit is saved", async () => {
+    const { a, b } = await twoCheckedUnits();
+    getStore().saveCheckRun(makeRun({ id: "llm-a", draft_id: a.id, phase: "llm" }));
+    getStore().saveDraft({ ...a, status: "published" });
+    const before = structuredClone({ findings: getStore().listFindingsForDraft(a.id), runs: getStore().listCheckRunsForDraft(a.id) });
+    expect(sabadScopedCurrent(a.id).length).toBeGreaterThan(0);
+    await edit(b, "SYNTHETIC TEST: edited");
+    await ok("saveDraft", await save({ line_ids: [L(4)], text: "SYNTHETIC TEST: four" })); // a new unit
+    expect({ findings: getStore().listFindingsForDraft(a.id), runs: getStore().listCheckRunsForDraft(a.id) }).toEqual(before);
+    expect(codeRun(a.id)?.status).toBe("succeeded");
+    expect(getStore().getDraft(a.id)?.status).toBe("published");
+  });
+
+  it("still invalidates the unpublished siblings next to a published one", async () => {
+    const { a, b } = await twoCheckedUnits();
+    const c = (await ok("saveDraft", await save({ line_ids: [L(3)], text: NO_GLOSS }))).draft;
+    await codeCheck(c);
+    getStore().saveDraft({ ...a, status: "published" });
+    await edit(b, "SYNTHETIC TEST: edited");
+    expect(codeRun(a.id)?.status).toBe("succeeded");
+    expect(codeRun(c.id)?.status).toBe("failed");
+    expect(sabadScopedCurrent(c.id)).toEqual([]);
+  });
+
   it("leaves siblings alone when the save changes nothing", async () => {
     const { a, b } = await twoCheckedUnits();
     await edit(b, NO_GLOSS, "Someone else");

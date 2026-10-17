@@ -51,7 +51,7 @@ function Findings({ data }: { data: ReportPageData }) {
       ) : null}
       {entries.length === 0 && !data.anyLlmPending ? (
         <Card className="text-sm text-muted">
-          {!units.every((u) => u.codeRun?.status === "succeeded" && u.llmRun?.status === "succeeded")
+          {!units.filter((u) => u.draft.status !== "published").every((u) => u.codeRun?.status === "succeeded" && u.llmRun?.status === "succeeded")
             ? "No current findings, but not every check phase has completed, so this is not a pass."
             : units.some((u) => (u.codeRun?.not_evaluable.length ?? 0) + (u.llmRun?.not_evaluable.length ?? 0) > 0)
               ? "No current findings, but some rules could not be evaluated (listed under Not evaluable), so this is not a pass."

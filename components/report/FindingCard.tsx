@@ -66,7 +66,7 @@ function ReferenceLinks({ ids }: { ids: string[] }) {
 }
 
 function statusLabel(finding: Finding, needsDeparture: boolean, published: boolean): { text: string; blocks: boolean } {
-  if (published) return { text: "Published unit · re-check result", blocks: false };
+  if (published) return { text: "Published unit · recorded before publishing", blocks: false };
   if (finding.severity === "error" || finding.severity === "flag") return { text: "Blocks publishing", blocks: true };
   if (needsDeparture) return { text: "Needs a departure reason to publish", blocks: true };
   if (finding.severity === "warning") return { text: "Needs a reason to dismiss", blocks: false };

@@ -101,14 +101,17 @@ const SIBLING_STALE_MESSAGE = "Out of date: another unit of this Sabad was saved
  * keeping each phase to its own findings (`isCodeFinding`), and (b) turns the sibling's succeeded run of that phase
  * into a failed "out of date" run for its current version. The publish gate then blocks the sibling, and the next check
  * (which re-checks any unit without a succeeded run, D-54) refreshes it. A phase with no Sabad-scoped rule is left alone.
+ * Published siblings are skipped entirely (their results are not re-checked or stored, see `runChecksWith`).
  */
 export function invalidateSabadScopedSiblings(store: Store, saved: Draft, at: string): void {
-  const siblings = sabadDrafts(store, saved.shabad_id).filter((unit) => unit.id !== saved.id);
+  const others = sabadDrafts(store, saved.shabad_id).filter((unit) => unit.id !== saved.id);
+  // Published units are immutable approved work: their findings and runs are never cleared or failed here.
+  const siblings = others.filter((unit) => unit.status !== "published");
   const sabad = store.getSabad(saved.shabad_id);
   if (siblings.length === 0 || !sabad) return;
   const { version, rules } = currentRuleset(store);
   const input: CheckInput = {
-    sabad, draft: saved, sabadDrafts: [...siblings, saved], changedLineIds: saved.line_ids,
+    sabad, draft: saved, sabadDrafts: [...others, saved], changedLineIds: saved.line_ids,
     rules, rulesetVersion: version, references: [],
   };
   const scopes: Record<CheckRun["phase"], string[]> = { code: codePhaseScope(input).ruleIds, llm: llmPhaseScope(input).ruleIds };

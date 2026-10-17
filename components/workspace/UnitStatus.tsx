@@ -25,6 +25,8 @@ export function UnitStatus({ unit, dirty, report, inflight, shabadId, onRetry }:
   if (dirty) return <span className={`${base} font-medium text-accent-dark`} role="status">Unsaved changes</span>;
   if (unit.draftId === null) return <span className={`${base} text-muted`}>Not checked yet</span>;
   if (!report) return <span className={`${base} text-muted`} role="status">Loading checks…</span>;
+  // Published units are approved work: checks are not re-run on them, so a missing run at a newer ruleset is not a gap.
+  if (report.draft.status === "published") return <span className={`${base} text-muted`}>Published · checks are not re-run on published units</span>;
   const code = runOf(report, "code");
   const llm = runOf(report, "llm");
   const running = { code: inflight.code === true, llm: inflight.llm === true };

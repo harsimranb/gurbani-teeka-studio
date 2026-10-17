@@ -91,7 +91,7 @@ export function SabadEditor({ sabad, drafts, focusDraftId, refetch }: { sabad: S
   const missingRuns = drafts.filter((d) => {
     const report = reports[d.id];
     const busy = inflight[d.id]?.code || inflight[d.id]?.llm || report?.check_runs.some((run) => run.status === "pending");
-    return !busy && report && report.draft.version === d.version && (!runOf(report, "code") || !runOf(report, "llm"));
+    return d.status !== "published" && !busy && report && report.draft.version === d.version && (!runOf(report, "code") || !runOf(report, "llm"));
   });
   async function rerun() {
     setRerunning(true);

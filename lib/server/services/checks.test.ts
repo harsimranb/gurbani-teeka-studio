@@ -170,6 +170,93 @@ describe("code phase and siblings never fully checked", () => {
   });
 });
 
+describe("published units are immutable approved work (API-03)", () => {
+  const publish = (id: string) => store().saveDraft({ ...store().getDraft(id)!, status: "published" });
+  const snapshotOf = (id: string) => structuredClone({ findings: store().listFindingsForDraft(id), runs: store().listCheckRunsForDraft(id) });
+  const capturing = (inputs: Parameters<typeof runChecks>[0][]): typeof runChecks => async (input, phase) => { inputs.push(input); return runChecks(input, phase); };
+
+  async function publishedAtV1() {
+    const published = seed("d1", [1], LORD);
+    await ok(await post(postCode, body(published)));
+    await ok(await post(postLlm, body(published)));
+    store().saveFinding(makeFinding({ id: "f-cleared", draft_id: "d1", rule_id: "LAYER-07", state: "cleared", cleared_at: TEST_AT }));
+    publish("d1");
+    store().saveRuleset(2, store().getRuleset(1)); // e.g. a rule proposal was approved
+    return published;
+  }
+
+  it("stores no findings or runs on a published sibling when another unit is checked after a ruleset change", async () => {
+    await publishedAtV1();
+    const before = snapshotOf("d1");
+    expect(before.findings.some((finding) => finding.state === "current")).toBe(true); // the v1 work worth protecting
+    const next = seed("d2", [2], CLEAN);
+    for (const handler of [postCode, postLlm]) {
+      const response = await ok(await post(handler, body(next, { ruleset_version: 2 })));
+      expect(response.affected_drafts.map((unit) => unit.id)).toEqual(["d2"]);
+      expect(response.check_runs.map((run) => run.draft_id)).toEqual(["d2"]);
+      expect(response.result.findings.every((finding) => finding.draft_id === "d2")).toBe(true);
+    }
+    expect(snapshotOf("d1")).toEqual(before);
+    expect(currentFindings(store(), store().getDraft("d1")!, 2)).toEqual([]);
+    expect(currentRuns(store(), store().getDraft("d1")!, 2)).toEqual([]);
+  });
+
+  it("still passes published units to the engine as Sabad context, but never as changed lines", async () => {
+    await publishedAtV1();
+    const next = seed("d2", [2], CLEAN);
+    const inputs: Parameters<typeof runChecks>[0][] = [];
+    // The request lists the published unit's line too; it is not a target.
+    await runChecksWith(capturing(inputs), "code", body(next, { ruleset_version: 2, changed_line_ids: [L(1), L(2)] }) as never);
+    expect(inputs).toHaveLength(1);
+    expect(inputs[0].sabadDrafts.map((unit) => unit.id).sort()).toEqual(["d1", "d2"]);
+    expect(inputs[0].changedLineIds).toEqual([L(2)]);
+  });
+
+  it("drops a Sabad-scoped finding the engine locates in a published unit (TERM-03 first use)", async () => {
+    seed("d1", [1], NO_GLOSS);
+    publish("d1");
+    const next = seed("d2", [2], NO_GLOSS);
+    const seen: CheckResult[] = [];
+    const engine: typeof runChecks = async (input, phase) => { const result = await runChecks(input, phase); seen.push(result); return result; };
+    const response = await runChecksWith(engine, "code", body(next) as never);
+    expect(seen[0].findings.some((finding) => finding.draft_id === "d1" && finding.rule_id === "TERM-03")).toBe(true); // the premise
+    expect(response.result.findings.some((finding) => finding.draft_id === "d1")).toBe(false);
+    expect(response.affected_drafts.map((unit) => unit.id)).toEqual(["d2"]);
+    expect(snapshotOf("d1")).toEqual({ findings: [], runs: [] });
+  });
+
+  it("does not clear a published unit's existing Sabad-scoped findings either", async () => {
+    const first = seed("d1", [1], NO_GLOSS);
+    await ok(await post(postCode, body(first)));
+    publish("d1");
+    const before = snapshotOf("d1");
+    expect(before.findings.some((finding) => finding.rule_id === "TERM-03" && finding.state === "current")).toBe(true);
+    const next = seed("d2", [2], NO_GLOSS);
+    await ok(await post(postCode, body(next)));
+    expect(snapshotOf("d1")).toEqual(before);
+  });
+
+  it("still re-checks unpublished siblings that have no run for the new ruleset", async () => {
+    await publishedAtV1();
+    const sibling = seed("d3", [3], LORD);
+    const target = seed("d2", [2], CLEAN);
+    const response = await ok(await post(postCode, body(target, { ruleset_version: 2 })));
+    expect(response.affected_drafts.map((unit) => unit.id).sort()).toEqual(["d2", "d3"]);
+    expect(currentRuns(store(), sibling, 2).map((run) => run.status)).toEqual(["succeeded"]);
+    expect(currentFindings(store(), sibling, 2).some((finding) => finding.rule_id === "TERM-01")).toBe(true);
+    expect(currentRuns(store(), store().getDraft("d1")!, 2)).toEqual([]);
+  });
+
+  it("refuses to check a published draft directly", async () => {
+    const published = await publishedAtV1();
+    const before = snapshotOf("d1");
+    const response = await post(postCode, body(store().getDraft(published.id)!, { ruleset_version: 2 }));
+    expect(response.status).toBe(400);
+    expect((await errorOf(response)).code).toBe("invalid_request");
+    expect(snapshotOf("d1")).toEqual(before);
+  });
+});
+
 describe("POST /api/check/llm (model phase)", () => {
   it("returns not_evaluable entries and no findings, with a succeeded llm run", async () => {
     const draft = seed("d1", [1], FOREST);

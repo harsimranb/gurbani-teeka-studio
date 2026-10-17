@@ -11,6 +11,9 @@ import { clearFindings, currentRuleset, sabadDrafts } from "./state";
  * API-03: run one check phase for a draft. Calls the real engine (`lib/engine/index.ts`) and persists
  * findings and runs in the store. The engine call is injectable (`runChecksWith`) so tests can substitute
  * a slow or failing engine; routes use the default.
+ *
+ * Published units are approved work and immutable here: they are passed to the engine as Sabad context
+ * (`sabadDrafts`, for first-use and collapse rules) but are never a check target, and nothing is stored on them.
  */
 type Phase = CheckRun["phase"];
 type CheckRequest = ParsedRequest<"runCodeChecks">;
@@ -18,6 +21,7 @@ type CheckResponse = ApiResponse<"runCodeChecks">;
 type EngineRunChecks = Engine["runChecks"];
 
 const MAX_ERROR_LENGTH = 300;
+const isPublished = (unit: Draft): boolean => unit.status === "published";
 
 export const runCodeChecks = (req: CheckRequest): Promise<CheckResponse> => runChecksWith(runChecks, "code", req);
 export const runLlmChecks = (req: CheckRequest): Promise<CheckResponse> => runChecksWith(runChecks, "llm", req);
@@ -91,6 +95,7 @@ export async function runChecksWith(
   const ruleset = currentRuleset(store);
   if (req.draft_version !== draft.version) throw new ServiceError("version_conflict", "Draft changed since this check was requested; reload and re-run.");
   if (req.ruleset_version !== ruleset.version) throw new ServiceError("version_conflict", "Ruleset changed since this check was requested; reload and re-run.");
+  if (draft.status === "published") throw new ServiceError("invalid_request", "This draft version is already published; checks are not re-run on published work. Edit it to start a new version.");
   const sabad = store.getSabad(draft.shabad_id);
   if (!sabad) throw new ServiceError("not_found", "Source Sabad for this draft is not available.");
   if (draft.line_ids.some((id) => !req.changed_line_ids.includes(id))) {
@@ -103,10 +108,12 @@ export async function runChecksWith(
     const covered = unit.line_ids.filter((id) => req.changed_line_ids.includes(id)).length;
     if (covered > 0 && covered < unit.line_ids.length) throw new ServiceError("invalid_request", "changed_line_ids must cover every source line of any group they touch.");
   }
+  // Published units are context only: never changed, never re-checked, whatever the request lists.
+  const publishedLines = new Set(drafts.filter(isPublished).flatMap((unit) => unit.line_ids));
   // A sibling with no succeeded run of this phase for its current draft and ruleset version has never been fully
   // checked, so re-check it in full. That keeps its persisted "succeeded" run truthful and the publish gate honest.
-  const changedLineIds = [...new Set([...req.changed_line_ids, ...drafts
-    .filter((unit) => !store.listCheckRunsForDraft(unit.id).some((run) => run.phase === phase && run.status === "succeeded" && run.draft_version === unit.version && run.ruleset_version === ruleset.version))
+  const changedLineIds = [...new Set([...req.changed_line_ids.filter((id) => !publishedLines.has(id)), ...drafts
+    .filter((unit) => !isPublished(unit) && !store.listCheckRunsForDraft(unit.id).some((run) => run.phase === phase && run.status === "succeeded" && run.draft_version === unit.version && run.ruleset_version === ruleset.version))
     .flatMap((unit) => unit.line_ids)])];
   const parsed = CheckInputSchema.safeParse({
     sabad, draft, sabadDrafts: drafts, changedLineIds,
@@ -123,7 +130,7 @@ export async function runChecksWith(
   // The engine's scope says which units a result owns (`draftIds`) and which rules it owns on every unit (`ruleIds`).
   const scope = phase === "code" ? codePhaseScope(input) : llmPhaseScope(input);
   const unitIds = new Set([...scope.draftIds, draft.id]);
-  const units = drafts.filter((unit) => unitIds.has(unit.id));
+  const units = drafts.filter((unit) => unitIds.has(unit.id) && !isPublished(unit));
   // Sabad-scoped rules read siblings, so with any in scope a Sabad change invalidates the result; otherwise only its units.
   const sabadWide = scope.ruleIds.length > 0;
   const snapshot = { shabadId: draft.shabad_id, rulesetVersion: ruleset.version, drafts: sabadWide ? drafts : units, sabadWide };
@@ -163,11 +170,15 @@ export async function runChecksWith(
 
       // Re-read the Sabad's units inside the transaction, so every decision below uses the state being written over.
       const siblings = sabadDrafts(tx, draft.shabad_id);
+      // Units published meanwhile are immutable too: only unpublished units receive findings, clears and runs.
+      const writable = siblings.filter((unit) => !isPublished(unit));
+      const writableIds = new Set(writable.map((unit) => unit.id));
       // Never resurrect a reviewer's override/waive: collect before clearing, since clearing re-labels findings.
       const reviewerCleared = reviewerClearedIds(tx, siblings);
-      const saved: Finding[] = engineFindings.filter((finding) => !reviewerCleared.has(finding.id));
+      // A Sabad-scoped finding the engine locates in a published unit (e.g. first use) is dropped, not stored.
+      const saved: Finding[] = engineFindings.filter((finding) => !reviewerCleared.has(finding.id) && writableIds.has(finding.draft_id));
       const at = nowIso();
-      const byId = new Map(siblings.map((unit) => [unit.id, unit]));
+      const byId = new Map(writable.map((unit) => [unit.id, unit]));
       const current = (finding: Finding) => {
         const unit = byId.get(finding.draft_id);
         return !!unit && finding.draft_version === unit.version && finding.ruleset_version === ruleset.version;
@@ -175,12 +186,12 @@ export async function runChecksWith(
       // Own units: all rules of this phase. Every unit: only Sabad-scoped rules, whose result depends on sibling units.
       // Code findings are replaced only by the code phase, model findings only by the model phase.
       const cleared = clearFindings(tx, (finding) => isCodeFinding(finding) === (phase === "code") && current(finding)
-        && (scope.draftIds.includes(finding.draft_id) || scope.ruleIds.includes(finding.rule_id)), at, siblings.map((unit) => unit.id));
+        && (scope.draftIds.includes(finding.draft_id) || scope.ruleIds.includes(finding.rule_id)), at, writableIds);
       for (const finding of saved) tx.saveFinding(finding);
 
       // Affected = re-checked units, plus any sibling that received or lost findings under Sabad scope.
       const affectedIds = new Set([...unitIds, ...saved.map((finding) => finding.draft_id), ...cleared.map((finding) => finding.draft_id)]);
-      const affected = siblings.filter((unit) => affectedIds.has(unit.id));
+      const affected = writable.filter((unit) => affectedIds.has(unit.id));
       const pendingByDraft = new Map(pending.map((run) => [run.draft_id, run]));
       const completedAt = nowIso();
       const runs = affected.map((unit): CheckRun => ({

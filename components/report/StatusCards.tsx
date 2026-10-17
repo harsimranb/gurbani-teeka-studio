@@ -21,13 +21,17 @@ function StatusCard({ icon, tone, title, children }: { icon: ReactNode; tone: "o
   );
 }
 
+function PublishedNote({ count }: { count: number }) {
+  return count > 0 ? <div>{count} published {count === 1 ? "unit is" : "units are"} not re-checked.</div> : null;
+}
+
 function longestSeconds(runs: CheckRun[]): string | null {
   const ms = runs.filter((r) => r.completed_at).map((r) => Date.parse(r.completed_at ?? "") - Date.parse(r.started_at)).filter((n) => Number.isFinite(n) && n >= 0);
   return ms.length ? `${(Math.max(...ms) / 1000).toFixed(1)} s` : null;
 }
 const names = (units: UnitData[]) => units.map(unitLineLabel).join("; ");
 
-function CodeChecksCard({ units, ruleList }: { units: UnitData[]; ruleList: Rule[] }) {
+function CodeChecksCard({ units, ruleList, published }: { units: UnitData[]; ruleList: Rule[]; published: number }) {
   const runs = units.flatMap((u) => (u.codeRun ? [u.codeRun] : []));
   const done = runs.filter((r) => r.status === "succeeded");
   const failed = units.filter((u) => u.codeRun?.status === "failed");
@@ -46,12 +50,13 @@ function CodeChecksCard({ units, ruleList }: { units: UnitData[]; ruleList: Rule
       {failed.length ? <div className="text-error">Failed for {names(failed)}</div> : null}
       {pending.length ? <div>Running for {names(pending)}</div> : null}
       {missing.length ? <div>Not run for {names(missing)}</div> : null}
+      <PublishedNote count={published} />
       {done.length && ran.length ? <div>Rules that ran{done.length < units.length ? ` on the ${done.length} checked ${done.length === 1 ? "unit" : "units"}` : ""}: <span className="font-mono text-xs">{ran.join(", ")}</span></div> : null}
     </StatusCard>
   );
 }
 
-function ModelChecksCard({ units }: { units: UnitData[] }) {
+function ModelChecksCard({ units, published }: { units: UnitData[]; published: number }) {
   const [error, setError] = useState<string | null>(null);
   const [retrying, setRetrying] = useState<Set<string>>(new Set());
   const runs = units.flatMap((u) => (u.llmRun ? [u.llmRun] : []));
@@ -81,6 +86,7 @@ function ModelChecksCard({ units }: { units: UnitData[] }) {
   return (
     <StatusCard icon={icon} tone={failed.length ? "error" : running || missing.length || unjudged > 0 ? "neutral" : "ok"} title={<span className="inline-flex flex-wrap items-center gap-2">Model checks{took && !running ? ` · ${took}` : ""}{cached ? <StatusPill>cached</StatusPill> : null}</span>}>
       <div>{done.length} of {units.length} authored units checked</div>
+      <PublishedNote count={published} />
       {unjudged > 0 ? <div>Completed with {unjudged} {unjudged === 1 ? "rule" : "rules"} not evaluable (listed under Not evaluable). This is not a pass.</div> : null}
       {running ? <div role="status">Running for {names(pending)}; model findings will appear here.</div> : null}
       {missing.length ? <div>Not run for {names(missing)}</div> : null}
@@ -95,11 +101,14 @@ function ModelChecksCard({ units }: { units: UnitData[] }) {
   );
 }
 
-export function StatusCards({ units, ruleList }: { units: UnitData[]; ruleList: Rule[] }) {
+export function StatusCards({ units: all, ruleList }: { units: UnitData[]; ruleList: Rule[] }) {
+  // Published units are approved work and are never re-checked, so they do not count as "not run" when the ruleset moves on.
+  const units = all.filter((u) => u.draft.status !== "published");
+  const publishedCount = all.length - units.length;
   return (
     <div className="grid grid-cols-[repeat(auto-fit,minmax(300px,1fr))] gap-3">
-      <CodeChecksCard units={units} ruleList={ruleList} />
-      <ModelChecksCard units={units} />
+      <CodeChecksCard units={units} ruleList={ruleList} published={publishedCount} />
+      <ModelChecksCard units={units} published={publishedCount} />
       <StatusCard icon={<ShieldCheck className="size-[15px]" aria-hidden="true" />} tone="info" title="Citation validator">
         <div>Every finding below passed the exact-span check: its quoted words equal the draft text at its offsets.</div>
         <div>Dropped-finding count not reported in this build.</div>
