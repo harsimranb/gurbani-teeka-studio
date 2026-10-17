@@ -1,5 +1,15 @@
+import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
+import { SabadSchema } from "../../contracts/domain";
 import { passesReviewGuards } from "./guards";
+
+// Gurmukhi comes only from the git-ignored BaniDB fixture (hard rule 2); these tests skip without it.
+const sourcePath = new URL("../../contracts/fixtures/sabad.demo.json", import.meta.url);
+let sabad: ReturnType<typeof SabadSchema.parse> | undefined;
+try { sabad = SabadSchema.parse(JSON.parse(readFileSync(sourcePath, "utf8"))); } catch (error) {
+  if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+}
+const sourceTests = sabad ? describe : describe.skip;
 
 const draft = "Through the Word, the mind is steadied. The Lord sustains all.";
 
@@ -50,5 +60,23 @@ describe("review guards", () => {
     expect(passesReviewGuards("The phrase “the Word” differs from the rule.", [draft])).toBe(true);
     expect(passesReviewGuards("Differs from reference rendering ref-1; it carries an exception mark.")).toBe(true);
     expect(passesReviewGuards("The draft's wording and the model's reading differ.")).toBe(true);
+  });
+});
+
+sourceTests("Gurmukhi in model text (hard rule 2)", () => {
+  const words = (text: string): string[] => text.match(/[\u0A00-\u0A7F]+/gu) ?? [];
+  const lines = sabad!.lines.map((line) => line.gurmukhi);
+  const [first, second] = lines;
+  const own = words(first).find((word) => [...word].length > 1)!;
+  const elsewhere = words(second).find((word) => !words(first).includes(word))!;
+
+  it("passes a whole source word copied from the evidence", () => {
+    expect(passesReviewGuards(`The source name ${own} differs from the draft phrase.`, [first])).toBe(true);
+  });
+
+  it("drops Gurmukhi that is not a whole word of the evidence", () => {
+    expect(passesReviewGuards(`The source name ${own.slice(0, -1)} differs from the draft phrase.`, [first])).toBe(false);
+    expect(passesReviewGuards(`The source name ${elsewhere} differs from the draft phrase.`, [first])).toBe(false);
+    expect(passesReviewGuards(`The source name ${own} differs from the draft phrase.`)).toBe(false);
   });
 });

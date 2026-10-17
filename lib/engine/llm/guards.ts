@@ -3,8 +3,23 @@ const REWRITE = /\b(replace|rewrite|rephrase|reword|should read|could read|consi
 // Double quotes, curly doubles, and single/curly-single quotes bounded by non-letters (so "draft's" is no quote).
 const QUOTES = [/"([^"]*)"/g, /“([^”]*)”/g, /(?<![\p{L}\p{N}])['‘]([^'‘’]+)['’](?![\p{L}\p{N}])/gu];
 
-/** Hard rules 1 and 5: a model explanation may not be non-neutral, propose wording, or quote text that is not in the evidence. */
+// A run of Gurmukhi-block characters (letters, vowel signs, nasalisation marks, digits).
+const GURMUKHI_RUN = /[\u0A00-\u0A7F]+/gu;
+
+/** Hard rule 2: model text may name Gurmukhi only as whole words copied verbatim (NFC) from the evidence, never its own spelling. */
+function gurmukhiFromEvidence(explanation: string, allowedQuotes: string[]): boolean {
+  const runs = explanation.normalize("NFC").match(GURMUKHI_RUN);
+  if (!runs) return true;
+  const words = new Set(allowedQuotes.flatMap((text) => text.normalize("NFC").match(GURMUKHI_RUN) ?? []));
+  return runs.every((run) => words.has(run));
+}
+
+/**
+ * Hard rules 1, 2 and 5: a model explanation may not be non-neutral, propose wording, quote text that is not in
+ * the evidence, or contain Gurmukhi other than whole words copied verbatim from the evidence.
+ */
 export function passesReviewGuards(explanation: string, allowedQuotes: string[] = []): boolean {
+  if (!gurmukhiFromEvidence(explanation, allowedQuotes)) return false;
   const allowed = allowedQuotes.map((text) => text.toLowerCase());
   const quotesOk = QUOTES.every((pattern) => [...explanation.matchAll(pattern)].every((match) => allowed.some((text) => text.includes(match[1].toLowerCase()))));
   if (!quotesOk) return false;
