@@ -86,8 +86,8 @@
 
 **Interfaces:** Read `_docs/rules/rules.resolved.json` in place, map its 66 entries to `RuleSchema` at version 1, and save through DATA-02 without rewording rule text.
 
-- [ ] Test 66 IDs, 10 active resolutions, verbatim text, and no duplicate version after a second seed.
-- [ ] Implement the seed and run the focused test and typecheck.
+- [x] Test 66 IDs, 10 active resolutions, verbatim text, and no duplicate version after a second seed.
+- [x] Implement the seed and run the focused test and typecheck.
 
 ### Task 7: DATA-05 — source-only demo seed now
 

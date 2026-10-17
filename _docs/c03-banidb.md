@@ -6,7 +6,7 @@ The user supplied a private, ignored `data/banidb/banidb.sqlite`. Its main `Vers
 
 The read-only SQLite exporter validates mapping coverage, overlap, source IDs, metadata, NFC, and Rahao notation before replacing the canonical private fixture. It exported Sabad 1356: five lines, one Rahao line, SHA-256 `548b315ef87aa0aeecb6462c9a933b6199a73c36cdaba64fea3c32b85d54553e`. The earlier complete API Sabad 55 fixture and provenance remain ignored as `data/banidb/sabad.api-fallback.json` and `data/banidb/export-metadata.api-fallback.json`. No Gurmukhi or BaniDB database content is committed.
 
-With the supplied SQLite copy in place, run these repository-relative commands from the root. The exporter selects Sabad 1356 unless an ID is given; it never reads English translations. Ingest writes source lines to the app's local `eko.db`, creates the app migration if needed, and is repeatable without duplicates.
+With the supplied SQLite copy in place, run these repository-relative commands from the root. The exporter selects Sabad 1356 unless an ID is given; it never reads English translations. Ingest writes source lines and the verbatim 66-rule version 1 seed to the app's local `eko.db`, creates the app migration if needed, and is repeatable without duplicates.
 
 ```text
 node --import tsx scripts/app/export-banidb-sqlite-demo.ts

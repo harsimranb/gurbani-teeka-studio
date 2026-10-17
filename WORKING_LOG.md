@@ -23,7 +23,7 @@ Mark a feature complete only when its acceptance paragraph in [`_docs/10-feature
 
 | Feature | Status | Evidence / next dependency |
 |---|---|---|
-| **F0 · Foundation, contracts and source data** | In progress | C-01 to C-04 and DATA-01 to DATA-03 complete; C-05 Mac privacy checked, Windows deferred. Rules/source-only demo seed and API skeletons remain. |
+| **F0 · Foundation, contracts and source data** | In progress | C-01 to C-04 and DATA-01 to DATA-04 complete; C-05 Mac privacy checked, Windows deferred. Source-only demo seed and API skeletons remain. |
 | **F1 · Workspace** | Not started | Needs F0 contracts, data and API. |
 | **F2 · Checks and report card** | Not started | Needs C-02 contracts and C-03 BaniDB fixture. |
 | **F3 · Reference and style evidence** | Not started | Eko-published references can exercise mechanics; SikhRI sample and term mappings remain pending. |
@@ -205,7 +205,7 @@ Related folders: `lib/server/db/`, `lib/server/ingest/`, `scripts/app/`, `data/b
 - [x] **DATA-01** Drizzle schema + first migration: lines, drafts, findings, check runs, decisions, versioned rules, proposals, drift results and references. Empty-file migration verified on Mac; focused and full tests (37) plus TypeScript pass (2026-10-16)
 - [x] **DATA-02** Repository functions in `lib/server/db/repo.ts` save/load the contract records, including grouped drafts, findings, check phases, decisions, versioned rules, references and source lines. Temporary SQLite round-trip tests and all 40 tests pass (2026-10-16)
 - [x] **DATA-03** BaniDB local export → app lines with ang, raag, writer, Rahao and NFC Gurmukhi; `pnpm ingest` is idempotent. Full-corpus ingest remains outside this demo until P-05 confirms it. All 43 tests and TypeScript pass (2026-10-16) · FR-01 · **Provides S2**
-- [ ] **DATA-04** Rules seed from `_docs/rules/rules.resolved.json` as version 1
+- [x] **DATA-04** Rules seed reads `_docs/rules/rules.resolved.json` verbatim as version 1; repeat ingest keeps 66 unique IDs and 10 active resolutions. Focused, TypeScript and all 44 tests pass (2026-10-16)
 - [ ] **DATA-05** Demo seed (`scripts/app/seed-demo.ts`) · Needs: P-09
 - [ ] **DATA-06** SikhRI sample import: raw → `data/sikhri-sample/normalized/references.json` and `corrections.json` (contract schemas); map IDs by normalized Gurmukhi if they differ from BaniDB, quarantine ambiguous repeated-line matches, and load only resolved references into the DB · Needs: P-04 · **Provides S3**
 
