@@ -75,10 +75,10 @@
 
 **Interfaces:** Read only the user-provided, ignored BaniDB SQLite copy with `better-sqlite3`; map `tmp_Verse` + `Shabad` + `Raag` + `Writer` to `SabadSchema` and write lines through DATA-02. Keep the existing MariaDB exporter and API fallback separate.
 
-- [ ] Test that the SQLite exporter rejects missing mapped lines, mixed source IDs, absent metadata, and invalid source text. Verify Rahao extraction against the raw legacy marker syntax in the selected Sabad.
-- [ ] Verify the `tmp_Verse` ID range and G-source mapping coverage, and compare its Unicode to `Verse` on all shared G-source IDs. Record that matching overlap and mapping coverage do not establish currentness or a textual audit.
-- [ ] Export one complete 3–10 line Sabad with source IDs, NFC text, raag, writer, and Rahao from local SQLite. Validate the private canonical `SabadSchema` fixture and write separate provenance. Do not commit the export.
-- [ ] Test and implement idempotent ingest from that local export into the app database; never store BaniDB translation fields. Keep a clear error for attempts to export from the incomplete Docker `Verse` table.
+- [x] Test that the SQLite exporter rejects missing mapped lines, mixed source IDs, absent metadata, and invalid source text. Verify Rahao extraction against the raw legacy marker syntax in the selected Sabad.
+- [x] Verify the `tmp_Verse` ID range and G-source mapping coverage, and compare its Unicode to `Verse` on all shared G-source IDs. Record that matching overlap and mapping coverage do not establish currentness or a textual audit.
+- [x] Export one complete 3–10 line Sabad with source IDs, NFC text, raag, writer, and Rahao from local SQLite. Validate the private canonical `SabadSchema` fixture and write separate provenance. Do not commit the export.
+- [x] Test and implement idempotent ingest from that local export into the app database; never store BaniDB translation fields. Keep a clear error for attempts to export from the incomplete Docker `Verse` table.
 
 ### Task 6: DATA-04 — seed resolved rules
 

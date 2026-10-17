@@ -5,7 +5,7 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createConnection, type RowDataPacket } from "mysql2/promise";
 
-interface SourceLine extends RowDataPacket {
+export interface SourceLineFields {
   ID: number;
   ShabadID: number;
   SourceID: string;
@@ -14,6 +14,12 @@ interface SourceLine extends RowDataPacket {
   GurmukhiUni: string;
   RaagEnglish: string;
   WriterEnglish: string;
+}
+interface SourceLine extends RowDataPacket, SourceLineFields {}
+
+export function hasRahaoMarker(legacy: string): boolean {
+  // BaniDB source markers occur both after whitespace and in bracketed notation.
+  return /(?:^|[\s\]])rhwau(?:[\s\]|[|.0-9]|$)/i.test(legacy);
 }
 
 export function normalizeSourceText(value: unknown): string {
@@ -29,7 +35,7 @@ export function assertCompleteSabad(expected: number, actual: number): void {
   }
 }
 
-export function toDemoSabad(rows: SourceLine[], expectedShabadId?: number) {
+export function toDemoSabad(rows: SourceLineFields[], expectedShabadId?: number) {
   if (!rows.length) throw new Error("No source lines found for the Sabad.");
   if (expectedShabadId !== undefined && rows.some((row) => row.ShabadID !== expectedShabadId)) {
     throw new Error("Sabad header does not match source line IDs.");
@@ -62,7 +68,7 @@ export function toDemoSabad(rows: SourceLine[], expectedShabadId?: number) {
         raag: row.RaagEnglish,
         writer: row.WriterEnglish,
         // BaniDB's legacy source field supplies the refrain marker; no text conversion.
-        is_rahao: /(?:^|\s)rhwau(?:\s|[|.0-9]|$)/.test(row.Gurmukhi),
+        is_rahao: hasRahaoMarker(row.Gurmukhi),
         gurmukhi,
       };
     }),

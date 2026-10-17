@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { assertCompleteSabad, normalizeSourceText, toDemoSabad } from "./export-banidb-demo";
+import { assertCompleteSabad, hasRahaoMarker, normalizeSourceText, toDemoSabad } from "./export-banidb-demo";
 
 describe("BaniDB demo export boundaries", () => {
   it("normalizes source Unicode without changing its content", () => {
@@ -28,5 +28,11 @@ describe("BaniDB demo export boundaries", () => {
   it("rejects an empty Sabad and source IDs outside Guru Granth Sahib", () => {
     expect(() => toDemoSabad([])).toThrow("No source lines");
     expect(() => toDemoSabad([{ SourceID: "D" } as never])).toThrow("SourceID G");
+  });
+
+  it("recognizes a Rahao marker in BaniDB's bracketed legacy notation", () => {
+    expect(hasRahaoMarker("TEST]1]rhwau]")).toBe(true);
+    expect(hasRahaoMarker("TEST rhwau] ")).toBe(true);
+    expect(hasRahaoMarker("TESTRhwauOTHER")).toBe(false);
   });
 });

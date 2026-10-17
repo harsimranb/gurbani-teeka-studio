@@ -65,17 +65,17 @@ The hour labels below are estimates, not hard stop times; pass each milestone's 
 |---|---|
 | C-01 | Scaffold starts with `pnpm dev`; `pnpm typecheck` and `pnpm test` run; versions and scripts are pinned; secrets have names only in `.env.example`. |
 | C-02 | `domain.ts`, `api.ts` and `ports.ts` validate every cross-stream shape, including grouped line IDs, draft/check versions and phase states, exact English span offsets, current reference snapshot, finding state, decision/reason, exception marks, strict `FindingBatch`/`DriftAssessment` outputs, engine `CheckResult`, persisted `CheckRun` and integer ruleset version (`1` displays as `v1`). Stub engine and mock client return schema-valid fixtures; the route inventory is explicit in `api.ts`. |
-| C-03 | Local BaniDB starts; an ignored local fixture is exported from its database with source IDs and NFC text. No Gurmukhi is typed or generated. Record whether the image contains the full Guru Granth Sahib (P-05). |
+| C-03 | Local BaniDB source is verified and an ignored fixture is exported from a complete mapped Sabad with source IDs, metadata and NFC text. The supplied local SQLite copy may provide the demo export when the development image is partial; keep each source's provenance distinct. No Gurmukhi is typed or generated. Record coverage limits without claiming a fully audited/current corpus (P-05). |
 | C-04 | Check-result, findings, references, corrections and eval fixtures validate against contracts and are clearly labelled test data. Fake metrics and references cannot be mistaken for SikhRI evidence. |
 | C-05 | Each macOS/Windows clone verifies private-data ignores: SikhRI samples, BaniDB exports (including the demo fixture), credentials, caches, eval output and local databases stay ignored. No person identity or folder ownership restriction applies. |
 | DATA-01 | A migration creates the records in [03](03-architecture.md#core-records), including durable `CheckRun` phase state; a temporary SQLite file can apply it from empty state. |
 | DATA-02 | Repository functions save/load the contract records without engine imports; a temporary SQLite file exercises draft, finding, decision, rule and reference operations. |
-| DATA-03 | Ingest creates BaniDB-backed lines and metadata with NFC text; re-running does not duplicate rows. |
+| DATA-03 | Ingest creates BaniDB-backed lines and metadata with NFC text from the verified local export; re-running does not duplicate rows. |
 | DATA-04 | Rules seed reads `rules.resolved.json` in place and preserves all 66 rule IDs and 10 active resolutions; re-running does not duplicate versions. |
 | DATA-05 | Demo seed loads only the chosen BaniDB-exported Sabads and authored English drafts; it is repeatable without duplicating drafts or decisions. |
 | API-01 | Every route declared in `api.ts` has a handler skeleton with a contract-valid fixture response and a response-schema test. |
 
-**Feature acceptance:** A builder with the local BaniDB image can follow the documented setup, run the app/tests, export the demo Sabad and inspect real source IDs, metadata and read-only Gurmukhi. The shared contract shape and labelled synthetic English fixtures work before the private export is available. `git status` never offers SikhRI or BaniDB content or database files for commit. No app route queries BaniDB at request time. M0 passes only when the contract fixtures and guardrail checks pass.
+**Feature acceptance:** A builder with the documented local BaniDB source can run the app/tests, export the demo Sabad and inspect real source IDs, metadata and read-only Gurmukhi. The shared contract shape and labelled synthetic English fixtures work before the private export is available. `git status` never offers SikhRI or BaniDB content or database files for commit. No app route queries BaniDB at request time. M0 passes only when the contract fixtures and Mac guardrail checks pass; Windows validation remains separately open by user direction.
 
 ## F1 · Name, navigation and transcreation workspace
 

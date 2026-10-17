@@ -23,7 +23,7 @@ Mark a feature complete only when its acceptance paragraph in [`_docs/10-feature
 
 | Feature | Status | Evidence / next dependency |
 |---|---|---|
-| **F0 · Foundation, contracts and source data** | In progress | C-01/C-02/C-04 and DATA-01/02 complete; C-03 local SQLite source assessment in progress. C-05 Mac privacy checked; Windows validation deferred by Harsimran. Ingest/seeds and API skeletons remain. |
+| **F0 · Foundation, contracts and source data** | In progress | C-01 to C-04 and DATA-01 to DATA-03 complete; C-05 Mac privacy checked, Windows deferred. Rules/source-only demo seed and API skeletons remain. |
 | **F1 · Workspace** | Not started | Needs F0 contracts, data and API. |
 | **F2 · Checks and report card** | Not started | Needs C-02 contracts and C-03 BaniDB fixture. |
 | **F3 · Reference and style evidence** | Not started | Eko-published references can exercise mechanics; SikhRI sample and term mappings remain pending. |
@@ -81,6 +81,7 @@ Append-only. Record decisions that add, remove or change planned behavior here *
 | D-71 | Anyone may work on any task or folder; remove person-based ownership enforcement and identity setup. Workstreams remain organizational labels. |
 | D-72 | Planning uses Opus 5.5 or GPT 6 Sol High; implementation uses Sonnet 5.5 High or Luna High, resolved to available harness IDs without silent substitutions. |
 | D-73 | Support macOS and Windows development with shared Node/pnpm versions, LF text, platform-appropriate commands and per-machine dependencies/private data; verify each OS separately. |
+| D-74 | Use the user-supplied, ignored BaniDB SQLite copy's validated `tmp_Verse` table for the local demo export. Its mapped-line coverage and shared-text parity unblock C-03/DATA-03, but do not establish corpus currency or full textual completeness. Keep the partial Docker image and API fallback provenance distinct. |
 
 ---
 
@@ -122,8 +123,7 @@ Private-data ignore patterns are committed. Verify them before source exports in
 - [x] **C-01** PLATFORM scaffold (Harsimran; `9adc8f0`): Next.js (App Router, TS strict), Tailwind, shadcn (utils alias → `lib/utils.ts`), pnpm, Vitest, tsx. Full package list pinned; dev/build/typecheck/test verified, later scripts wired; `.env.example` and app folder placeholders added; engine folders arrive with their tasks
 - [x] **C-02** CONTRACTS v1: `domain.ts`, `api.ts` (every route), `ports.ts` (`Engine`). Include grouped line IDs, draft/check phase versions, exact English span offsets, `FindingBatch`/`DriftAssessment` review schemas, engine `CheckResult`, persisted `CheckRun`, current-vs-cleared findings, decision history, reference snapshot and exception marks, and ruleset version. Plus the `lib/engine/index.ts` stub (returns fixtures) and the `lib/client` mock-mode skeleton
   - Complete (2026-10-16): 18 P0 route contracts, current Sabad authored-unit snapshot, source-labelled evidence, minimal labelled fixtures and explicit synthetic engine/client stubs. Fresh subagent correctness review completed; substantiated issues fixed. Integrated typecheck and all 34 tests pass (29 C-02, five C-03). C-04's broader scenarios remain separate; no real checks or backtest are claimed.
-- [ ] **C-03** BaniDB up (`data/banidb/docker-compose.yml`); export the demo Sabads to a local, git-ignored `lib/contracts/fixtures/sabad.demo.json`. **Critical path.** Fallback after 30 min: export from the BaniDB API once. Never hand-type Gurmukhi or commit the export without permission
-  - Partial delivery (2026-10-16): healthy pinned local database, strict exporters and complete private API-fallback Sabad 55 (15 lines, NFC) delivered and independently reviewed. The dev seed is missing verses, and its three complete one-line Sabads lack writer metadata, so local-export acceptance remains blocked. Reproduction and evidence: `_docs/c03-banidb.md`. Private source, provenance and credentials remain ignored.
+- [x] **C-03** BaniDB local source and private demo export. The Docker development seed remains partial, but the user-supplied SQLite copy has all 60,111 checked G-Sabad mappings in `tmp_Verse`; all 20,134 shared Unicode rows agree with `Verse`. A complete five-line Sabad 1356 with source IDs, metadata, NFC and Rahao is exported locally. The prior API fallback and provenance remain private and ignored. Coverage is not a full-corpus textual audit or currentness claim; P-05 remains open. Evidence: `_docs/c03-banidb.md` (2026-10-16)
 - [x] **C-04** Fixtures: `check-result.json` and `findings.json` use the synthetic LAYER-07 exact span; labelled `references.json` and `corrections.json` validate against `domain.ts`; `eval-run.json` remains explicitly unavailable. Focused fixture tests, TypeScript and all 36 tests pass (2026-10-16)
 - [ ] **C-05** Verify private-data ignores in each macOS/Windows clone: source exports, credentials, caches, eval output and local databases stay uncommitted. Mac verified on 2026-10-16: all documented paths and nested examples ignored; only `docker-compose.yml` tracked under `data/banidb/`. Windows validation explicitly deferred by Harsimran.
 - [ ] **M0** checkpoint: `pnpm dev` and `pnpm test` pass; contracts v1 on `main`
@@ -204,7 +204,7 @@ Related folders: `lib/server/db/`, `lib/server/ingest/`, `scripts/app/`, `data/b
 ### Next
 - [x] **DATA-01** Drizzle schema + first migration: lines, drafts, findings, check runs, decisions, versioned rules, proposals, drift results and references. Empty-file migration verified on Mac; focused and full tests (37) plus TypeScript pass (2026-10-16)
 - [x] **DATA-02** Repository functions in `lib/server/db/repo.ts` save/load the contract records, including grouped drafts, findings, check phases, decisions, versioned rules, references and source lines. Temporary SQLite round-trip tests and all 40 tests pass (2026-10-16)
-- [ ] **DATA-03** BaniDB ingest (`pnpm ingest`): mysql2 → lines with ang, raag, writer, Rahao, NFC Gurmukhi; demo Sabads first, full text if P-05 confirms · FR-01 · Needs: C-03 · **Provides S2**
+- [x] **DATA-03** BaniDB local export → app lines with ang, raag, writer, Rahao and NFC Gurmukhi; `pnpm ingest` is idempotent. Full-corpus ingest remains outside this demo until P-05 confirms it. All 43 tests and TypeScript pass (2026-10-16) · FR-01 · **Provides S2**
 - [ ] **DATA-04** Rules seed from `_docs/rules/rules.resolved.json` as version 1
 - [ ] **DATA-05** Demo seed (`scripts/app/seed-demo.ts`) · Needs: P-09
 - [ ] **DATA-06** SikhRI sample import: raw → `data/sikhri-sample/normalized/references.json` and `corrections.json` (contract schemas); map IDs by normalized Gurmukhi if they differ from BaniDB, quarantine ambiguous repeated-line matches, and load only resolved references into the DB · Needs: P-04 · **Provides S3**

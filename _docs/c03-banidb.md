@@ -1,14 +1,27 @@
 # C-03 · Local BaniDB and private demo export
 
-## Verified on 2026-10-16
+## Local SQLite source supplied on 2026-10-16
+
+The user supplied a private, ignored `data/banidb/banidb.sqlite`. Its main `Verse` table has the same 20,134 G-source rows and 39,977 missing mapped rows as the pinned Docker development image. Its `tmp_Verse` table has 60,403 G-source rows with IDs 1–60,403, source text on all 60,111 checked G-Sabad mappings, and no missing Unicode. All 20,134 G-source Unicode strings shared with `Verse` match exactly. This establishes a usable **local source for a demo Sabad**; table coverage and overlap are not an independent textual audit or proof that the database is current or contains every composition.
+
+The read-only SQLite exporter validates mapping coverage, overlap, source IDs, metadata, NFC, and Rahao notation before replacing the canonical private fixture. It exported Sabad 1356: five lines, one Rahao line, SHA-256 `548b315ef87aa0aeecb6462c9a933b6199a73c36cdaba64fea3c32b85d54553e`. The earlier complete API Sabad 55 fixture and provenance remain ignored as `data/banidb/sabad.api-fallback.json` and `data/banidb/export-metadata.api-fallback.json`. No Gurmukhi or BaniDB database content is committed.
+
+With the supplied SQLite copy in place, run these repository-relative commands from the root. The exporter selects Sabad 1356 unless an ID is given; it never reads English translations. Ingest writes source lines to the app's local `eko.db`, creates the app migration if needed, and is repeatable without duplicates.
+
+```text
+node --import tsx scripts/app/export-banidb-sqlite-demo.ts
+node --import tsx scripts/app/ingest.ts
+```
+
+## Earlier Docker-image assessment on 2026-10-16
 
 Docker Desktop 29.6.1 runs the official `khalisfoundation/banidb-dev` image using its upstream database name, `khajana_dev_khajana`. Compose pins the observed digest `sha256:a4198a3c66f6bdfa3dedf77e53f5f90923205f5630353e5cafe757e52c02ef0f`. The image is amd64, built 2020-06-04; Apple Silicon uses Docker's amd64 emulation. Its 642 MB initialization SQL imports into a Docker-managed named volume, `eko-banidb_mysql-data`. Only `127.0.0.1:3307` is exposed by default.
 
 **The development seed is partial.** Source `G` is Sri Guru Granth Sahib Ji. It contains 20,134 stored verses over all 1,430 angs, IDs 3–60,402, all divisible by three. Ang coverage does not establish completeness. Even clean observed-map checks could miss wholly omitted Sabads, so the exporter reports completeness as `false` when gaps are proven and `unknown` otherwise; it never certifies a full corpus from range/count checks alone. The `Shabad` mapping table retains source IDs for absent verses: Sabad 55 maps 15 lines, while its local `Verse` join returns only five. Only Sabads 3250, 3658 and 4762 have complete G-source mappings, each one line, and all three lack writer metadata. No complete local Sabad satisfies the agreed source/metadata contract.
 
-The canonical private fixture therefore uses the **explicit one-time API fallback**, not a mix of API and local lines: Sabad 55, 15 lines (IDs 604–618), Rahao line 609. It is a canonical `Sabad` object with string IDs and NFC Unicode; provenance is separate. Its SHA-256 is `ff2c4dbeb428d821e80fd151fa3d689355e6316d67b2af944341652486f39f82`. The canonical fixture omits English renderings and translations. The ignored raw API response retains upstream fields, including translations; none are generated or used as SikhRI references.
+Before the separate SQLite copy arrived, the canonical private fixture used the **explicit one-time API fallback**, not a mix of API and local lines: Sabad 55, 15 lines (IDs 604–618), Rahao line 609. It is a canonical `Sabad` object with string IDs and NFC Unicode; provenance is separate. Its SHA-256 is `ff2c4dbeb428d821e80fd151fa3d689355e6316d67b2af944341652486f39f82`. The current canonical fixture is the local SQLite export described above. Both fixtures omit English renderings and translations. The ignored raw API response retains upstream fields, including translations; none are generated or used as SikhRI references.
 
-**Acceptance gap:** local service startup and source assessment pass; a complete metadata-valid fixture exported from the local database cannot pass with this seed. The API fixture unblocks source-based development. A fuller/current database from Khalis Foundation remains necessary for local-export acceptance and full browsing. No request has been sent to Khalis Foundation.
+**Docker image limit:** local service startup and source assessment pass, but a complete metadata-valid fixture still cannot be exported from that image's `Verse` table. The supplied SQLite copy provides a separate local export path for the demo; full browsing and production freshness remain unverified. No request has been sent to Khalis Foundation.
 
 ## Reproduce privately
 
@@ -45,6 +58,8 @@ Ignored private artifacts:
 - `data/banidb/api-sabad-55.json`: original API response, private and ignored; includes upstream fields the fixture deliberately omits.
 - `data/banidb/.env`: generated local credentials, private and ignored.
 - `data/banidb/banidb.sqlite`: user-provided local BaniDB copy, private and ignored; its source assessment is separate from the pinned Docker image.
+- `data/banidb/sqlite-coverage.json`: local staging-table coverage and overlap counts, private and ignored.
+- `data/banidb/sabad.api-fallback.json` and `export-metadata.api-fallback.json`: retained API fallback and provenance, private and ignored.
 
 Only `data/banidb/docker-compose.yml` may be tracked under `data/banidb/`. Both exporters verify Git ignores before writing. Database data stays in Docker's volume outside Git. Stop the service without deleting its volume:
 
