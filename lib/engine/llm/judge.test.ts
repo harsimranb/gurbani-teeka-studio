@@ -76,10 +76,20 @@ describe("LLM-01 judge", () => {
   });
 
   it("returns a not_evaluable batch when the model says so", async () => {
-    const input = syntheticInput(["The mind rests."], { rules: [...rulesFixture, proposalRule] });
+    const input = syntheticInput(["One word for every name."]);
+    const packet: LlmPacket = { kind: "term02", rule: seeded("TERM-02"), draft: input.draft, lines: input.sabad.lines, rulesetVersion: 1, candidates: [], divineNames: [syntheticHit] };
+    const { client } = fakeClient(open([], { status: "not_evaluable", reason: "Synthetic: the unit is empty." }));
+    expect(await createLlmJudge(client)(packet)).toEqual({ status: "not_evaluable", findings: [], reason: "Synthetic: the unit is empty." });
+  });
+
+  it("writes free-text explanations and not_evaluable reasons itself, never storing the model's text", async () => {
+    const input = syntheticInput(["The mind sings."], { rules: [...rulesFixture, proposalRule] });
     const packet = (await llmPackets(input)).find((candidate) => candidate.kind === "free_text")!;
-    const { client } = fakeClient(open([], { status: "not_evaluable", reason: "Synthetic: rule text asks for rewriting." }));
-    expect(await createLlmJudge(client)(packet)).toEqual({ status: "not_evaluable", findings: [], reason: "Synthetic: rule text asks for rewriting." });
+    const paraphrase = "Synthetic: the source line speaks of a fearless sovereign who carries beings across.";
+    const found = await runLlmPhase(input, createLlmJudge(fakeClient(open([item("mind", 1, { explanation: paraphrase })])).client));
+    expect(found.findings.filter((finding) => finding.rule_id === "PROP-TEST").map((finding) => [finding.quoted_span, finding.explanation])).toEqual([["mind", "The draft differs from rule PROP-TEST."]]);
+    const skipped = await createLlmJudge(fakeClient(open([], { status: "not_evaluable", reason: paraphrase })).client)(packet);
+    expect(skipped).toEqual({ status: "not_evaluable", findings: [], reason: "Rule PROP-TEST could not be evaluated for this unit." });
   });
 
   it("keeps only reference IDs present in the packet for style findings", async () => {
@@ -94,7 +104,7 @@ describe("LLM-01 judge", () => {
     expect(batch.findings.every((finding) => finding.layer === "style" && finding.severity === "warning" && finding.rule_id === "CONS-01")).toBe(true);
     // The pipeline drops the finding left without a real reference (style findings need evidence).
     const result = await runLlmPhase(input, createLlmJudge(client), { index });
-    expect(result.findings.map((finding) => [finding.quoted_span, finding.layer, finding.reference_ids])).toEqual([["sings", "style", ["synthetic-ref-1"]]]);
+    expect(result.findings.map((finding) => [finding.quoted_span, finding.layer, finding.reference_ids, finding.explanation])).toEqual([["sings", "style", ["synthetic-ref-1"], "Synthetic explanation: differs from the rule."]]);
     expect(result.notEvaluable).toEqual([{ ruleId: "CONS-01", reason: "synthetic-draft-1: 1 model finding(s) failed evidence validation and were dropped." }]);
   });
 

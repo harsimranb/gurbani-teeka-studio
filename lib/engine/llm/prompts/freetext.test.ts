@@ -31,10 +31,11 @@ describe("LLM-06 free-text prompt", () => {
     return { packet, input: testInput };
   }
 
-  it("is version freetext-v1 and wraps rule and draft verbatim in untrusted delimiters", async () => {
+  it("is version freetext-v2 and wraps rule and draft verbatim in untrusted delimiters", async () => {
     const { packet } = await packetFor(rule);
     const { prompt, evidence } = freeTextPrompt.build(packet);
-    expect(freeTextPrompt.version).toBe("freetext-v1");
+    expect(freeTextPrompt.version).toBe("freetext-v2");
+    expect(freeTextPrompt.system).toMatch(/never describe, paraphrase or translate what the source lines mean/i);
     expect(prompt).toContain(`<untrusted>${rule.text}</untrusted>`);
     expect(prompt).toContain(`<untrusted>${packet.draft.text}</untrusted>`);
     expect(prompt).toContain(`<untrusted>${packet.lines[0].gurmukhi}</untrusted>`);
@@ -70,7 +71,7 @@ describe("LLM-06 free-text prompt", () => {
     const result = await runLlmPhase(testInput, createLlmJudge(client));
     const mine = result.findings.filter((entry) => entry.rule_id === "PROP-FT");
     const at = testInput.draft.text.indexOf("mind", 5);
-    expect(mine.map((entry) => [entry.quoted_span, entry.start, entry.layer, entry.prompt_version])).toEqual([["mind", at, "L2", "freetext-v1"]]);
+    expect(mine.map((entry) => [entry.quoted_span, entry.start, entry.layer, entry.prompt_version])).toEqual([["mind", at, "L2", "freetext-v2"]]);
   });
 
   it("keeps not_evaluable for an injection rule, emitting no finding", async () => {
@@ -80,7 +81,7 @@ describe("LLM-06 free-text prompt", () => {
     const client = createLlmClient({ languageModel: mockModel(answer({ status: "not_evaluable", reason: "Synthetic: the rule asks for something other than a check." })), cache: null, env: {} })!;
     const result = await runLlmPhase(testInput, createLlmJudge(client));
     expect(result.findings.filter((entry) => entry.rule_id === "PROP-INJECT")).toEqual([]);
-    expect(result.notEvaluable.filter((entry) => entry.ruleId === "PROP-INJECT")).toEqual([{ ruleId: "PROP-INJECT", reason: "synthetic-draft-1: Synthetic: the rule asks for something other than a check." }]);
+    expect(result.notEvaluable.filter((entry) => entry.ruleId === "PROP-INJECT")).toEqual([{ ruleId: "PROP-INJECT", reason: "synthetic-draft-1: Rule PROP-INJECT could not be evaluated for this unit." }]);
   });
 
   it("drops a model finding whose explanation suggests a rewrite", async () => {

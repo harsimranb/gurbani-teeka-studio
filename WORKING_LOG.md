@@ -105,6 +105,7 @@ Append-only. Record decisions that add, remove or change planned behavior here *
 | D-96 | API-03/04: published units are context only; never checked, cleared, given new findings or decided on. |
 | D-97 | API-10: two distinct reviewers overriding one rule draft one pending proposal; it must be revised and submitted (drift) before approval. |
 | D-98 | FE-10/FE-11: additive `browseSabads` and `lookupWord` read routes (21 routes). |
+| D-99 | LLM-06: free-text findings and `not_evaluable` reasons store Eko-written text, never model prose (`freetext-v2`). |
 | D-78 | FE-01 to FE-09 are built against a stateful, browser-storage mock of the 18 contract routes (`lib/client/mock-*`) with a labelled synthetic checker, plus a dev-only `/api/dev/demo-sabad` route that serves the private BaniDB fixture. FE tasks stay *In progress* until the real API passes their acceptance. P1 items render as labelled placeholders. |
 
 ---

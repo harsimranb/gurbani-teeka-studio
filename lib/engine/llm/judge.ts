@@ -7,6 +7,8 @@ import { promptFor } from "./prompts";
 
 const PENDING_ID = "llm-pending";
 const SCHEMA_REASON = "model response did not match the review schema";
+// A free-text rule is arbitrary, so the model's reason could describe the source's meaning; Eko writes it (hard rule 1).
+const freeTextNotEvaluable = (rule: Rule) => `Rule ${rule.id} could not be evaluated for this unit.`;
 
 /** Start/end of the nth (1-based) exact occurrence of `span` in `text`, or null. UTF-16, end-exclusive. */
 export function locateOccurrence(text: string, span: string, occurrence: number): { start: number; end: number } | null {
@@ -67,7 +69,7 @@ async function judgePacket(client: LlmClient, packet: LlmPacket): Promise<Findin
   const spec = promptFor(kind);
   const { prompt, evidence } = spec.build(packet);
   const { output } = await client.generate({ schemaName: spec.schemaName, schema: spec.schema, system: spec.system, prompt, promptVersion: spec.version, evidence });
-  if (output.status === "not_evaluable") return notEvaluableBatch(output.reason.trim() || "model could not evaluate this unit");
+  if (output.status === "not_evaluable") return notEvaluableBatch(kind === "free_text" ? freeTextNotEvaluable(rule) : output.reason.trim() || "model could not evaluate this unit");
   const allowed = new Set((packet.references ?? []).map((ranked) => ranked.reference.id));
   const exceptions = new Set((packet.references ?? []).filter((ranked) => ranked.exception || ranked.reference.exceptions.length > 0).map((ranked) => ranked.reference.id));
   const findings: Finding[] = [];
