@@ -25,7 +25,7 @@ Mark a feature complete only when its acceptance paragraph in [`_docs/10-feature
 |---|---|---|
 | **F0 · Foundation, contracts and source data** | Complete for approved Mac/source-only scope | C-01 to C-04, DATA-01 to DATA-05 and API-01 pass. C-05 Mac privacy verified; Windows validation remains open by user direction. Human-authored draft is deferred to P-09/F1. M0 checks, production build and fresh review with fixes pass; P-05 corpus currency/coverage remains open. |
 | **F1 · Workspace** | Not started | Needs F0 contracts, data and API. |
-| **F2 · Checks and report card** | In progress: CHECKS code phase complete | CHK-01 to CHK-11 pass (193 tests); CHK-12 cut (D-77). Model findings need LLM-01/03–05; persistence and report card need API-03 and FE-04. TERM-02 and CONS-01 have no transcreation golden cases. |
+| **F2 · Checks and report card** | In progress: CHECKS code phase complete | CHK-01 to CHK-11 pass (193 tests; commit `a08a81d` on `main`); CHK-12 cut (D-77). Model findings need LLM-01/03–05; persistence and report card need API-03 and FE-04. TERM-02 and CONS-01 have no transcreation golden cases. |
 | **F3 · Reference and style evidence** | Not started | Eko-published references can exercise mechanics; SikhRI sample and term mappings remain pending. |
 | **F4 · Review and publishing** | Not started | Needs current check results and app storage. |
 | **F5 · Rules catalog** | Not started | Needs seeded rules and API. |

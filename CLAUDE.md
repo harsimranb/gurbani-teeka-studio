@@ -98,7 +98,7 @@ Full detail and the dependency map: [`_docs/06-team-workflow.md`](_docs/06-team-
 
 | If you need… | And it isn't ready, use… |
 |---|---|
-| The engine (`runChecks`, `runDriftCheck`) | `lib/engine/index.ts` stub returning schema-valid `lib/contracts/fixtures/` results, including `check-result.json` |
+| The engine model phase or drift (`runChecks(…, 'llm')`, `runDriftCheck`) | `runChecks` code phase is real (D-77); the model phase reports `notEvaluable` until LLM-01 supplies a judge, and `runDriftCheck` is still a fixture stub reporting `not_evaluable` |
 | The API, from the UI | `lib/client` mock mode: `NEXT_PUBLIC_USE_MOCKS=1` |
 | A Sabad with Gurmukhi | Local, git-ignored `lib/contracts/fixtures/sabad.demo.json` exported from BaniDB; provision it privately in each clone |
 | SikhRI references or corrections | `fixtures/references.json`, `fixtures/corrections.json` (test data, labelled) |
