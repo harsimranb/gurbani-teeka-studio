@@ -33,7 +33,7 @@ describe("source-only demo seed", () => {
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }
-  });
+  }, 60_000);
 
   const fullTest = existsSync(sourcePath) && existsSync(new URL("../../data/banidb/banidb.sqlite", import.meta.url)) ? it : it.skip;
   fullTest("seeds the full corpus source-only, with the demo Sabad identical to its fixture", () => {

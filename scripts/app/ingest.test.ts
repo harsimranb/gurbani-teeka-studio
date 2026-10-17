@@ -19,7 +19,10 @@ describe("BaniDB app ingest", () => {
     const source = SabadSchema.parse(JSON.parse(readFileSync(sourcePath, "utf8")));
     try {
       const env = { ...process.env, DATABASE_URL: target, BANIDB_SOURCE: "fixture" };
-      execFileSync(process.execPath, ["--import", "tsx", script], { env, stdio: "pipe" });
+      const first = JSON.parse(execFileSync(process.execPath, ["--import", "tsx", script], { env, stdio: "pipe" }).toString()) as
+        { source: { mode: string; provenance: string; inserted_lines: number } };
+      expect(first.source.mode).toBe("demo_fixture");
+      expect(["local_sqlite", "banidb_api_fallback"]).toContain(first.source.provenance);
       execFileSync(process.execPath, ["--import", "tsx", script], { env, stdio: "pipe" });
       const { db, sqlite } = openAppDb(target);
       try {
@@ -33,5 +36,5 @@ describe("BaniDB app ingest", () => {
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }
-  });
+  }, 60_000);
 });

@@ -92,7 +92,7 @@ export function ingestBanidb(db: AppDb, root: string) {
   const before = countLines();
   if (!useFullSqlite(root)) {
     const demo = ingestDemoSabad(repo, resolve(root, "lib/contracts/fixtures/sabad.demo.json"), resolve(root, "data/banidb/export-metadata.json"));
-    return { mode: "demo_fixture", sabad_count: 1, line_count: demo.line_count, inserted_lines: countLines() - before };
+    return { mode: "demo_fixture", provenance: demo.provenance, sabad_count: 1, line_count: demo.line_count, inserted_lines: countLines() - before };
   }
   const { sabads, ...report } = loadSqliteSabads(root);
   repo.saveSabads(sabads);
