@@ -192,6 +192,46 @@ const handlers: { [N in RouteName]: Handler<N> } = {
       raags: distinct(sabad.lines.map((line) => line.raag)), writers: distinct(sabad.lines.map((line) => line.writer)),
     };
   },
+  /**
+   * MOCK ONLY: searches the demo Sabad's own lines. The stem key here is the surface minus its ending matra run, a stand-in
+   * for the engine's tokenizer, and references are the mock's published ones. Never proposes a rendering.
+   */
+  async lookupWord(raw) {
+    const req = routes.lookupWord.request.parse(raw);
+    const load = await loadMockSabad();
+    if (load.status === "unavailable") return { status: "unavailable", reason: load.reason };
+    const { sabad } = load;
+    const line = sabad.lines.find((candidate) => candidate.line_id === req.line_id);
+    if (!line) return err("not_found", "That source line does not exist in the mock Sabad.");
+    const words = (text: string) => [...text.matchAll(/\S+/gu)].map((match) => {
+      const run = /[\u0A3E-\u0A4C\u0A01\u0A02\u0A70]+$/u.exec(match[0])?.[0] ?? "";
+      const split = run.length > 0 && run.length < match[0].length;
+      return { surface: match[0], start: match.index, stem_key: split ? match[0].slice(0, -run.length) : match[0], ending_matra: split ? run : "" };
+    });
+    const word = words(line.gurmukhi).find((token) => token.start === req.start);
+    if (!word) return err("invalid_request", "That position is not the start of a word in this line.");
+    const hits = sabad.lines.flatMap((candidate) => {
+      const hit = words(candidate.gurmukhi).find((token) => token.stem_key === word.stem_key);
+      return hit ? [{ line: candidate, surface: hit.surface }] : [];
+    });
+    const matched = new Set(hits.map((hit) => hit.line.line_id));
+    const references = getState().references.flatMap((reference) => {
+      const ids = reference.line_ids.filter((id) => matched.has(id));
+      return ids.length > 0 ? [{ reference, ids }] : [];
+    });
+    return {
+      status: "available",
+      word: { line_id: line.line_id, shabad_id: line.shabad_id, surface: word.surface, stem_key: word.stem_key, ending_matra: word.ending_matra },
+      occurrences: { total: hits.length, items: hits.slice(0, 20).map((hit) => ({ shabad_id: hit.line.shabad_id, line_id: hit.line.line_id, ang: hit.line.ang, surface: hit.surface, gurmukhi: hit.line.gurmukhi })) },
+      prior_renderings: {
+        total: references.length,
+        items: references.slice(0, 10).map(({ reference, ids }) => ({
+          reference_id: reference.id, source: reference.source, source_label: "Published in Eko (mock store)",
+          line_ids: reference.line_ids, matched_line_ids: ids, english: reference.english,
+        })),
+      },
+    };
+  },
   async getSabad(req) {
     const found = await requireSabad(req.shabad_id);
     if (isErr(found)) return found.error.code === "unavailable" || found.error.code === "not_found" ? { status: "unavailable", reason: found.error.reason } : found;

@@ -59,6 +59,13 @@ export interface Repository {
   browseSabads(filters: BrowseFilters): { total: number; rows: BrowseRow[] };
   /** Every distinct raag and writer in the source lines, sorted, for the browse filter controls. */
   listSourceFacets(): { raags: string[]; writers: string[] };
+  /**
+   * FE-11: source lines whose Gurmukhi contains `fragment` as a substring (byte-exact), in corpus order (ang, numeric line ID).
+   * A prefilter: the caller decides which of these really contain a given word. Scans the lines table once.
+   */
+  findLinesContaining(fragment: string): Array<{ line_id: string; shabad_id: string; ang: number; gurmukhi: string }>;
+  /** One source line by ID (no Gurmukhi validation beyond what was stored). */
+  getLine(lineId: string): { line_id: string; shabad_id: string; ang: number; gurmukhi: string } | undefined;
   /** True when at least one source line is stored. */
   hasSourceLines(): boolean;
   saveDraft(raw: Draft): void;
@@ -214,6 +221,15 @@ function buildRepository(db: Exec): Repository {
     listSourceFacets(): { raags: string[]; writers: string[] } {
       const distinct = (column: "raag" | "writer") => db.all<{ value: string }>(sql`SELECT DISTINCT ${sql.identifier(column)} AS value FROM lines ORDER BY value`).map((row) => row.value);
       return { raags: distinct("raag"), writers: distinct("writer") };
+    },
+    findLinesContaining(fragment: string) {
+      if (!fragment) return [];
+      return db.all<{ line_id: string; shabad_id: string; ang: number; gurmukhi: string }>(sql`
+        SELECT id AS line_id, shabad_id, ang, gurmukhi FROM lines WHERE instr(gurmukhi, ${fragment}) > 0
+        ORDER BY ang, CAST(id AS INTEGER), rowid`);
+    },
+    getLine(lineId: string) {
+      return db.select({ line_id: lines.id, shabad_id: lines.shabadId, ang: lines.ang, gurmukhi: lines.gurmukhi }).from(lines).where(eq(lines.id, lineId)).get();
     },
     hasSourceLines(): boolean {
       return db.select({ id: lines.id }).from(lines).limit(1).get() !== undefined;

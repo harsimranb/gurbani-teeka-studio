@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect, useId, useRef } from "react";
-import { Button, GurmukhiText, Mono, StatusPill } from "@/components/ui";
+import { Button, Mono, StatusPill } from "@/components/ui";
 import type { Line } from "@/lib/contracts/domain";
 import { lineLabel, type Report, type Unit } from "./model";
+import { SelectableGurmukhi } from "./SelectableGurmukhi";
 import { UnitStatus, type Inflight } from "./UnitStatus";
 
 export interface UnitCardProps {
@@ -49,7 +50,7 @@ export function UnitCard({ unit, lines, lineNumber, dirty, report, inflight, sha
               <span className="flex items-center gap-2">Line {lineNumber(line.line_id)}{line.is_rahao ? <StatusPill tone="accent">Rahao</StatusPill> : null}</span>
               <Mono>{line.line_id}</Mono>
             </div>
-            <GurmukhiText text={line.gurmukhi} size="lg" />
+            <SelectableGurmukhi lineId={line.line_id} text={line.gurmukhi} />
           </div>
         ))}
       </div>

@@ -2,11 +2,14 @@
 
 import { Lock } from "lucide-react";
 import { useSearchParams } from "next/navigation";
+import { useMemo, useState } from "react";
 import { P1Placeholder, PageHeader, StatusPill, Unavailable } from "@/components/ui";
 import { useApi } from "@/lib/client/hooks";
 import type { Draft, Sabad } from "@/lib/contracts/domain";
 import { SabadEditor } from "./SabadEditor";
 import { SabadList } from "./SabadList";
+import { WordLookup } from "./WordLookup";
+import { WordSelectionProvider, type SelectedWord } from "./word-selection";
 
 const unique = (values: string[]) => [...new Set(values)].join(" / ");
 
@@ -57,22 +60,30 @@ export function WorkspaceView() {
   const sabads = data?.sabads ?? [];
   // Any Sabad can be opened by ID (browse results are not limited to the demo list); with none requested, the first demo Sabad.
   const selectedId = params.get("sabad") ?? sabads[0]?.shabad_id ?? null;
+  // The word picked for lookup belongs to the Sabad it was picked in; opening another Sabad drops it.
+  const [picked, setPicked] = useState<{ sabad: string | null; word: SelectedWord | null }>({ sabad: null, word: null });
+  const wordSelection = useMemo(() => ({
+    selected: picked.sabad === selectedId ? picked.word : null,
+    select: (word: SelectedWord | null) => setPicked({ sabad: selectedId, word }),
+  }), [picked, selectedId]);
 
   return (
-    <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[240px_minmax(0,1fr)] xl:grid-cols-[240px_minmax(0,1fr)_300px]">
-      <aside aria-label="Browse the Guru Granth Sahib" className="min-w-0">
-        <SabadList sabads={sabads} selectedId={selectedId} />
-      </aside>
-      <section aria-label="Transcreation" className="flex min-w-0 flex-col gap-3.5">
-        {error ? <Unavailable title="Sabads could not be loaded" reason={error.message} />
-          : !data ? <p className="m-0 text-sm text-muted" role="status">Loading…</p>
-          : !selectedId ? <Unavailable title="No Sabad available" reason="No Sabad has been exported from BaniDB yet." />
-          : <Center key={selectedId} shabadId={selectedId} focus={params.get("focus")} />}
-      </section>
-      <aside aria-label="Translator utilities" className="flex min-w-0 flex-col gap-3.5 lg:col-span-2 xl:col-span-1">
-        <P1Placeholder title="Word lookup">Occurrences, prior renderings and similar lines will appear here once the reference data is loaded. Read-only; never a suggested translation.</P1Placeholder>
-        <P1Placeholder title="Grammar hints">A free transcreation doesn&apos;t map word for word onto the line, so hints from the ending matra wait.</P1Placeholder>
-      </aside>
-    </div>
+    <WordSelectionProvider value={wordSelection}>
+      <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[240px_minmax(0,1fr)] xl:grid-cols-[240px_minmax(0,1fr)_300px]">
+        <aside aria-label="Browse the Guru Granth Sahib" className="min-w-0">
+          <SabadList sabads={sabads} selectedId={selectedId} />
+        </aside>
+        <section aria-label="Transcreation" className="flex min-w-0 flex-col gap-3.5">
+          {error ? <Unavailable title="Sabads could not be loaded" reason={error.message} />
+            : !data ? <p className="m-0 text-sm text-muted" role="status">Loading…</p>
+            : !selectedId ? <Unavailable title="No Sabad available" reason="No Sabad has been exported from BaniDB yet." />
+            : <Center key={selectedId} shabadId={selectedId} focus={params.get("focus")} />}
+        </section>
+        <aside aria-label="Translator utilities" className="flex min-w-0 flex-col gap-3.5 lg:col-span-2 xl:col-span-1">
+          <WordLookup />
+          <P1Placeholder title="Grammar hints">A free transcreation doesn&apos;t map word for word onto the line, so hints from the ending matra wait.</P1Placeholder>
+        </aside>
+      </div>
+    </WordSelectionProvider>
   );
 }

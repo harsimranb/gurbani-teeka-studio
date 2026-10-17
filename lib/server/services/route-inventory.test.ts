@@ -31,9 +31,10 @@ function invalidRequest(name: RouteName) {
 }
 
 describe("API route inventory", () => {
-  it("declares all 19 routes", () => {
-    expect(routeNames).toHaveLength(19);
+  it("declares all 21 routes", () => {
+    expect(routeNames).toHaveLength(21);
     expect(routeNames).toContain("listPublications");
+    expect(routeNames).toEqual(expect.arrayContaining(["browseSabads", "lookupWord"]));
   });
 
   it.each(routeNames)("%s has a route file exporting its declared method", async (name) => {

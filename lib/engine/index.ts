@@ -15,6 +15,8 @@ export type { CodePhaseScope, LlmJudge, LlmPacket } from "./checks/pipeline";
 export { runBacktest, scoreBacktest, toEvalRun } from "./eval";
 export type { BacktestItem, BacktestRun, BacktestScore, EvalRunMeta } from "./eval";
 export { checkedRules } from "./rules";
+export { tokenize } from "./gurmukhi";
+export type { Token } from "./gurmukhi";
 export { createLlmClient, DEFAULT_MODEL } from "./llm/adapter";
 export type { LlmClient } from "./llm/adapter";
 

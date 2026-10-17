@@ -112,6 +112,18 @@ export function createMemoryRepository(): Repository {
       const distinct = (values: string[]) => [...new Set(values)].sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
       return { raags: distinct(lines.map((line) => line.raag)), writers: distinct(lines.map((line) => line.writer)) };
     },
+    findLinesContaining(fragment: string) {
+      if (!fragment) return [];
+      return [...lineRows.keys()].map(readLine).filter((line) => line.gurmukhi.includes(fragment))
+        .sort((a, b) => a.ang - b.ang || castInteger(a.line_id) - castInteger(b.line_id))
+        .map((line) => ({ line_id: line.line_id, shabad_id: line.shabad_id, ang: line.ang, gurmukhi: line.gurmukhi }));
+    },
+    getLine(lineId: string) {
+      const stored = lineRows.get(lineId);
+      if (stored === undefined) return undefined;
+      const line = LineSchema.parse(decode(stored));
+      return { line_id: line.line_id, shabad_id: line.shabad_id, ang: line.ang, gurmukhi: line.gurmukhi };
+    },
     hasSourceLines(): boolean {
       return lineRows.size > 0;
     },

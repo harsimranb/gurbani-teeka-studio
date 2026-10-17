@@ -179,9 +179,12 @@ describe("stateful mock workflow", () => {
     await real.request("browseSabads", {});
     await real.request("browseSabads", { ang: 12, raag: "TEST RAAG/1", limit: 50 });
     expect(urls).toEqual(["/api/browse?limit=25&offset=0", "/api/browse?ang=12&raag=TEST+RAAG%2F1&limit=50&offset=0"]);
+    const lookup = createApiClient({ useMocks: false, fetcher: async (input) => { urls.push(String(input)); return Response.json({ status: "unavailable", reason: "No source." }); } });
+    await lookup.request("lookupWord", { line_id: "id/1", start: 7 });
+    expect(urls[2]).toBe("/api/lines/id%2F1/words/7");
   });
 
-  it("serves browse in mock mode from the one demo Sabad", async () => {
+  it("serves browse and word lookup in mock mode from the one demo Sabad", async () => {
     const repeated: Sabad = {
       shabad_id: "TEST-SABAD",
       lines: [1, 2, 3].map((n) => ({ line_id: `TEST-L${n}`, shabad_id: "TEST-SABAD", ang: n, raag: "TEST-RAAG", writer: "TEST-WRITER", is_rahao: false, gurmukhi: n === 3 ? "TEST-OTHER" : `TEST-WORD TEST-X${n}` })),
@@ -193,9 +196,19 @@ describe("stateful mock workflow", () => {
     expect((await client.request("browseSabads", { ang: 2 })).total).toBe(1);
     expect((await client.request("browseSabads", { ang: 99 })).sabads).toEqual([]);
     expect((await client.request("browseSabads", { writer: "OTHER" })).total).toBe(0);
+
+    const found = await client.request("lookupWord", { line_id: "TEST-L1", start: 0 });
+    expect(found.status).toBe("available");
+    if (found.status !== "available") return;
+    expect(found.word.stem_key).toBe("TEST-WORD");
+    expect(found.occurrences.items.map((item) => item.line_id)).toEqual(["TEST-L1", "TEST-L2"]);
+    expect(found.prior_renderings).toEqual({ total: 0, items: [] });
+    await expect(client.request("lookupWord", { line_id: "TEST-L1", start: 1 })).rejects.toMatchObject({ code: "invalid_request" });
+    await expect(client.request("lookupWord", { line_id: "NOPE", start: 0 })).rejects.toMatchObject({ code: "not_found" });
   });
 
-  it("reports browse as unavailable in mock mode without the demo Sabad", async () => {
+  it("reports browse and lookup as unavailable in mock mode without the demo Sabad", async () => {
     await expect(client.request("browseSabads", {})).rejects.toMatchObject({ code: "unavailable" });
+    expect((await client.request("lookupWord", { line_id: "TEST-L1", start: 0 })).status).toBe("unavailable");
   });
 });

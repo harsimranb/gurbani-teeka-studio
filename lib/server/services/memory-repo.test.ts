@@ -171,6 +171,19 @@ const cases: Array<[string, (repo: Repository) => void]> = [
     expect(repo.browseSabads({ limit: 2, offset: 4 })).toEqual({ total: 3, rows: [] });
     expect(repo.listSourceFacets()).toEqual({ raags: ["RAAG-A", "RAAG-B"], writers: ["WRITER-X", "WRITER-Y", "WRITER-Z"] });
   }],
+  ["finds source lines by Gurmukhi substring and reads one line", (repo) => {
+    const lineOf = (shabad: string, id: string, ang: number, text: string) => ({ line_id: id, shabad_id: shabad, ang, raag: "TEST-RAAG", writer: "TEST-WRITER", is_rahao: false, gurmukhi: text });
+    repo.saveSabad({ shabad_id: "1", lines: [lineOf("1", "11", 9, "ALPHA BETA"), lineOf("1", "9", 9, "GAMMA ALPHA2")] });
+    repo.saveSabad({ shabad_id: "2", lines: [lineOf("2", "40", 3, "ALPHA DELTA")] });
+    expect(repo.findLinesContaining("ALPHA").map((line) => line.line_id)).toEqual(["40", "9", "11"]);  // ang, then numeric line ID
+    expect(repo.findLinesContaining("ALPHA")[0]).toEqual({ line_id: "40", shabad_id: "2", ang: 3, gurmukhi: "ALPHA DELTA" });
+    expect(repo.findLinesContaining("DELTA").map((line) => line.line_id)).toEqual(["40"]);
+    expect(repo.findLinesContaining("alpha")).toEqual([]);   // exact, case-sensitive
+    expect(repo.findLinesContaining("%")).toEqual([]);       // no wildcard meaning
+    expect(repo.findLinesContaining("")).toEqual([]);
+    expect(repo.getLine("11")).toEqual({ line_id: "11", shabad_id: "1", ang: 9, gurmukhi: "ALPHA BETA" });
+    expect(repo.getLine("missing")).toBeUndefined();
+  }],
   ["savePublication infers the Sabad from the draft, else from the first source line", (repo) => {
     const gate = (draftId: string) => ({ draft_id: draftId, draft_version: 1, ruleset_version: 1, can_publish: true, blockers: [], warning_ids: [] });
     const publication = (id: string, draftId: string, lineId: string): Publication => ({
