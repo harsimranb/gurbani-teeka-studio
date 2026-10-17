@@ -13,10 +13,23 @@ What's still unknown, who's chasing it, and what it blocks. Close a question by 
 | OQ-07 | Drift threshold: how many approved reference lines may a proposed rule flag before it's blocked? | Team, then reviewer | FR-17 tuning | Provisional build value: block when affected count is at least 1; show IDs/count. Reviewer may revise |
 | OQ-08 | Should the 4 additions in the reviewer doc stay (Q1 option B, Q10, Q11, TERM-02 split)? | Harsimran | Sending the reviewer doc | Open (P-01) |
 | OQ-13 | What source defines a preferred rendering for glossary-collision blocking: a supplied SikhRI glossary/style guide, references with explicit preference, or neither until available? | SikhRI team and Harsimran | LLM-10 drift check | Open; a missing source must be shown as unavailable, not pass |
-| OQ-14 | Which reviewer edits count in the backtest denominator, and how are changed spans matched to findings when the review history lacks explicit span annotations? | SikhRI team and Harsimran | EVAL-01/02, video beat 6 | Open; decide before reporting a real rate |
+| OQ-14 | Which reviewer edits count in the backtest denominator, and how are changed spans matched to findings when the review history lacks explicit span annotations? | SikhRI team and Harsimran | EVAL-01/02, video beat 6 | Provisional default implemented (EVAL-01, 2026-10-16), pending SikhRI confirmation; see the OQ-14 provisional default below. Confirm before reporting a real rate |
 | OQ-16 | How will every macOS/Windows clone access the private UI PDF and BaniDB fixture and verify its local setup? | Contributors | C-05 privacy verification, P-10, M0 | Open for private provisioning/platform verification; fixed person assignments removed by D-71 |
 | OQ-17 | Does the reference sample include explicit term-to-rendering alignments or a preferred-rendering glossary? Line-level English alone cannot prove which English word renders a specific Gurmukhi stem. | SikhRI team; CHECKS contributor checks sample | CHK-12 deterministic CONS-01 | Open; keep CHK-12 silent without an explicit mapping and use only cited English-reference style comparisons |
 | OQ-18 | What sourced table maps an unambiguous ending matra to grammar, and which rule should a grammar hint cite? | SikhRI team | LLM-12, FR-10 | Open; LLM-12 blocked (D-84) |
+
+### OQ-14 provisional default (implemented by EVAL-01, policy id `oq14-provisional-v1`)
+
+Used until SikhRI confirms which edits count. Every run carries the policy id and text in its `EvalRun.policy`.
+
+- A correction is a span the reviewer changed between the pre-edit draft and the approved text. Spans come from the record's `changed_spans` when present and inside the pre-edit text, otherwise from a word-level diff of the pre-edit and approved text (each separate edit is its own correction). Spans are end-exclusive UTF-16 offsets on the pre-edit draft.
+- A correction is **caught** when at least one finding's span on the pre-edit draft overlaps the changed span (touching is not overlapping); otherwise **missed**.
+- A finding whose span overlaps no changed span is a **false flag**.
+- Corrections labelled `typo` or `out_of_scope` are counted and reported separately and are excluded from the catch-rate denominator. Findings that overlap only such a correction are not false flags and are left out of the false-flag denominator. `unclassified` and `in_scope` corrections count.
+- **Unmatched** corrections are reported separately in `excluded.unmatched`, never dropped: records labelled `unmatched`, pure insertions (nothing in the pre-edit text to align to), unusable provided spans, pre-edit and approved texts with no word or punctuation difference, and records whose BaniDB source lines are unavailable so the draft could not be run. Their spanless units cannot be caught; findings on such a record still count as false flags if they overlap no changed span.
+- Rates report explicit numerators, denominators and sample size (`n_corrections`, `n_findings`), overall and per rule, for one ruleset version per run. Per-rule catch rate uses the overall in-scope denominator because corrections carry no rule tag. Rules that could not be evaluated on one or more drafts (for example model rules without `ANTHROPIC_API_KEY`) are named in the policy text and omitted from `per_rule`, never shown as 0%.
+
+Open for SikhRI: whether `unclassified` edits belong in the denominator, whether insertions should align to a neighbouring word, and whether reviewer notes can tag an edit to a rule.
 
 ## Answered
 
