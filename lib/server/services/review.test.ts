@@ -52,6 +52,16 @@ describe("markReady and reviewQueue", () => {
   });
 });
 
+describe("markReady on a published draft", () => {
+  it("is rejected and leaves the draft published and out of the queue", async () => {
+    getStore().saveDraft(makeDraft({ status: "published" }));
+    const error = await fail(await readyRoute(post({ draft_version: 1, actor: "Writer" }), ctx({ draft_id: "draft-t1" })), 400, "invalid_request");
+    expect(error.reason).toContain("already published");
+    expect(getStore().getDraft("draft-t1")?.status).toBe("published");
+    expect((await ok("reviewQueue", await reviewRoute(get()))).drafts).toEqual([]);
+  });
+});
+
 describe("decide", () => {
   beforeEach(() => getStore().saveFinding(makeFinding()));
   const run = (body: unknown, findingId = "finding-t1") => decideRoute(post(body), ctx({ finding_id: findingId }));

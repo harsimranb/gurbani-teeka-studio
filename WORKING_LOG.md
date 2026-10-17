@@ -86,6 +86,7 @@ Append-only. Record decisions that add, remove or change planned behavior here *
 | D-76 | F0 route skeletons validate every request. Safe read endpoints return labelled contract fixtures; stateful and evidence-dependent endpoints return a contract-valid unavailable error until their actual persistence/check behavior is built, avoiding false success claims. |
 | D-77 | CHECKS: real code phase; CHK-11 pipeline with pluggable judge, no adapter (`notEvaluable`); CHK-12 cut, CONS-01 `notEvaluable`; TERM-07 gloss hint included; resolution decisions govern prefilter actions; code-phase scope replaces code findings only. |
 | D-78 | FE-01 to FE-09 are built against a stateful, browser-storage mock of the 18 contract routes (`lib/client/mock-*`) with a labelled synthetic checker, plus a dev-only `/api/dev/demo-sabad` route that serves the private BaniDB fixture. FE tasks stay *In progress* until the real API passes their acceptance. P1 items render as labelled placeholders. |
+| D-79 | API-02 to API-09 run as real services over an in-memory store that implements the SQLite repository interface (shared behaviour tests cover both). The server starts with source lines only (D-75); dev-only `POST /api/dev/seed-synthetic` and `/api/dev/reset` load labelled synthetic drafts or clear state. Drift uses a labelled synthetic replay stub until LLM-10. Additive contract: `listPublications` (19 routes). The UI uses the real API unless `NEXT_PUBLIC_USE_MOCKS=1`. |
 
 ---
 
@@ -223,7 +224,7 @@ Related folders: `lib/server/db/`, `lib/server/ingest/`, `scripts/app/`, `data/b
 Related folders: `app/api/`, `lib/server/services/`.
 
 ### In progress
-- _(none)_
+- [ ] **API-02 to API-09** Services behind all 19 routes on the in-memory, repository-shaped store (D-79), wired to the UI end to end. Code checks use the real engine; the model phase reports `not_evaluable` until LLM-01; drift uses a labelled synthetic replay stub until LLM-10; eval reads `data/eval/latest.json`. Remaining for closure: switch `getStore()` to the SQLite repository (needs a `publications` table), real drift (S4) and model judge (S1 LLM)
 
 ### Next
 - [x] **API-01** All 18 P0 method/path actions have route handlers and contract tests. Safe reads return labelled fixtures; stateful/evidence-dependent actions return validated unavailable errors after request validation (D-76). Focused, TypeScript and all 47 tests pass (2026-10-16)
@@ -301,5 +302,8 @@ Related folders: `app/(studio)/`, `app/layout.tsx`, `app/page.tsx`, `app/globals
 Format: `- from → to · what's needed · task it blocks`. Whoever completes the request ticks it when verified.
 
 - [ ] FE → API · Agree how a CONS-01 departure clears at publish: the review UI records "Keep, with reason" as an `override` decision and sends `departure_reasons: []`; if API-05 instead requires `departure_reasons`, FE-05 must send them · API-05, FE-05/06
-- [ ] FE → API · Add read routes for a Sabad's published references and each publication's approver, time and publish-time gate (the published view uses the mock-only `mockReferencesForSabad`/`mockPublication` seams) · API-05, FE-06
+- [x] FE → API · Add read routes for a Sabad's published references and each publication's approver, time and publish-time gate · API-05, FE-06 · Done: `listPublications` (D-79)
+- [ ] API → DATA · Before switching `getStore()` to SQLite: derive `nextId` counters from stored rows (in-memory counters would reuse IDs after a restart and overwrite rows) and wrap `approveProposal`'s writes in one transaction · API-08, DATA-02
+- [ ] API · Saving a unit leaves sibling units' Sabad-scoped code findings (TERM-03 first use, TERM-07) unrefreshed until the next code check; the UI re-checks after every save, but API-03 should clear or mark them stale on save · API-02/03
+- [ ] API → DATA · Add a `publications` table and repository methods matching `savePublication`/`listPublicationsForSabad`, so `getStore()` can switch from the in-memory store to SQLite · API-05, DATA-01/02
 - [ ] FE → DOCS/Harsimran · Supply the official BaniDB logo for `public/` (footer shows a text badge) · FE-01, FR-21

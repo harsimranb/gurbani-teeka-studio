@@ -99,7 +99,7 @@ Full detail and the dependency map: [`_docs/06-team-workflow.md`](_docs/06-team-
 | If you need… | And it isn't ready, use… |
 |---|---|
 | The engine model phase or drift (`runChecks(…, 'llm')`, `runDriftCheck`) | `runChecks` code phase is real (D-77); the model phase reports `notEvaluable` until LLM-01 supplies a judge, and `runDriftCheck` is still a fixture stub reporting `not_evaluable` |
-| The API, from the UI | `lib/client` mock mode: `NEXT_PUBLIC_USE_MOCKS=1` |
+| The API, from the UI | The real routes run on an in-memory store (D-79); for UI-only work, `lib/client` browser mock mode: `NEXT_PUBLIC_USE_MOCKS=1` |
 | A Sabad with Gurmukhi | Local, git-ignored `lib/contracts/fixtures/sabad.demo.json` exported from BaniDB; provision it privately in each clone |
 | SikhRI references or corrections | `fixtures/references.json`, `fixtures/corrections.json` (test data, labelled) |
 | Eval results | `fixtures/eval-run.json` |
@@ -140,7 +140,7 @@ The scaffold and F0 ingest commands run now. Evaluation and bake-off scripts rem
 | `docker compose --env-file data/banidb/.env -f data/banidb/docker-compose.yml up -d --wait` | Start local MariaDB; first create credentials using `_docs/c03-banidb.md` |
 | `pnpm ingest` | Read the ignored, provenance-checked local BaniDB demo export into `eko.db` and seed the 66 resolved rules; repeatable without duplicates |
 | `node --import tsx scripts/app/seed-demo.ts` | Seed only the BaniDB demo source lines; no English draft or decision is created (D-75) |
-| `pnpm dev` | Run the app at http://localhost:3000 |
+| `pnpm dev` | Run the app at http://localhost:3000 against the stubbed API (in-memory; the footer's dev actions load synthetic drafts or reset) |
 | Mock mode (shell examples above) | FE-02 stateful browser mock of every route with labelled synthetic checks (D-78); "Reset demo data" in the footer clears it |
 | `pnpm test` | Run the Vitest suite |
 | `pnpm typecheck` | Generate Next route types, then run `tsc --noEmit` |

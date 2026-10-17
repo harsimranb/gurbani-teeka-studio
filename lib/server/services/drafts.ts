@@ -41,7 +41,15 @@ export function saveDraft(req: ParsedRequest<"saveDraft">): ApiResponse<"saveDra
   if (req.draft_id === null) {
     // Regroup/ungroup REPLACES overlapped drafts. deleteDraft cascades findings, runs and decisions, so their
     // history is lost; acceptable for this stub (a SQLite-backed version may archive instead).
-    const gone = new Set(overlapping(null).map((draft) => draft.id));
+    const replaced = overlapping(null);
+    // A published unit has a reference and a publication pointing at it; deleting it would orphan that audit trail.
+    const published = replaced.find((draft) => draft.status === "published");
+    if (published) {
+      const covered = published.line_ids.find((id) => req.line_ids.includes(id)) ?? published.line_ids[0];
+      const lineNumber = sabad.lines.findIndex((line) => line.line_id === covered) + 1;
+      throw new ServiceError("invalid_request", `Line ${lineNumber} is part of a published transcreation; edit that unit instead of regrouping it.`);
+    }
+    const gone = new Set(replaced.map((draft) => draft.id));
     clearFindings(store, (finding) => gone.has(finding.draft_id), at);
     for (const id of gone) store.deleteDraft(id);
     const draft: Draft = {

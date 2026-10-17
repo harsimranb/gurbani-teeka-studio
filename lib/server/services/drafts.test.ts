@@ -103,6 +103,18 @@ describe("saveDraft", () => {
     expect(store.listFindingsForDraft(a.id)).toEqual([]);
     expect(store.listDraftsForSabad(SABAD).map((draft) => draft.id).sort()).toEqual([c.id, group.id].sort());
   });
+  it("refuses to replace a published draft, leaving everything untouched", async () => {
+    const store = getStore();
+    const a = (await ok("saveDraft", await save({ line_ids: [L(1)] }))).draft;
+    const b = (await ok("saveDraft", await save({ line_ids: [L(2)] }))).draft;
+    store.saveDraft({ ...b, status: "published" });
+    const response = await save({ line_ids: [L(1), L(2)], text: "SYNTHETIC TEST: group" });
+    await failure(response.clone(), 400, "invalid_request");
+    expect((await response.json()).error.reason).toBe("Line 2 is part of a published transcreation; edit that unit instead of regrouping it.");
+    expect(store.getDraft(a.id)).toBeDefined();
+    expect(store.getDraft(b.id)?.status).toBe("published");
+    expect(store.listDraftsForSabad(SABAD)).toHaveLength(2);
+  });
   it("rejects regrouping an existing draft onto another draft's lines, allows free lines", async () => {
     const a = (await ok("saveDraft", await save({ line_ids: [L(1)] }))).draft;
     await ok("saveDraft", await save({ line_ids: [L(2)] }));

@@ -1,5 +1,5 @@
 import type { ApiResponse } from "../../contracts/api";
-import { CheckInputSchema, type CheckInput, type CheckResult, type CheckRun, type Draft, type Finding } from "../../contracts/domain";
+import { CheckInputSchema, type CheckInput, type CheckResult, type CheckRun, type Draft, type Finding, type Rule } from "../../contracts/domain";
 import type { Engine } from "../../contracts/ports";
 import { codePhaseScope, isCodeFinding, runChecks } from "../../engine/index";
 import { getStore, nextId, nowIso } from "./context";
@@ -32,12 +32,31 @@ function changedUnits(draft: Draft, units: Draft[], changedLineIds: string[]): D
  * True when a result computed from `snapshot` can no longer be trusted: the ruleset moved on, or any authored
  * unit of the Sabad was added, removed or edited since the snapshot was taken. Exported for unit tests.
  */
-export function isSnapshotStale(store: AppStore, snapshot: { shabadId: string; rulesetVersion: number; drafts: Draft[] }): boolean {
+export function isSnapshotStale(
+  store: AppStore,
+  snapshot: { shabadId: string; rulesetVersion: number; drafts: Draft[]; sabadWide?: boolean },
+): boolean {
   if (currentRuleset(store).version !== snapshot.rulesetVersion) return true;
   const now = store.listDraftsForSabad(snapshot.shabadId);
-  if (now.length !== snapshot.drafts.length) return true;
+  // Sabad-wide (default, code phase): Sabad-scoped rules depend on siblings, so any added/removed unit counts.
+  // Unit-only (model phase): just the listed units must still exist at the same version.
+  if (snapshot.sabadWide !== false && now.length !== snapshot.drafts.length) return true;
   const versions = new Map(now.map((draft) => [draft.id, draft.version]));
   return snapshot.drafts.some((draft) => versions.get(draft.id) !== draft.version);
+}
+
+const NO_JUDGE_REASON = "No model judge is configured yet (LLM-01); this rule was not evaluated by a model.";
+
+/**
+ * While no model judge is configured, the engine lists only rules that had a packet. A model phase must never read
+ * as a pass, so every active p0_check rule not already listed is reported not evaluable (engine reasons kept).
+ */
+function withUnjudgedRules(notEvaluable: CheckResult["notEvaluable"], rules: Rule[]): CheckResult["notEvaluable"] {
+  const listed = new Set(notEvaluable.map((entry) => entry.ruleId));
+  const extra = rules
+    .filter((rule) => rule.resolution.active && rule.resolution.scope === "p0_check" && !listed.has(rule.id))
+    .map((rule) => ({ ruleId: rule.id, reason: NO_JUDGE_REASON }));
+  return [...notEvaluable, ...extra];
 }
 
 /** Saves `next` only if the stored run for its key is still `previous` (a concurrent re-check owns it otherwise). */
@@ -65,7 +84,10 @@ function neutralError(error: unknown): string {
   return `Check failed before completing: ${detail}`.slice(0, MAX_ERROR_LENGTH);
 }
 
-export async function runChecksWith(engineRunChecks: EngineRunChecks, phase: Phase, req: CheckRequest): Promise<CheckResponse> {
+/** `judgeConfigured: true` (tests with an injected judge-backed engine) skips the no-judge not-evaluable merge. */
+export async function runChecksWith(
+  engineRunChecks: EngineRunChecks, phase: Phase, req: CheckRequest, options: { judgeConfigured?: boolean } = {},
+): Promise<CheckResponse> {
   const store = getStore();
   const draft = store.getDraft(req.draft_id);
   if (!draft) throw new ServiceError("not_found", "Draft not found.");
@@ -101,12 +123,15 @@ export async function runChecksWith(engineRunChecks: EngineRunChecks, phase: Pha
     throw new ServiceError("invalid_request", `Check input does not match its contract. ${detail}`);
   }
   const input: CheckInput = parsed.data;
-  const snapshot = { shabadId: draft.shabad_id, rulesetVersion: ruleset.version, drafts };
 
   // Units this phase re-checks. Their runs go `pending` now, so the publish gate blocks until the phase settles.
   const unitIds = new Set((phase === "code" ? codePhaseScope(input).draftIds : changedUnits(draft, drafts, input.changedLineIds).map((unit) => unit.id)));
   unitIds.add(draft.id);
   const units = drafts.filter((unit) => unitIds.has(unit.id));
+  // Code phase: Sabad-scoped rules read siblings, so any Sabad change invalidates it. Model phase: only its own units.
+  const snapshot = phase === "code"
+    ? { shabadId: draft.shabad_id, rulesetVersion: ruleset.version, drafts }
+    : { shabadId: draft.shabad_id, rulesetVersion: ruleset.version, drafts: units, sabadWide: false };
   const startedAt = nowIso();
   const pending = units.map((unit): CheckRun => ({
     id: nextId("run"), draft_id: unit.id, draft_version: unit.version, ruleset_version: ruleset.version, phase,
@@ -128,6 +153,8 @@ export async function runChecksWith(engineRunChecks: EngineRunChecks, phase: Pha
 
   // The store may have moved while the engine ran: drop the result rather than persist stale findings.
   if (isSnapshotStale(store, snapshot)) return supersede(store, pending);
+
+  const notEvaluable = phase === "llm" && !options.judgeConfigured ? withUnjudgedRules(result.notEvaluable, ruleset.rules) : result.notEvaluable;
 
   // Never resurrect a reviewer's override/waive: collect before clearing, since clearing re-labels findings.
   const reviewerCleared = reviewerClearedIds(store, drafts);
@@ -156,10 +183,10 @@ export async function runChecksWith(engineRunChecks: EngineRunChecks, phase: Pha
   const runs = affected.map((unit): CheckRun => ({
     id: pendingByDraft.get(unit.id)?.id ?? nextId("run"), draft_id: unit.id, draft_version: unit.version, ruleset_version: ruleset.version, phase,
     status: "succeeded", started_at: pendingByDraft.get(unit.id)?.started_at ?? startedAt, completed_at: completedAt, error: null, cached: false,
-    not_evaluable: result.notEvaluable,
+    not_evaluable: notEvaluable,
   }));
   for (const run of runs) store.saveCheckRun(run);
-  return { affected_drafts: affected, check_runs: runs, result: { findings: saved, notEvaluable: result.notEvaluable } };
+  return { affected_drafts: affected, check_runs: runs, result: { findings: saved, notEvaluable } };
 }
 
 /** Marks this attempt's pending runs failed ("superseded") when still ours, then reports a version conflict. */

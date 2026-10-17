@@ -64,7 +64,9 @@ export function PublishedView({ shabadId }: { shabadId: string }) {
   const publications = published.map((u) => u.publication).filter((p) => p !== null);
   const approvers = [...new Set(publications.map((p) => p.approver))].join(", ");
   const latestAt = publications.map((p) => p.at).sort().at(-1);
-  const rulesetVersion = rulesRes.data?.ruleset_version ?? null;
+  // The gate card describes the gate recorded at publish time, so label it with the ruleset each publication was checked on.
+  const gateVersions = [...new Set(publications.map((p) => p.gate.ruleset_version))].sort((x, y) => x - y);
+  const gateRulesetLabel = gateVersions.length === 0 ? null : gateVersions.map((v) => rulesetLabel(v)).join(", ");
   const differs = currentStateDiffers(published);
   const currentRuleset = rulesRes.data?.ruleset_version ?? Math.max(...published.map((u) => u.gate.ruleset_version));
   const blocking = gate.errors + gate.flags;
@@ -101,7 +103,7 @@ export function PublishedView({ shabadId }: { shabadId: string }) {
 
       <div className="flex flex-wrap items-start gap-6">
         <ReferenceSetCard sabad={sabad} references={publishedRefs} />
-        <GateColumn gate={gate} decisions={decisions} rulesetVersionLabel={rulesetVersion === null ? null : rulesetLabel(rulesetVersion)} workspaceHref={`/workspace?sabad=${encodeURIComponent(shabadId)}`} />
+        <GateColumn gate={gate} decisions={decisions} rulesetVersionLabel={gateRulesetLabel} workspaceHref={`/workspace?sabad=${encodeURIComponent(shabadId)}`} />
       </div>
     </div>
   );

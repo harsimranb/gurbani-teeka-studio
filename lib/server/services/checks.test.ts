@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { ApiErrorSchema, routes } from "../../contracts/api";
 import type { CheckResult, Draft } from "../../contracts/domain";
+import { rulesFixture } from "../../contracts/fixtures";
 import { POST as postCode } from "../../../app/api/check/route";
 import { POST as postLlm } from "../../../app/api/check/llm/route";
 import { isSnapshotStale, runChecksWith } from "./checks";
@@ -177,6 +178,41 @@ describe("POST /api/check/llm (model phase)", () => {
     expect(response.check_runs[0].not_evaluable).toEqual(response.result.notEvaluable);
   });
 
+  it("lists every active p0_check rule as not evaluable even when the text has no candidates", async () => {
+    const draft = seed("d1", [1], CLEAN);
+    const response = await ok(await post(postLlm, body(draft)));
+    const active = rulesFixture.filter((rule) => rule.resolution.active && rule.resolution.scope === "p0_check").map((rule) => rule.id);
+    expect(active.length).toBeGreaterThan(0);
+    const listed = response.result.notEvaluable.map((entry) => entry.ruleId);
+    expect(new Set(listed).size).toBe(listed.length);
+    expect(active.every((id) => listed.includes(id))).toBe(true);
+    expect(response.check_runs[0].not_evaluable).toEqual(response.result.notEvaluable);
+    expect(response.check_runs[0].not_evaluable.length).toBeGreaterThan(0);
+  });
+
+  it("keeps the engine's own reason and skips the merge when a judge is configured", async () => {
+    const draft = seed("d1", [1], CLEAN);
+    const own = { ruleId: "TERM-01", reason: "Engine reason." };
+    const merged = await runChecksWith(async () => ({ findings: [], notEvaluable: [own] }), "llm", body(draft) as never);
+    expect(merged.result.notEvaluable.filter((entry) => entry.ruleId === "TERM-01")).toEqual([own]);
+    expect(merged.result.notEvaluable.length).toBeGreaterThan(1);
+    const judged = await runChecksWith(async () => ({ findings: [], notEvaluable: [own] }), "llm", body(draft) as never, { judgeConfigured: true });
+    expect(judged.result.notEvaluable).toEqual([own]);
+  });
+
+  it("does not drop a model result when an unrelated sibling is edited during the run", async () => {
+    const a = seed("d1", [1], LORD);
+    const b = seed("d2", [2], CLEAN);
+    const engine = async (): Promise<CheckResult> => { store().saveDraft({ ...b, text: PAREN, version: 2 }); return emptyResult; };
+    const response = routes.runLlmChecks.response.parse(await runChecksWith(engine, "llm", body(a) as never));
+    expect(response.affected_drafts.map((unit) => unit.id)).toEqual(["d1"]);
+    expect(response.check_runs[0].status).toBe("succeeded");
+    // An edit to the checked unit itself still drops the result.
+    const c = seed("d3", [3], CLEAN);
+    const racing = async (): Promise<CheckResult> => { store().saveDraft({ ...c, version: 2 }); return emptyResult; };
+    await expect(runChecksWith(racing, "llm", body(c) as never)).rejects.toMatchObject({ code: "version_conflict" });
+  });
+
   it("leaves code findings in place", async () => {
     const draft = seed("d1", [1], LORD);
     const code = await ok(await post(postCode, body(draft)));
@@ -265,8 +301,10 @@ describe("isSnapshotStale", () => {
     expect(isSnapshotStale(store(), snapshot)).toBe(false);
     seed("d2", [2], CLEAN);
     expect(isSnapshotStale(store(), snapshot)).toBe(true);
+    expect(isSnapshotStale(store(), { ...snapshot, sabadWide: false })).toBe(false);
     store().deleteDraft("d2");
     store().deleteDraft("d1");
     expect(isSnapshotStale(store(), snapshot)).toBe(true);
+    expect(isSnapshotStale(store(), { ...snapshot, sabadWide: false })).toBe(true);
   });
 });

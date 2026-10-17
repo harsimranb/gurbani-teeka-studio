@@ -16,6 +16,7 @@ export function markReady(req: ParsedRequest<"markReady">): { draft: Draft } {
   const store = getStore();
   const draft = requireDraft(req.draft_id);
   if (draft.version !== req.draft_version) throw new ServiceError("version_conflict", "The draft changed; reload before marking it ready.");
+  if (draft.status === "published") throw new ServiceError("invalid_request", "This draft version is already published; edit it to start a new version.");
   const updated: Draft = { ...draft, status: "ready_for_review" };
   store.saveDraft(updated);
   return { draft: updated };
