@@ -12,13 +12,13 @@ const sourcePath = new URL("../../lib/contracts/fixtures/sabad.demo.json", impor
 const sourceTest = existsSync(sourcePath) ? it : it.skip;
 
 describe("source-only demo seed", () => {
-  sourceTest("keeps BaniDB lines exact and creates no draft or decision on repeat", () => {
+  sourceTest("(fixture fallback) keeps BaniDB lines exact and creates no draft or decision on repeat", () => {
     const dir = mkdtempSync(join(tmpdir(), "eko-seed-test-"));
     const target = join(dir, "eko.db");
     const script = fileURLToPath(new URL("./seed-demo.ts", import.meta.url));
     const source = SabadSchema.parse(JSON.parse(readFileSync(sourcePath, "utf8")));
     try {
-      const env = { ...process.env, DATABASE_URL: target };
+      const env = { ...process.env, DATABASE_URL: target, BANIDB_SOURCE: "fixture" };
       execFileSync(process.execPath, ["--import", "tsx", script], { env, stdio: "pipe" });
       execFileSync(process.execPath, ["--import", "tsx", script], { env, stdio: "pipe" });
       const { db, sqlite } = openAppDb(target);
@@ -34,4 +34,26 @@ describe("source-only demo seed", () => {
       rmSync(dir, { recursive: true, force: true });
     }
   });
+
+  const fullTest = existsSync(sourcePath) && existsSync(new URL("../../data/banidb/banidb.sqlite", import.meta.url)) ? it : it.skip;
+  fullTest("seeds the full corpus source-only, with the demo Sabad identical to its fixture", () => {
+    const dir = mkdtempSync(join(tmpdir(), "eko-seed-full-"));
+    const target = join(dir, "eko.db");
+    const script = fileURLToPath(new URL("./seed-demo.ts", import.meta.url));
+    const source = SabadSchema.parse(JSON.parse(readFileSync(sourcePath, "utf8")));
+    try {
+      execFileSync(process.execPath, ["--import", "tsx", script], { env: { ...process.env, DATABASE_URL: target }, stdio: "pipe" });
+      const { db, sqlite } = openAppDb(target);
+      try {
+        expect(createRepository(db).getSabad(source.shabad_id)).toEqual(source);
+        expect((sqlite.prepare("SELECT COUNT(DISTINCT shabad_id) AS count FROM lines").get() as { count: number }).count).toBe(5542);
+        expect((sqlite.prepare("SELECT COUNT(*) AS count FROM drafts").get() as { count: number }).count).toBe(0);
+        expect((sqlite.prepare("SELECT COUNT(*) AS count FROM decisions").get() as { count: number }).count).toBe(0);
+      } finally {
+        sqlite.close();
+      }
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  }, 60_000);
 });

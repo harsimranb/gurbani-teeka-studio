@@ -2,7 +2,7 @@
 
 ## Local SQLite source supplied on 2026-10-16
 
-The user supplied a private, ignored `data/banidb/banidb.sqlite`. Its main `Verse` table has the same 20,134 G-source rows and 39,977 missing mapped rows as the pinned Docker development image. Its `tmp_Verse` table has 60,403 G-source rows with IDs 1–60,403, source text on all 60,111 checked G-Sabad mappings, and no missing Unicode. All 20,134 G-source Unicode strings shared with `Verse` match exactly. This establishes a usable **local source for a demo Sabad**; table coverage and overlap are not an independent textual audit or proof that the database is current or contains every composition.
+The user supplied a private, ignored `data/banidb/banidb.sqlite`. Its main `Verse` table has the same 20,134 G-source rows and 39,977 missing mapped rows as the pinned Docker development image. Its `tmp_Verse` table has 60,403 G-source rows with IDs 1–60,403, source text on every G-Sabad mapping (60,403 mapping rows in the current coverage report; an earlier pass recorded 60,111 checked mappings with a narrower query), and no missing Unicode. All 20,134 G-source Unicode strings shared with `Verse` match exactly. This establishes a usable **local source for a demo Sabad**; table coverage and overlap are not an independent textual audit or proof that the database is current or contains every composition.
 
 The read-only SQLite exporter validates mapping coverage, overlap, source IDs, metadata, NFC, and Rahao notation before replacing the canonical private fixture. It exported Sabad 1356: five lines, one Rahao line, SHA-256 `548b315ef87aa0aeecb6462c9a933b6199a73c36cdaba64fea3c32b85d54553e`. The earlier complete API Sabad 55 fixture and provenance remain ignored as `data/banidb/sabad.api-fallback.json` and `data/banidb/export-metadata.api-fallback.json`. No Gurmukhi or BaniDB database content is committed.
 
@@ -16,7 +16,27 @@ node --import tsx scripts/app/seed-demo.ts
 
 `seed-demo.ts` deliberately seeds the source Sabad only. It adds no English draft or review decision; a human-authored demo draft is a later P-09/F1 input (D-75).
 
-Both ingest scripts verify the canonical fixture's SHA-256, Sabad/line IDs, Rahao IDs, and `tmp_Verse` provenance against the ignored export metadata before writing. A custom `DATABASE_URL` inside the repository is accepted only if Git ignores that path; the BaniDB source directory is never an app-database target. Outside-repository database paths are allowed for temporary tests.
+**Full-corpus ingest (D-86).** When `data/banidb/banidb.sqlite` exists and is Git-ignored, `ingest.ts` and `seed-demo.ts` load every G Sabad (5,542 Sabads, 60,403 lines) from `tmp_Verse` after the exporter's coverage gate, in one transaction. A repeat run inserts nothing, and a changed line or line set is refused rather than silently replaced. Only source ID, ang, raag, writer, Rahao and Unicode Gurmukhi are read; no English, translation, transliteration or Punjabi column. A line without a writer or raag takes its Sabad's single distinct value; when the Sabad has none or several, it stores the literal label `Not recorded in BaniDB` (40 lines today). Set `BANIDB_SOURCE=fixture` (exact value) to force the fixture path below.
+
+**Fixture fallback.** Without the SQLite copy, or with `BANIDB_SOURCE=fixture`, both scripts load the single canonical fixture and verify its SHA-256, Sabad/line IDs, Rahao IDs, and `tmp_Verse` provenance against the ignored export metadata before writing. A custom `DATABASE_URL` inside the repository is accepted only if Git ignores that path; the BaniDB source directory is never an app-database target. Outside-repository database paths are allowed for temporary tests.
+
+## P-05 coverage audit (2026-10-16)
+
+`node --import tsx scripts/app/audit-banidb-coverage.ts` opens `data/banidb/banidb.sqlite` read-only, checks internal consistency of the G-source `tmp_Verse` rows and their `Shabad` mappings, and spot-checks a deterministic sample against the public BaniDB API (`GET /v2/shabads/{id}`, sequential, 250 ms apart). It writes the ignored `data/banidb/coverage-audit.json` (counts and IDs only; no Gurmukhi) and prints a short summary. Its tests use an in-memory database with placeholder ASCII and a stubbed fetch.
+
+**Internal consistency: pass.** 60,403 G rows with continuous IDs 1–60,403; all 1,430 angs present, none out of range; 5,542 Sabads (`ShabadID` below 5,000,000), every one fully mapped (mapped count equals joined count) with no unmapped G verse; no verse mapped to more than one Sabad; no missing Unicode and no string that differs from its NFC form. `LineNo` is the printed line on the ang, so verses legitimately share a value on every ang; no ang has a missing or decreasing value. 1,120 Sabads span more than one ang. 2,621 Sabads carry a Rahao marker under the exporter's detection.
+
+**Metadata gaps.** 5,194 G lines have no writer; 20 Sabads have no writer on any line (IDs are listed in the report) and 15 have more than one writer. Every line has a raag, and every writer and raag ID resolves. Ingest handles these with the inherit-else-label rule above (Harsimran's decision, D-86).
+
+**Live sample parity: 43 of 44 Sabads.** The sample is every 138th Sabad plus those on ang 1 and ang 1430. For 43 the ordered verse ID list and NFC Unicode match the API exactly. Sabad 4281 has the same seven verse IDs, but lines 51850 and 51852 differ: the same code points, with two adjacent combining marks (U+0A40 and U+0A02) in the opposite order in the API. Exact-string comparison of this copy with the live API can therefore differ for such lines; which order is intended is not established here.
+
+**Currency.** Every G `Updated` stamp is 2019-12-03 (60,399 rows at one time, four at another). The sample shows the copy agrees with the API today for 43 of 44 Sabads, but that does not show the copy is current; it is not a full comparison.
+
+**Remaining limitation.** The audit proves internal consistency and sampled parity for roughly 0.8% of the Sabads. It does not prove the text is correct, that every composition is present, or that the copy meets BaniDB's 90-day refresh term; the sample covers 44 of 5,542 Sabads.
+
+## Demo Sabads (P-07, D-87, D-88)
+
+`node --import tsx scripts/app/find-demo-sabads.ts` needs the SQLite copy. It takes the Kartar/Karta forms from the TERM-02 seed prefilter and the opening glyph from the TERM-03 keywords, keeps complete Sabads with a Rahao line and recorded writer/raag, and writes IDs and English metadata only to the ignored `data/banidb/demo-sabads.json`. Harsimran confirmed the picks (D-88): 1356 (ang 339, kept), 1568 (ang 404, Kartar/Karta form) and 693 (ang 219, opens with the Ik Onkar glyph).
 
 ## Earlier Docker-image assessment on 2026-10-16
 

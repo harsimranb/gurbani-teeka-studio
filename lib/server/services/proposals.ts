@@ -1,8 +1,9 @@
 import type { ApiResponse } from "../../contracts/api";
 import {
-  DriftResultSchema, ProposalSchema, RuleSchema,
-  type DriftAssessment, type DriftResult, type Proposal, type Rule,
+  DriftContextSchema, DriftResultSchema, ProposalSchema, RuleSchema,
+  type DriftAssessment, type DriftContext, type DriftResult, type Proposal, type Rule,
 } from "../../contracts/domain";
+import { createLlmClient, runDriftCheck as engineRunDriftCheck } from "../../engine";
 import { getStore, nextId, nowIso } from "./context";
 import type { AppStore } from "./memory-repo";
 import { ServiceError, type ParsedRequest } from "./http";
@@ -25,8 +26,10 @@ export function getProposal(req: ParsedRequest<"getProposal">): ApiResponse<"get
 }
 
 /**
- * SYNTHETIC drift stub, labelled as such in every reason. Rule text is untrusted data: it is never read here.
- * TODO(LLM-10): replace with engine.runDriftCheck
+ * Offline drift stand-in, used only when no model is configured (no ANTHROPIC_API_KEY). With a model,
+ * `submitProposal` calls the real engine `runDriftCheck` (LLM-10/11) instead. This stub exists so the
+ * block/override approval flow can be exercised offline. Every reason is labelled synthetic, and rule
+ * text is untrusted data: it is never read here.
  */
 export function stubDriftCheck(_proposal: Proposal, store: AppStore): DriftAssessment[] {
   const published = store.listReferences().filter((reference) => reference.source === "published");
@@ -49,15 +52,32 @@ export function stubDriftCheck(_proposal: Proposal, store: AppStore): DriftAsses
   ];
 }
 
-export function submitProposal(req: ParsedRequest<"submitProposal">): ApiResponse<"submitProposal"> {
+/** Test seams: whether a model is configured, and the engine drift check (never hit the network in tests). */
+export interface SubmitOptions {
+  hasModel?: () => boolean;
+  runDriftCheck?: (proposal: Proposal, context: DriftContext) => Promise<DriftResult[]>;
+}
+
+export async function submitProposal(req: ParsedRequest<"submitProposal">, options: SubmitOptions = {}): Promise<ApiResponse<"submitProposal">> {
   const store = getStore();
+  const hasModel = options.hasModel ?? (() => createLlmClient() !== null);
+  const runDrift = options.runDriftCheck ?? engineRunDriftCheck;
   // Rule text is stored verbatim (hard rule 8) and never interpreted.
   const proposal = ProposalSchema.parse({
     id: nextId("proposal"), source: "free_text", rule_text: req.rule_text, example: req.example, reason: req.reason,
     evidence_ids: [], author: req.author, at: nowIso(), status: "pending",
   });
-  const results = stubDriftCheck(proposal, store).map((assessment) =>
-    DriftResultSchema.parse({ id: nextId("drift"), proposal_id: proposal.id, assessment, override: null }));
+  let results: DriftResult[];
+  if (hasModel()) {
+    // Keyed: the real engine drift check against the current rules and references. There is no glossary source (OQ-13).
+    const { version, rules } = currentRuleset(store);
+    const context = DriftContextSchema.parse({ rules, rulesetVersion: version, references: store.listReferences(), glossary: null });
+    results = (await runDrift(proposal, context)).map((result) => DriftResultSchema.parse(result));
+    if (results.some((result) => result.proposal_id !== proposal.id)) throw new ServiceError("internal_error", "The drift check returned results for a different proposal.");
+  } else {
+    results = stubDriftCheck(proposal, store).map((assessment) =>
+      DriftResultSchema.parse({ id: nextId("drift"), proposal_id: proposal.id, assessment, override: null }));
+  }
   store.saveProposal(proposal);
   for (const result of results) store.saveDriftResult(result);
   return { proposal, drift_results: results };
@@ -82,7 +102,7 @@ export function approveProposal(req: ParsedRequest<"approveProposal">): ApiRespo
   const provenance = { actor: req.actor, reason: req.reason, at };
   const driftOverride = blocking.length > 0 && req.drift_override_reason ? { actor: req.actor, reason: req.drift_override_reason, at } : null;
   const rule: Rule = RuleSchema.parse({
-    id: nextId("rule"), text: proposal.rule_text, level: "SHOULD", layers: ["transcreation"], plan: "generic_judge",
+    id: nextId("rule"), text: proposal.rule_text, level: "SHOULD", layers: ["transcreation"], plan: "free_text_llm",
     severity: "warning", decision: null, version: newVersion, status: "approved", source: "proposal", source_tag: "proposal",
     prefilter: null,
     resolution: { active: true, scope: "p0_check", severity: "warning", blocks_publish: false, layers: ["transcreation"], conditional: null, decision: null },

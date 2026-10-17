@@ -23,13 +23,13 @@ Mark a feature complete only when its acceptance paragraph in [`_docs/10-feature
 
 | Feature | Status | Evidence / next dependency |
 |---|---|---|
-| **F0 · Foundation, contracts and source data** | Complete for approved Mac/source-only scope | C-01 to C-04, DATA-01 to DATA-05 and API-01 pass. C-05 Mac privacy verified; Windows validation remains open by user direction. Human-authored draft is deferred to P-09/F1. M0 checks, production build and fresh review with fixes pass; P-05 corpus currency/coverage remains open. |
+| **F0 · Foundation, contracts and source data** | Complete for approved Mac/source-only scope | C-01 to C-04, DATA-01 to DATA-05 and API-01 pass. C-05 Mac privacy verified; Windows validation remains open by user direction. Human-authored draft is deferred to P-09/F1. M0 checks, production build and fresh review with fixes pass. P-05: SQLite copy internally consistent and fully ingested (5,542 Sabads, D-86); live sample parity 43/44; currency not certified. |
 | **F1 · Workspace** | In progress | FE-01/FE-03 screens run against the stateful mock (D-78); API-02 and real persistence remain. |
-| **F2 · Checks and report card** | In progress: CHECKS code phase complete | CHK-01 to CHK-11 pass (193 tests; commit `a08a81d` on `main`); CHK-12 cut (D-77). Model findings need LLM-01/03–05; persistence and report card need API-03 and FE-04. TERM-02 and CONS-01 have no transcreation golden cases. FE-04 report card UI runs against the mock (D-78). |
-| **F3 · Reference and style evidence** | Not started | Eko-published references can exercise mechanics; SikhRI sample and term mappings remain pending. |
+| **F2 · Checks and report card** | In progress: CHECKS code phase complete | CHK-01 to CHK-11 pass (193 tests; commit `a08a81d` on `main`); CHK-12 cut (D-77). Model phase real: LLM-01 to LLM-06 pass (D-79–D-83; 343 tests on `main` at `750f7d9`); persistence and report card need API-03 and FE-04. TERM-02 and CONS-01 have no transcreation golden cases. FE-04 report card UI runs against the mock (D-78). |
+| **F3 · Reference and style evidence** | In progress | LLM-07/08/09 pass in the engine (D-81); Eko-published references can exercise mechanics once API-05 publishes; SikhRI sample (DATA-06) and term mappings (CHK-12, cut) remain pending. |
 | **F4 · Review and publishing** | In progress | FE-05/FE-06 screens run against the mock (D-78); API-04/05 remain. |
 | **F5 · Rules catalog** | In progress | FE-07 reads the resolved seed through the mock (D-78); API-06 remains. |
-| **F6 · Proposals and drift** | In progress | FE-08 runs against a mock drift result (D-78); LLM-10 and API-07/08 remain. |
+| **F6 · Proposals and drift** | In progress | FE-08 runs against a mock drift result (D-78); LLM-06/10/11 pass in the engine (D-82, D-85); API-07/08 remain. |
 | **F7 · Backtest and evaluation** | In progress; real-data acceptance blocked | FE-09 shows the unavailable state and an opt-in labelled synthetic sample (D-78). SikhRI pre-edit review history has not arrived (P-04). |
 
 ---
@@ -41,14 +41,14 @@ Cross-workstream dependencies. The provider ticks a row when the real implementa
 | Ready | Seam | Provider → consumer | Real by | Stub until then |
 |---|---|---|---|---|
 | [x] | **S1** `engine.runChecks` (code phase) | CHK-10 → API-03 | M1 | real; use `codePhaseScope`/`isCodeFinding` to replace code findings (D-77) |
-| [ ] | **S1** `engine.runChecks` (LLM phase) | CHK-11 → API-03 | M2 | pipeline real; reports `notEvaluable` until LLM-01 supplies a judge |
+| [x] | **S1** `engine.runChecks` (LLM phase) | CHK-11 → API-03 | M2 | real (D-79); `notEvaluable` without `ANTHROPIC_API_KEY`; use `llmPhaseScope` to replace model findings |
 | [ ] | **S2** `CheckInput` from real data | DATA-03, API-03 → CHECKS | M1 | `fixtures/sabad.demo.json` |
 | [ ] | **S3** SikhRI references (normalized JSON) | DATA-06 → LLM-07 | M2 | `fixtures/references.json` |
 | [ ] | **S3** SikhRI corrections (normalized JSON) | DATA-06 → EVAL-02 | M3 | `fixtures/corrections.json` |
-| [ ] | **S4** `engine.runDriftCheck` | LLM-10 → API-07 | M3 | stub reports `not_evaluable` |
+| [x] | **S4** `engine.runDriftCheck` | LLM-10 → API-07 | M3 | real (D-85); `not_evaluable` without a model |
 | [ ] | **S5** `data/eval/latest.json` | EVAL-02 → API-09 | M3 | `fixtures/eval-run.json` |
-| [ ] | **S6** `engine.indexReferences` | LLM-07 → API-05 | M2 | no-op |
-| [ ] | **S7** Free-text rules checked | LLM-06 ← API-08 | M3 | rule listed but not checked |
+| [x] | **S6** `engine.indexReferences` | LLM-07 → API-05 | M2 | real warm-up; checks still use the passed snapshot |
+| [ ] | **S7** Free-text rules checked | LLM-06 ← API-08 | M3 | engine side real (D-82); API-08 must store approved proposals as `source: "proposal"`, active `p0_check` transcreation rules |
 
 ---
 
@@ -85,8 +85,18 @@ Append-only. Record decisions that add, remove or change planned behavior here *
 | D-75 | Harsimran directed F0's demo seed to include source lines only. Defer a human-written English draft to P-09/F1; do not generate one or silently treat synthetic test markers as a demo transcreation. |
 | D-76 | F0 route skeletons validate every request. Safe read endpoints return labelled contract fixtures; stateful and evidence-dependent endpoints return a contract-valid unavailable error until their actual persistence/check behavior is built, avoiding false success claims. |
 | D-77 | CHECKS: real code phase; CHK-11 pipeline with pluggable judge, no adapter (`notEvaluable`); CHK-12 cut, CONS-01 `notEvaluable`; TERM-07 gloss hint included; resolution decisions govern prefilter actions; code-phase scope replaces code findings only. |
+| D-79 | LLM-01: the model returns a review-only subset; the judge builds the strict `FindingBatch`; guards drop non-neutral, rewriting or unsupported-quote text. |
+| D-80 | LLM-03: the model maps a supplied Divine name to the Creator family; code gates collapse at 3+ families; TERM-02 is Sabad-scoped in the model phase. |
+| D-81 | LLM-09 style findings are CONS-01 warnings with layer `style` citing ordinary references; they need a reason before publish. |
+| D-82 | LLM-06/API-08: free-text rules are approved `source: "proposal"` rules (no `check_type`). |
+| D-83 | LLM-02: Claude-only bake-off; `claude-sonnet-5-5` is the default (`EKO_LLM_MODEL` overrides). |
+| D-84 | LLM-12 is blocked: no citable grammar rule and no sourced ending-matra table (OQ-18). |
+| D-85 | LLM-10/11: drift never passes on missing evidence; replay blocks at one affected line; glossary `not_evaluable` until OQ-13. |
+| D-86 | P-05: full-corpus ingest from the internally consistent SQLite copy; null writer/raag inherits a single Sabad value, else "Not recorded in BaniDB"; currency not certified (live sample 43/44). |
+| D-87 | P-07 provisional demo Sabads 1356, 1568, 693 pending Harsimran's confirmation; P-02/P-03 blocked (no reviewer answers or style guide); fold-in map in `_docs/rules/reviewer-answers-map.md`. |
+| D-88 | Harsimran confirmed P-07 demo Sabads 1356, 1568 and 693; P-09 demo transcreations target these three. |
+| D-89 | API-02 to API-09 run as real services over an in-memory store that implements the SQLite repository interface (shared behaviour tests cover both). The server starts with source lines only (D-75); dev-only `POST /api/dev/seed-synthetic` and `/api/dev/reset` load labelled synthetic drafts or clear state. With `ANTHROPIC_API_KEY` model checks and drift are real; without one, every active rule is listed as not evaluated and drift uses a labelled synthetic replay stub. Additive contract: `listPublications` (19 routes). The UI uses the real API unless `NEXT_PUBLIC_USE_MOCKS=1`. |
 | D-78 | FE-01 to FE-09 are built against a stateful, browser-storage mock of the 18 contract routes (`lib/client/mock-*`) with a labelled synthetic checker, plus a dev-only `/api/dev/demo-sabad` route that serves the private BaniDB fixture. FE tasks stay *In progress* until the real API passes their acceptance. P1 items render as labelled placeholders. |
-| D-79 | API-02 to API-09 run as real services over an in-memory store that implements the SQLite repository interface (shared behaviour tests cover both). The server starts with source lines only (D-75); dev-only `POST /api/dev/seed-synthetic` and `/api/dev/reset` load labelled synthetic drafts or clear state. Drift uses a labelled synthetic replay stub until LLM-10. Additive contract: `listPublications` (19 routes). The UI uses the real API unless `NEXT_PUBLIC_USE_MOCKS=1`. |
 
 ---
 
@@ -106,18 +116,22 @@ Append-only. Record decisions that add, remove or change planned behavior here *
 ### Next
 - [ ] **P-01** Review the 4 flagged additions in the reviewer doc (Q1 option B, Q10, Q11, TERM-02 split), then send it
 - [ ] **P-02** Receive reviewer answers → update `resolve.py`, regenerate, log in `_docs/07`
+  - Blocked (2026-10-16, D-87): the review document's answers are blank. Fold-in map: `_docs/rules/reviewer-answers-map.md`; the local copy in Downloads predates `_docs/reviewer-questions.md` (Q11/Q12, CONS-01 wording)
 - [ ] **P-03** Receive SikhRI style guide → fold settled items into `resolve.py`
+  - Blocked (2026-10-16, D-87): not received. Intake table in `_docs/rules/reviewer-answers-map.md`
 - [ ] **P-04** Ask SikhRI organizers for the sample: reference transcreations, review history with pre-edit drafts, ID scheme, format
-- [ ] **P-05** Verify `khalisfoundation/banidb-dev` holds the full Guru Granth Sahib; if not, request a database copy from Khalis Foundation
-  - Verified partial (2026-10-16): 20,134 G-source verses and 39,977 missing mapped verses. A fuller copy is still needed; no external request has been sent.
+- [x] **P-05** Verify `khalisfoundation/banidb-dev` holds the full Guru Granth Sahib; if not, request a database copy from Khalis Foundation
+  - The Docker image is partial (20,134 G-source verses). Done (2026-10-16, D-86) with the user-supplied SQLite copy: `audit-banidb-coverage.ts` passes internal consistency (60,403 G lines, IDs 1–60,403, 1,430 angs, 5,542 fully mapped Sabads, NFC, no verse in two Sabads); live BaniDB sample 43/44 (Sabad 4281: two lines with two marks in opposite order). Rows are stamped 2019-12; currency and the 90-day refresh term are not certified (P-06/OQ-05). No request sent to Khalis Foundation
 - [ ] **P-06** Confirm whether BaniDB's monthly contribution requirement applies to a hackathon prototype
-- [ ] **P-07** Pick 1–3 demo Sabads: one with a Kartar/Karta name (TERM-02), one opening with ੴ (TERM-03)
-- [ ] **P-08** API keys for 2–3 LLM providers
+- [x] **P-07** Pick 1–3 demo Sabads: one with a Kartar/Karta name (TERM-02), one opening with ੴ (TERM-03)
+  - Confirmed by Harsimran (2026-10-16, D-88): 1356 (ang 339, kept), 1568 (ang 404, Kartar/Karta form), 693 (ang 219, opens with Ik Onkar); `find-demo-sabads.ts` → ignored `data/banidb/demo-sabads.json`
+- [x] **P-08** API keys for 2–3 LLM providers · Done (2026-10-16, D-83): one Anthropic key in the ignored `.env.local`; the bake-off compares Claude models only
 - [ ] **P-09** Write demo transcreations with planted issues, one per featured rule (TERM-01, TERM-02, LAYER-07, plus one to override)
 - [ ] **P-10** Make the eight-page UI PDF available to both builders; keep it outside the public repo and use only BaniDB-exported Gurmukhi in demo fixtures · UI reference: `_docs/09-ui-mockups.md`
 
 ### Blocked
 - P-04 waits on SikhRI organizers
+- P-02 waits on reviewer answers (P-01 send); P-03 waits on SikhRI's style guide
 
 ---
 
@@ -153,7 +167,7 @@ Related folders: `lib/engine/checks/`, `lib/engine/gurmukhi/`, `lib/engine/rules
 - [x] **CHK-08** LAYER-06 closed archaism list → flag · Done (2026-10-16, D-77)
 - [x] **CHK-09** Validator: drop findings whose span isn't in the draft or whose rule/reference IDs don't exist · FR-07 · Done (2026-10-16, D-77): model findings validated one at a time
 - [x] **CHK-10** Pipeline code phase: changed authored units plus affected Sabad-scoped checks; real `engine.runChecks(input, 'code')` in `index.ts` · FR-06, FR-12 · **Provides S1 for M1** · Done (2026-10-16, D-77): `codePhaseScope` tells API-03 what a result replaces
-- [x] **CHK-11** Pipeline LLM phase: run registered LLM checks with p-limit, then the validator · Needs: LLM-01 · **Provides S1 for M2** · Done (2026-10-16, D-77): pluggable `LlmJudge`; without LLM-01 each rule with packets reports `notEvaluable`. Follow-up for LLM-03: TERM-02 collapse needs a Sabad-wide packet (current packets are per unit)
+- [x] **CHK-11** Pipeline LLM phase: run registered LLM checks with p-limit, then the validator · Needs: LLM-01 · **Provides S1 for M2** · Done (2026-10-16, D-77): pluggable `LlmJudge`; without LLM-01 each rule with packets reports `notEvaluable`. Follow-up for LLM-03: TERM-02 collapse needs a Sabad-wide packet (current packets are per unit); resolved in LLM-03 (D-80)
 - [ ] **CHK-12** Deterministic CONS-01 → warning with reason before publish only when an applicable reference has explicit term-to-rendering mapping; otherwise stay silent · FR-09 · Needs: LLM-08, OQ-17 (stub: no mapping) · First to cut · **Cut (D-77):** CONS-01 reports `notEvaluable` until explicit term mappings exist
 
 ### Blocked
@@ -169,23 +183,23 @@ Related folders: `lib/engine/llm/`, `lib/engine/retrieval/`, `lib/engine/drift/`
 - _(none)_
 
 ### Next
-- [ ] **LLM-01** Adapter: pinned AI SDK structured output (`generateText` + `Output.object` in current docs) with strict Zod `FindingBatch` and `DriftAssessment` schemas; provider from env; cache in `data/cache/` keyed by hash(model, prompt version, packet); p-limit ≈ 4 · Needs: C-02
-- [ ] **LLM-02** Bake-off (`pnpm bakeoff`): minimal pairs for TERM-01/02, PRIN-04, LAYER-06 across 2–3 models; pick the fastest that passes; log under *Decisions* · Needs: P-08
-- [ ] **LLM-03** TERM-02: packet with Divine names from the line → flag; collapse detector (3+ names, one English word) → warning · Needs: CHK-01
-- [ ] **LLM-04** PRIN-04: prefilter + confirm → flag
-- [ ] **LLM-05** Confirmation tiers: TERM-01 lowercase/plural, TERM-07 substitutes ("the Word", "hymn"), LAYER-06 ambiguous words
-- [ ] **LLM-06** Generic judge attempts every approved free-text rule (`check_type: "free_text_llm"`); returns valid findings or a visible `not_evaluable` result, never a fabricated span · FR-18 · **Provides S7** (beat 5)
-- [ ] **LLM-07** Retrieval index: in-memory by stem key + English embeddings (Transformers.js, cached in `data/cache/`); real `engine.indexReferences`. SikhRI-supplied and Eko-published references rank equally by source, with source and waiver/override/departure marks preserved · Needs: S3 (stub: `fixtures/references.json`) · **Provides S6**
-- [ ] **LLM-08** `ReferenceLookup` for CONS-01 and style
-- [ ] **LLM-09** English style comparison citing applicable SikhRI-supplied or Eko-published reference IDs, with source labels; no Gurmukhi term alignment inferred · FR-09 · Second to cut if no applicable references exist
-- [ ] **LLM-10** Drift check: contradiction (LLM), approved-reference replay across SikhRI-supplied and Eko-published lines with source labels, glossary collision where source exists; real `engine.runDriftCheck` · FR-17 · **Provides S4**
+- [x] **LLM-01** Adapter: pinned AI SDK structured output (`generateText` + `Output.object` in current docs) with strict Zod `FindingBatch` and `DriftAssessment` schemas; provider from env; cache in `data/cache/` keyed by hash(model, prompt version, packet); p-limit ≈ 4 · Needs: C-02 · Done (2026-10-16), D-79: model returns a review-only subset (candidate verdicts or quoted span + occurrence); the judge builds the `FindingBatch`; guards drop non-neutral, rewriting or unsupported-quote explanations and reasons; SQLite cache `data/cache/llm.sqlite`; no key → `notEvaluable`
+- [x] **LLM-02** Bake-off (`pnpm bakeoff`): minimal pairs for TERM-01/02, PRIN-04, LAYER-06 across 2–3 models; pick the fastest that passes; log under *Decisions* · Needs: P-08 · Done (2026-10-16), D-83: Claude-only (one provider key); Sonnet 5.5 and Opus 5.5 passed 17/17 synthetic pairs; Sonnet (p50 1.9 s) is the faster and the default; rerun after prompt changes
+- [x] **LLM-03** TERM-02: packet with Divine names from the line → flag; collapse detector (3+ names, one English word) → warning · Needs: CHK-01 · Done (2026-10-16), D-80: model maps a supplied name to the Creator family; collapse gated in code at 3+ families; Sabad-scoped via `llmPhaseScope`. The current private fixture (Sabad 1356) has no Creator-family name; Sabad 1568 (D-88) has a Kartar/Karta form, but until it is exported and run live the attribute flag is proven only by synthetic tests
+- [x] **LLM-04** PRIN-04: prefilter + confirm → flag · Done (2026-10-16)
+- [x] **LLM-05** Confirmation tiers: TERM-01 lowercase/plural, TERM-07 substitutes ("the Word", "hymn"), LAYER-06 ambiguous words · Done (2026-10-16): per-rule guidance; spans come only from code candidates
+- [x] **LLM-06** Generic judge attempts every approved free-text rule (`check_type: "free_text_llm"`); returns valid findings or a visible `not_evaluable` result, never a fabricated span · FR-18 · **Provides S7** (beat 5) · Done (2026-10-16), D-82: free-text rules are approved `source: "proposal"` rules; rule text is untrusted data; injection yields `not_evaluable` or a valid finding
+- [x] **LLM-07** Retrieval index: in-memory by stem key + English embeddings (Transformers.js, cached in `data/cache/`); real `engine.indexReferences`. SikhRI-supplied and Eko-published references rank equally by source, with source and waiver/override/departure marks preserved · Needs: S3 (stub: `fixtures/references.json`) · **Provides S6** · Done (2026-10-16): line, same-Sabad stem, MiniLM embedding (cached) and lexical fallback; equal source weight; exceptions kept apart; cold start works. Cross-Sabad stem lookup needs reference Gurmukhi, which `Reference` lacks
+- [x] **LLM-08** `ReferenceLookup` for CONS-01 and style · Done (2026-10-16): `ReferenceIndex.lookup` returns ordinary and exception-marked references separately, with the method that ran
+- [x] **LLM-09** English style comparison citing applicable SikhRI-supplied or Eko-published reference IDs, with source labels; no Gurmukhi term alignment inferred · FR-09 · Second to cut if no applicable references exist · Done (2026-10-16), D-81: CONS-01 warning with layer `style` citing ≥1 ordinary reference; no applicable reference → `notEvaluable`
+- [x] **LLM-10** Drift check: contradiction (LLM), approved-reference replay across SikhRI-supplied and Eko-published lines with source labels, glossary collision where source exists; real `engine.runDriftCheck` · FR-17 · **Provides S4** · Done (2026-10-16), D-85: never passes on missing evidence; glossary `not_evaluable` until OQ-13
 
 ### P1
-- [ ] **LLM-11** Drift duplicate and scope-change warnings
-- [ ] **LLM-12** Grammar hints from unambiguous ending matra · FR-10
+- [x] **LLM-11** Drift duplicate and scope-change warnings · Done (2026-10-16): from the same relations call; cited rules in `evidence.rule_ids`
+- [ ] **LLM-12** Grammar hints from unambiguous ending matra · FR-10 · **Blocked (D-84, OQ-18)**
 
 ### Blocked
-- _(none)_
+- LLM-12: no citable grammar rule and no sourced ending-matra table (D-84, OQ-18)
 
 ---
 
@@ -209,7 +223,7 @@ Related folders: `lib/server/db/`, `lib/server/ingest/`, `scripts/app/`, `data/b
 ### Next
 - [x] **DATA-01** Drizzle schema + first migration: lines, drafts, findings, check runs, decisions, versioned rules, proposals, drift results and references. Empty-file migration verified on Mac; focused and full tests (37) plus TypeScript pass (2026-10-16)
 - [x] **DATA-02** Repository functions in `lib/server/db/repo.ts` save/load the contract records, including grouped drafts, findings, check phases, decisions, versioned rules, references and source lines. Temporary SQLite round-trip tests and all 40 tests pass (2026-10-16)
-- [x] **DATA-03** BaniDB local export → app lines with ang, raag, writer, Rahao and NFC Gurmukhi; `pnpm ingest` is idempotent. Full-corpus ingest remains outside this demo until P-05 confirms it. All 43 tests and TypeScript pass (2026-10-16) · FR-01 · **Provides S2**
+- [x] **DATA-03** BaniDB local export → app lines with ang, raag, writer, Rahao and NFC Gurmukhi; `pnpm ingest` is idempotent. Since P-05 (D-86), ingest loads the full corpus (5,542 Sabads) when the SQLite copy is present, else the demo fixture. All 43 tests and TypeScript pass (2026-10-16) · FR-01 · **Provides S2**
 - [x] **DATA-04** Rules seed reads `_docs/rules/rules.resolved.json` verbatim as version 1; repeat ingest keeps 66 unique IDs and 10 active resolutions. Focused, TypeScript and all 44 tests pass (2026-10-16)
 - [x] **DATA-05** Source-only demo seed (`scripts/app/seed-demo.ts`) per D-75; preserves the private BaniDB lines on repeat and creates no draft or decision. Human-authored draft seeding is deferred to P-09/F1. Focused, TypeScript and all 45 tests pass (2026-10-16)
 - [ ] **DATA-06** SikhRI sample import: raw → `data/sikhri-sample/normalized/references.json` and `corrections.json` (contract schemas); map IDs by normalized Gurmukhi if they differ from BaniDB, quarantine ambiguous repeated-line matches, and load only resolved references into the DB · Needs: P-04 · **Provides S3**
@@ -224,7 +238,7 @@ Related folders: `lib/server/db/`, `lib/server/ingest/`, `scripts/app/`, `data/b
 Related folders: `app/api/`, `lib/server/services/`.
 
 ### In progress
-- [ ] **API-02 to API-09** Services behind all 19 routes on the in-memory, repository-shaped store (D-79), wired to the UI end to end. Code checks use the real engine; the model phase reports `not_evaluable` until LLM-01; drift uses a labelled synthetic replay stub until LLM-10; eval reads `data/eval/latest.json`. Remaining for closure: switch `getStore()` to the SQLite repository (needs a `publications` table), real drift (S4) and model judge (S1 LLM)
+- [ ] **API-02 to API-09** Services behind all 19 routes on the in-memory, repository-shaped store (D-89), wired to the UI end to end. Checks and drift call the real engine when `ANTHROPIC_API_KEY` is set; without it, model rules are listed as not evaluated and drift uses a labelled synthetic replay stub; eval reads `data/eval/latest.json`. Remaining for closure: switch `getStore()` to the SQLite repository (needs a `publications` table) and verify the keyed path end to end
 
 ### Next
 - [x] **API-01** All 18 P0 method/path actions have route handlers and contract tests. Safe reads return labelled fixtures; stateful/evidence-dependent actions return validated unavailable errors after request validation (D-76). Focused, TypeScript and all 47 tests pass (2026-10-16)
@@ -234,7 +248,7 @@ Related folders: `app/api/`, `lib/server/services/`.
 - [ ] **API-05** Publish gate (open error/flag, incomplete current check phase or reasonless CONS-01 departure blocks; response names each cause; other warnings are informational) and publish → equally ranked references with source/exception/reason marks + `engine.indexReferences` · FR-13, FR-14 · Needs: S6 (stub: no-op)
 - [ ] **API-06** Rules list with versions and provenance · FR-15
 - [ ] **API-07** Proposals → `engine.runDriftCheck` → store results · FR-16, FR-17 · Needs: S4 (stub: pass)
-- [ ] **API-08** Approve a rule or override a drift block with a reason → new ruleset version, provenance; new rules get `check_type: "free_text_llm"` · FR-18 · Pairs with LLM-06
+- [ ] **API-08** Approve a rule or override a drift block with a reason → new ruleset version, provenance; new rules get `source: "proposal"` with an active `p0_check` transcreation resolution (D-82; `RuleSchema` has no `check_type`) · FR-18 · Pairs with LLM-06
 - [ ] **API-09** `GET /api/eval` reads `data/eval/latest.json` · FR-19 · Needs: S5 (stub: fixture)
 
 ### P1
@@ -302,7 +316,8 @@ Related folders: `app/(studio)/`, `app/layout.tsx`, `app/page.tsx`, `app/globals
 Format: `- from → to · what's needed · task it blocks`. Whoever completes the request ticks it when verified.
 
 - [ ] FE → API · Agree how a CONS-01 departure clears at publish: the review UI records "Keep, with reason" as an `override` decision and sends `departure_reasons: []`; if API-05 instead requires `departure_reasons`, FE-05 must send them · API-05, FE-05/06
-- [x] FE → API · Add read routes for a Sabad's published references and each publication's approver, time and publish-time gate · API-05, FE-06 · Done: `listPublications` (D-79)
+- [x] FE → API · Add read routes for a Sabad's published references and each publication's approver, time and publish-time gate · API-05, FE-06 · Done: `listPublications` (D-89)
+- [ ] API → LLM · On Windows, `lib/engine/llm/adapter.test.ts` fails 3 cases with `EBUSY` because cleanup deletes the SQLite cache file while it is still open; close the cache before `rmSync`. Seven other engine/script tests need the Mac-exported demo fixture and fail on this clone's Sabad 55 fixture · LLM-01, C-05
 - [ ] API → DATA · Before switching `getStore()` to SQLite: derive `nextId` counters from stored rows (in-memory counters would reuse IDs after a restart and overwrite rows) and wrap `approveProposal`'s writes in one transaction · API-08, DATA-02
 - [ ] API · Saving a unit leaves sibling units' Sabad-scoped code findings (TERM-03 first use, TERM-07) unrefreshed until the next code check; the UI re-checks after every save, but API-03 should clear or mark them stale on save · API-02/03
 - [ ] API → DATA · Add a `publications` table and repository methods matching `savePublication`/`listPublicationsForSabad`, so `getStore()` can switch from the in-memory store to SQLite · API-05, DATA-01/02

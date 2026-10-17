@@ -114,6 +114,18 @@ const cases: Array<[string, (repo: Repository) => void]> = [
     expect(() => repo.saveSabad({ ...sabad, lines: sabad.lines.map((line) => (line.line_id === "102" ? { ...line, gurmukhi: "TEST-CHANGED" } : line)) })).toThrow("changed");
     expect(repo.getSabad("9001")).toEqual(sabad);
   }],
+  ["saveSabads loads several Sabads all-or-nothing", (repo) => {
+    const one = (id: string, text: string): Sabad => ({ shabad_id: id, lines: [{ line_id: `${id}01`, shabad_id: id, ang: 1, raag: "TEST-RAAG", writer: "TEST-WRITER", is_rahao: false, gurmukhi: text }] });
+    repo.saveSabads([one("1", "TEST-ONE"), one("2", "TEST-TWO")]);
+    repo.saveSabads([one("1", "TEST-ONE"), one("2", "TEST-TWO")]);
+    expect(repo.listSabads().map((entry) => entry.shabad_id)).toEqual(["1", "2"]);
+    expect(() => repo.saveSabads([one("3", "TEST-THREE"), one("2", "TEST-CHANGED")])).toThrow("silent replacement");
+    expect(repo.getSabad("3")).toBeUndefined();
+    expect(repo.getSabad("2")?.lines[0].gurmukhi).toBe("TEST-TWO");
+    expect(() => repo.saveSabads([one("4", "TEST-FOUR"), { shabad_id: "5", lines: [] }])).toThrow();
+    expect(repo.getSabad("4")).toBeUndefined();
+    expect(repo.listSabads()).toHaveLength(2);
+  }],
   ["stores references, proposals and drift results", (repo) => {
     expect(repo.listReferences()).toEqual([]);
     expect(repo.listProposals()).toEqual([]);

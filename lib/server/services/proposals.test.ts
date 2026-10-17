@@ -1,10 +1,12 @@
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ApiErrorSchema, routes } from "../../contracts/api";
 import { rulesFixture } from "../../contracts/fixtures";
 import { GET as getRules } from "../../../app/api/rules/route";
 import { GET as listProposalsRoute, POST as submitRoute } from "../../../app/api/proposals/route";
 import { GET as getProposalRoute } from "../../../app/api/proposals/[proposal_id]/route";
 import { POST as approveRoute } from "../../../app/api/proposals/[proposal_id]/approve/route";
+import type { DriftContext, DriftResult, Proposal } from "../../contracts/domain";
+import { submitProposal as submitService } from "./proposals";
 import { __setSourceForTests, __setStoreForTests, getStore, resetStore } from "./context";
 import { computeGate, currentFindings, currentRuns, currentRuleset } from "./state";
 import { makeDraft, makeFinding, makeRun, testSabad } from "./testing";
@@ -27,8 +29,9 @@ const addPublishedReference = () => getStore().saveReference({
   id: "PUB-0001", line_ids: ["TEST-SABAD-L1", "TEST-SABAD-L2"], english: "SYNTHETIC TEST published", source: "published", exceptions: [],
 });
 
-beforeEach(() => { __setSourceForTests(testSabad()); });
-afterEach(() => { __setSourceForTests(undefined); __setStoreForTests(null); });
+// Route tests use the offline stub path: no model key, so nothing can reach the network.
+beforeEach(() => { vi.stubEnv("ANTHROPIC_API_KEY", ""); __setSourceForTests(testSabad()); });
+afterEach(() => { vi.unstubAllEnvs(); __setSourceForTests(undefined); __setStoreForTests(null); });
 
 describe("listRules", () => {
   it("returns ruleset v1 with the 66 seeded rules, unchanged", async () => {
@@ -109,7 +112,7 @@ describe("approveProposal", () => {
     const body = routes.approveProposal.response.parse(await response.json());
     expect(body.ruleset_version).toBe(2);
     expect(body.rule).toMatchObject({
-      id: "PROP-001", text: VERBATIM, level: "SHOULD", layers: ["transcreation"], plan: "generic_judge", severity: "warning", decision: null,
+      id: "PROP-001", text: VERBATIM, level: "SHOULD", layers: ["transcreation"], plan: "free_text_llm", severity: "warning", decision: null,
       version: 2, status: "approved", source: "proposal", source_tag: "proposal", prefilter: null,
       resolution: { active: true, scope: "p0_check", severity: "warning", blocks_publish: false, layers: ["transcreation"], conditional: null, decision: null },
       provenance: { actor: "Test approver", reason: "SYNTHETIC TEST approval reason" },
@@ -234,5 +237,49 @@ describe("approveProposal", () => {
     // History is kept under the old ruleset version.
     expect(store.listFindingsForDraft(draft.id)).toHaveLength(1);
     expect(store.listFindingsForDraft(draft.id)[0].ruleset_version).toBe(1);
+  });
+});
+
+describe("submitProposal drift paths", () => {
+  const request = { rule_text: VERBATIM, example: "SYNTHETIC TEST example", reason: "SYNTHETIC TEST reason", author: "Test author" };
+
+  it("with no model configured, uses the labelled synthetic stub and never calls the engine", async () => {
+    const runDriftCheck = vi.fn();
+    const { drift_results } = await submitService(request, { hasModel: () => false, runDriftCheck });
+    expect(runDriftCheck).not.toHaveBeenCalled();
+    expect(drift_results.map((result) => result.assessment.check)).toEqual(["contradiction", "reference_replay", "glossary_collision"]);
+    expect(drift_results.find((result) => result.assessment.check === "reference_replay")?.assessment.reason).toMatch(/^Synthetic replay stub/);
+  });
+
+  it("with a model configured, calls the engine drift check with the current rules, references and no glossary, and stores its results", async () => {
+    addPublishedReference();
+    const seen: { proposal?: Proposal; context?: DriftContext } = {};
+    const runDriftCheck = vi.fn(async (proposal: Proposal, context: DriftContext): Promise<DriftResult[]> => {
+      seen.proposal = proposal;
+      seen.context = context;
+      return [{
+        id: `drift:${proposal.id}:duplicate`, proposal_id: proposal.id, override: null,
+        assessment: { status: "evaluated", check: "duplicate", outcome: "warn", reason: "SYNTHETIC TEST engine result.", evidence: { rule_ids: ["TERM-01"], reference_ids: [], affected_line_ids: [], affected_count: 0, source_counts: { sikhri_sample: 0, published: 0 } } },
+      }, {
+        id: `drift:${proposal.id}:glossary_collision`, proposal_id: proposal.id, override: null,
+        assessment: { status: "not_evaluable", check: "glossary_collision", reason: "SYNTHETIC TEST no glossary." },
+      }];
+    });
+    const response = await submitService(request, { hasModel: () => true, runDriftCheck });
+    expect(runDriftCheck).toHaveBeenCalledTimes(1);
+    expect(seen.proposal).toMatchObject({ id: "PR-001", rule_text: VERBATIM, status: "pending" });
+    expect(seen.context).toMatchObject({ rulesetVersion: 1, glossary: null });
+    expect(seen.context?.rules).toHaveLength(66);
+    expect(seen.context?.references.map((reference) => reference.id)).toEqual(["PUB-0001"]);
+    // The engine's results are returned and persisted as-is; the stub's results are not mixed in.
+    expect(response.drift_results.map((result) => result.id)).toEqual(["drift:PR-001:duplicate", "drift:PR-001:glossary_collision"]);
+    expect(getStore().listDriftResultsForProposal("PR-001")).toHaveLength(2);
+    expect(routes.submitProposal.response.parse(response)).toBeTruthy();
+  });
+
+  it("saves nothing when the engine drift check fails", async () => {
+    const runDriftCheck = vi.fn(async () => { throw new Error("simulated model failure"); });
+    await expect(submitService(request, { hasModel: () => true, runDriftCheck })).rejects.toThrow("simulated model failure");
+    expect(getStore().listProposals()).toEqual([]);
   });
 });

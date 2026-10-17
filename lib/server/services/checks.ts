@@ -1,7 +1,7 @@
 import type { ApiResponse } from "../../contracts/api";
 import { CheckInputSchema, type CheckInput, type CheckResult, type CheckRun, type Draft, type Finding, type Rule } from "../../contracts/domain";
 import type { Engine } from "../../contracts/ports";
-import { codePhaseScope, isCodeFinding, runChecks } from "../../engine/index";
+import { codePhaseScope, createLlmClient, isCodeFinding, llmPhaseScope, runChecks } from "../../engine/index";
 import { getStore, nextId, nowIso } from "./context";
 import { ServiceError, type ParsedRequest } from "./http";
 import type { AppStore } from "./memory-repo";
@@ -21,12 +21,6 @@ const MAX_ERROR_LENGTH = 300;
 
 export const runCodeChecks = (req: CheckRequest): Promise<CheckResponse> => runChecksWith(runChecks, "code", req);
 export const runLlmChecks = (req: CheckRequest): Promise<CheckResponse> => runChecksWith(runChecks, "llm", req);
-
-/** The authored units this request re-checks: the selected draft plus every unit covering a changed source line. */
-function changedUnits(draft: Draft, units: Draft[], changedLineIds: string[]): Draft[] {
-  const changed = new Set(changedLineIds);
-  return units.filter((unit) => unit.id === draft.id || unit.line_ids.some((id) => changed.has(id)));
-}
 
 /**
  * True when a result computed from `snapshot` can no longer be trusted: the ruleset moved on, or any authored
@@ -84,7 +78,10 @@ function neutralError(error: unknown): string {
   return `Check failed before completing: ${detail}`.slice(0, MAX_ERROR_LENGTH);
 }
 
-/** `judgeConfigured: true` (tests with an injected judge-backed engine) skips the no-judge not-evaluable merge. */
+/**
+ * `judgeConfigured` defaults to whether the engine has a model client (`createLlmClient() !== null`). Only when it is
+ * false is the blanket "not evaluated by a model" merge applied; with a model the engine's own result passes through.
+ */
 export async function runChecksWith(
   engineRunChecks: EngineRunChecks, phase: Phase, req: CheckRequest, options: { judgeConfigured?: boolean } = {},
 ): Promise<CheckResponse> {
@@ -106,13 +103,11 @@ export async function runChecksWith(
     const covered = unit.line_ids.filter((id) => req.changed_line_ids.includes(id)).length;
     if (covered > 0 && covered < unit.line_ids.length) throw new ServiceError("invalid_request", "changed_line_ids must cover every source line of any group they touch.");
   }
-  // Code phase: a sibling with no succeeded code run for its current draft and ruleset version has never been fully
+  // A sibling with no succeeded run of this phase for its current draft and ruleset version has never been fully
   // checked, so re-check it in full. That keeps its persisted "succeeded" run truthful and the publish gate honest.
-  const changedLineIds = phase === "code"
-    ? [...new Set([...req.changed_line_ids, ...drafts
-        .filter((unit) => !store.listCheckRunsForDraft(unit.id).some((run) => run.phase === "code" && run.status === "succeeded" && run.draft_version === unit.version && run.ruleset_version === ruleset.version))
-        .flatMap((unit) => unit.line_ids)])]
-    : req.changed_line_ids;
+  const changedLineIds = [...new Set([...req.changed_line_ids, ...drafts
+    .filter((unit) => !store.listCheckRunsForDraft(unit.id).some((run) => run.phase === phase && run.status === "succeeded" && run.draft_version === unit.version && run.ruleset_version === ruleset.version))
+    .flatMap((unit) => unit.line_ids)])];
   const parsed = CheckInputSchema.safeParse({
     sabad, draft, sabadDrafts: drafts, changedLineIds,
     rules: ruleset.rules, rulesetVersion: ruleset.version, references: store.listReferences(),
@@ -125,13 +120,13 @@ export async function runChecksWith(
   const input: CheckInput = parsed.data;
 
   // Units this phase re-checks. Their runs go `pending` now, so the publish gate blocks until the phase settles.
-  const unitIds = new Set((phase === "code" ? codePhaseScope(input).draftIds : changedUnits(draft, drafts, input.changedLineIds).map((unit) => unit.id)));
-  unitIds.add(draft.id);
+  // The engine's scope says which units a result owns (`draftIds`) and which rules it owns on every unit (`ruleIds`).
+  const scope = phase === "code" ? codePhaseScope(input) : llmPhaseScope(input);
+  const unitIds = new Set([...scope.draftIds, draft.id]);
   const units = drafts.filter((unit) => unitIds.has(unit.id));
-  // Code phase: Sabad-scoped rules read siblings, so any Sabad change invalidates it. Model phase: only its own units.
-  const snapshot = phase === "code"
-    ? { shabadId: draft.shabad_id, rulesetVersion: ruleset.version, drafts }
-    : { shabadId: draft.shabad_id, rulesetVersion: ruleset.version, drafts: units, sabadWide: false };
+  // Sabad-scoped rules read siblings, so with any in scope a Sabad change invalidates the result; otherwise only its units.
+  const sabadWide = scope.ruleIds.length > 0;
+  const snapshot = { shabadId: draft.shabad_id, rulesetVersion: ruleset.version, drafts: sabadWide ? drafts : units, sabadWide };
   const startedAt = nowIso();
   const pending = units.map((unit): CheckRun => ({
     id: nextId("run"), draft_id: unit.id, draft_version: unit.version, ruleset_version: ruleset.version, phase,
@@ -154,7 +149,7 @@ export async function runChecksWith(
   // The store may have moved while the engine ran: drop the result rather than persist stale findings.
   if (isSnapshotStale(store, snapshot)) return supersede(store, pending);
 
-  const notEvaluable = phase === "llm" && !options.judgeConfigured ? withUnjudgedRules(result.notEvaluable, ruleset.rules) : result.notEvaluable;
+  const notEvaluable = phase === "llm" && !(options.judgeConfigured ?? createLlmClient() !== null) ? withUnjudgedRules(result.notEvaluable, ruleset.rules) : result.notEvaluable;
 
   // Never resurrect a reviewer's override/waive: collect before clearing, since clearing re-labels findings.
   const reviewerCleared = reviewerClearedIds(store, drafts);
@@ -165,14 +160,10 @@ export async function runChecksWith(
     const unit = byId.get(finding.draft_id);
     return !!unit && finding.draft_version === unit.version && finding.ruleset_version === ruleset.version;
   };
-  const cleared = phase === "code"
-    ? (() => {
-        const scope = codePhaseScope(input);
-        // Own units: all code rules. Every unit: only Sabad-scoped rules, whose result depends on sibling units.
-        return clearFindings(store, (finding) => isCodeFinding(finding) && current(finding)
-          && (scope.draftIds.includes(finding.draft_id) || scope.ruleIds.includes(finding.rule_id)), at);
-      })()
-    : clearFindings(store, (finding) => !isCodeFinding(finding) && current(finding) && units.some((unit) => unit.id === finding.draft_id), at);
+  // Own units: all rules of this phase. Every unit: only Sabad-scoped rules, whose result depends on sibling units.
+  // Code findings are replaced only by the code phase, model findings only by the model phase.
+  const cleared = clearFindings(store, (finding) => isCodeFinding(finding) === (phase === "code") && current(finding)
+    && (scope.draftIds.includes(finding.draft_id) || scope.ruleIds.includes(finding.rule_id)), at);
   for (const finding of saved) store.saveFinding(finding);
 
   // Affected = re-checked units, plus any sibling that received or lost findings under Sabad scope.

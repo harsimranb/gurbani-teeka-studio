@@ -1,5 +1,5 @@
 import type { Decision, Draft, Finding, Publication, Reference } from "../../contracts/domain";
-import { indexReferences } from "../../engine";
+import { indexReferences as engineIndexReferences } from "../../engine";
 import { getStore, nextId, nowIso } from "./context";
 import { ServiceError, type ParsedRequest } from "./http";
 import { allDrafts, computeGate, currentFindings, currentRuleset } from "./state";
@@ -59,7 +59,12 @@ export function getPublishGate(req: ParsedRequest<"getPublishGate">) {
   return computeGate(getStore(), requireDraft(req.draft_id));
 }
 
-export async function publish(req: ParsedRequest<"publish">) {
+type IndexReferences = (references: Reference[]) => Promise<void>;
+let indexOverride: IndexReferences | undefined;
+/** Test hook: replace the reference warm-up so tests never start the real embedder. `undefined` restores the engine's. */
+export function __setIndexReferencesForTests(fn: IndexReferences | undefined): void { indexOverride = fn; }
+
+export async function publish(req: ParsedRequest<"publish">, deps: { indexReferences?: IndexReferences } = {}) {
   const store = getStore();
   const draft = requireDraft(req.draft_id);
   const rulesetVersion = currentRuleset(store).version;
@@ -101,7 +106,12 @@ export async function publish(req: ParsedRequest<"publish">) {
   store.saveDraft(published);
   store.saveReference(reference);
   store.savePublication(publication);
-  await indexReferences(store.listReferences());
+  // Warming the reference index is optional (correctness uses the references passed per check), so it runs in
+  // the background: it never delays or fails the publish response.
+  const warm = deps.indexReferences ?? indexOverride ?? engineIndexReferences;
+  void new Promise<void>((resolve) => resolve(warm(store.listReferences()))).catch(() => {
+    console.warn("[review] Reference index warm-up did not complete; checks still use current references.");
+  });
   return { draft: published, reference, gate };
 }
 

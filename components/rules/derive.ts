@@ -78,6 +78,7 @@ const PLAN_LABEL: Record<string, string> = {
   prefilter_llm: "Code prefilter, then model confirms",
   style_llm: "Model compares against references",
   grammar_conditioned: "Needs Gurmukhi grammar features",
+  free_text_llm: "Model judges the approved free-text rule",
   generic_judge: "Model judges the approved free-text rule",
 };
 export function planLabel(plan: string): string {

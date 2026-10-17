@@ -65,7 +65,7 @@ pnpm test
 pnpm build
 ```
 
-C-02 supplies review-only schemas and explicitly synthetic engine/client stubs. F0 adds 18 route skeletons; stateful actions report unavailable until their real workflow tasks. For the private local BaniDB SQLite demo export and source-only ingest, follow [C-03 setup](_docs/c03-banidb.md). The pinned Docker development image remains partial; the earlier API fallback is retained privately. A human-written English demo draft is still needed for F1.
+C-02 supplies review-only schemas and explicitly synthetic engine/client stubs. F0 adds 18 route skeletons; stateful actions report unavailable until their real workflow tasks. For the private local BaniDB SQLite demo export and source-only ingest (`pnpm ingest` loads the full Guru Granth Sahib corpus when that SQLite copy is present), follow [C-03 setup](_docs/c03-banidb.md). The pinned Docker development image remains partial; the earlier API fallback is retained privately. A human-written English demo draft is still needed for F1.
 
 Development runs on macOS and Windows. Install dependencies independently on each machine; do not share `node_modules`, `.next`, Docker volumes or credentials. Anyone can work on any task or folder; person identity and ownership hooks are no longer required. See [`CLAUDE.md`](CLAUDE.md#development-on-macos-and-windows) for shell-specific mock mode and shared setup guidance.
 

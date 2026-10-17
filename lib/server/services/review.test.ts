@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ApiErrorSchema, routes, type RouteName } from "../../contracts/api";
 import { GET as reviewRoute } from "../../../app/api/review/route";
 import { POST as readyRoute } from "../../../app/api/drafts/[draft_id]/ready/route";
@@ -8,6 +8,7 @@ import { POST as publishRoute } from "../../../app/api/drafts/[draft_id]/publish
 import { GET as referenceRoute } from "../../../app/api/references/[reference_id]/route";
 import { GET as publicationsRoute } from "../../../app/api/sabads/[shabad_id]/publications/route";
 import { __setSourceForTests, getStore, resetStore } from "./context";
+import { __setIndexReferencesForTests, publish } from "./review";
 import { makeDraft, makeFinding, makeRun, testSabad } from "./testing";
 
 const post = (body: unknown) => new Request("http://test/x", { method: "POST", body: JSON.stringify(body), headers: { "Content-Type": "application/json" } });
@@ -37,7 +38,9 @@ beforeEach(() => {
   __setSourceForTests(testSabad());
   resetStore();
   getStore().saveDraft(makeDraft());
+  __setIndexReferencesForTests(async () => {}); // never start the real embedder
 });
+afterEach(() => __setIndexReferencesForTests(undefined));
 
 describe("markReady and reviewQueue", () => {
   it("moves a draft into the review queue, in source order, and rejects a stale version", async () => {
@@ -192,6 +195,26 @@ describe("publish", () => {
     const { publications } = await ok("listPublications", await publicationsRoute(get(), ctx({ shabad_id: "TEST-SABAD" })));
     expect(publications.map((p) => p.reference.id)).toEqual(["PUB-0001", "PUB-0002"]);
     expect((await ok("listPublications", await publicationsRoute(get(), ctx({ shabad_id: "UNKNOWN" })))).publications).toEqual([]);
+  });
+});
+
+describe("publish reference warm-up", () => {
+  it("resolves even when the warm-up never settles, and passes it the store references", async () => {
+    bothRuns();
+    const spy = vi.fn(() => new Promise<void>(() => {}));
+    const result = await publish({ draft_id: "draft-t1", ...publishBody(), departure_reasons: [] } as Parameters<typeof publish>[0], { indexReferences: spy });
+    expect(result.draft.status).toBe("published");
+    expect(spy).toHaveBeenCalledTimes(1);
+    expect(spy).toHaveBeenCalledWith(getStore().listReferences());
+    expect(getStore().listReferences()).toEqual([result.reference]);
+  });
+  it("logs a short warning and still publishes when the warm-up rejects", async () => {
+    bothRuns();
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const result = await publish({ draft_id: "draft-t1", ...publishBody(), departure_reasons: [] } as Parameters<typeof publish>[0], { indexReferences: async () => { throw new Error("embedder offline"); } });
+    expect(result.draft.status).toBe("published");
+    await vi.waitFor(() => expect(warn).toHaveBeenCalledTimes(1));
+    warn.mockRestore();
   });
 });
 

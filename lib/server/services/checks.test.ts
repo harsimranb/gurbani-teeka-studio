@@ -198,19 +198,35 @@ describe("POST /api/check/llm (model phase)", () => {
     expect(merged.result.notEvaluable.length).toBeGreaterThan(1);
     const judged = await runChecksWith(async () => ({ findings: [], notEvaluable: [own] }), "llm", body(draft) as never, { judgeConfigured: true });
     expect(judged.result.notEvaluable).toEqual([own]);
+    expect(judged.check_runs[0].not_evaluable).toEqual([own]);
   });
 
-  it("does not drop a model result when an unrelated sibling is edited during the run", async () => {
+  const llmRun = (draftId: string, rulesetVersion: number) => store().saveCheckRun({
+    id: `run-${draftId}-llm`, draft_id: draftId, draft_version: 1, ruleset_version: rulesetVersion, phase: "llm", status: "succeeded",
+    started_at: TEST_AT, completed_at: TEST_AT, error: null, cached: false, not_evaluable: [],
+  });
+
+  it("does not drop a model result when an unrelated sibling is edited and no Sabad-scoped model rule is active", async () => {
+    store().saveRuleset(2, store().getRuleset(1).filter((rule) => rule.id !== "TERM-02"));
     const a = seed("d1", [1], LORD);
     const b = seed("d2", [2], CLEAN);
+    llmRun("d2", 2);
     const engine = async (): Promise<CheckResult> => { store().saveDraft({ ...b, text: PAREN, version: 2 }); return emptyResult; };
-    const response = routes.runLlmChecks.response.parse(await runChecksWith(engine, "llm", body(a) as never));
+    const response = routes.runLlmChecks.response.parse(await runChecksWith(engine, "llm", body(a, { ruleset_version: 2 }) as never));
     expect(response.affected_drafts.map((unit) => unit.id)).toEqual(["d1"]);
     expect(response.check_runs[0].status).toBe("succeeded");
     // An edit to the checked unit itself still drops the result.
     const c = seed("d3", [3], CLEAN);
     const racing = async (): Promise<CheckResult> => { store().saveDraft({ ...c, version: 2 }); return emptyResult; };
-    await expect(runChecksWith(racing, "llm", body(c) as never)).rejects.toMatchObject({ code: "version_conflict" });
+    await expect(runChecksWith(racing, "llm", body(c, { ruleset_version: 2 }) as never)).rejects.toMatchObject({ code: "version_conflict" });
+  });
+
+  it("drops a model result on a sibling edit while a Sabad-scoped model rule (TERM-02) is active", async () => {
+    const a = seed("d1", [1], LORD);
+    const b = seed("d2", [2], CLEAN);
+    llmRun("d2", 1);
+    const engine = async (): Promise<CheckResult> => { store().saveDraft({ ...b, text: PAREN, version: 2 }); return emptyResult; };
+    await expect(runChecksWith(engine, "llm", body(a) as never)).rejects.toMatchObject({ code: "version_conflict" });
   });
 
   it("leaves code findings in place", async () => {

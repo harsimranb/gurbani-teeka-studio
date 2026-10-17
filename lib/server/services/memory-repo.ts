@@ -42,20 +42,37 @@ export function createMemoryRepository(): AppStore {
   const readLine = (id: string): Line => LineSchema.parse(decode(lineRows.get(id) as string));
   const checkRunKey = (run: CheckRun) => `${run.draft_id}\u0000${run.draft_version}\u0000${run.ruleset_version}\u0000${run.phase}`;
 
+  // Checks first, then writes, so a refused Sabad leaves nothing behind.
+  function saveSabadIn(sabad: Sabad): void {
+    const existingIds = sabadLineIds.get(sabad.shabad_id) ?? [];
+    const incomingIds = new Set(sabad.lines.map((line) => line.line_id));
+    if (existingIds.length && (existingIds.length !== incomingIds.size || existingIds.some((id) => !incomingIds.has(id)))) {
+      throw new Error(`BaniDB source line set changed for Sabad ${sabad.shabad_id}; refusing a mixed export.`);
+    }
+    for (const line of sabad.lines) {
+      const existing = lineRows.get(line.line_id);
+      if (existing !== undefined && existing !== encode(line)) throw new Error(`BaniDB source line ${line.line_id} changed; refusing silent replacement.`);
+    }
+    for (const line of sabad.lines) lineRows.set(line.line_id, encode(line));
+    sabadLineIds.set(sabad.shabad_id, sabad.lines.map((line) => line.line_id));
+  }
+
   const repo: Repository = {
     saveSabad(raw: Sabad): void {
-      const sabad = SabadSchema.parse(raw);
-      const existingIds = sabadLineIds.get(sabad.shabad_id) ?? [];
-      const incomingIds = new Set(sabad.lines.map((line) => line.line_id));
-      if (existingIds.length && (existingIds.length !== incomingIds.size || existingIds.some((id) => !incomingIds.has(id)))) {
-        throw new Error(`BaniDB source line set changed for Sabad ${sabad.shabad_id}; refusing a mixed export.`);
+      saveSabadIn(SabadSchema.parse(raw));
+    },
+    /** All-or-nothing bulk load; each Sabad keeps the same refuse-silent-replacement checks as saveSabad. */
+    saveSabads(raws: Sabad[]): void {
+      const sabads = raws.map((raw) => SabadSchema.parse(raw));
+      const lineSnapshot = new Map(lineRows);
+      const idsSnapshot = new Map(sabadLineIds);
+      try {
+        for (const sabad of sabads) saveSabadIn(sabad);
+      } catch (error) {
+        lineRows.clear(); for (const [key, value] of lineSnapshot) lineRows.set(key, value);
+        sabadLineIds.clear(); for (const [key, value] of idsSnapshot) sabadLineIds.set(key, value);
+        throw error;
       }
-      for (const line of sabad.lines) {
-        const existing = lineRows.get(line.line_id);
-        if (existing !== undefined && existing !== encode(line)) throw new Error(`BaniDB source line ${line.line_id} changed; refusing silent replacement.`);
-      }
-      for (const line of sabad.lines) lineRows.set(line.line_id, encode(line));
-      sabadLineIds.set(sabad.shabad_id, sabad.lines.map((line) => line.line_id));
     },
     getSabad(shabadId: string): Sabad | undefined {
       const ids = sabadLineIds.get(shabadId);
