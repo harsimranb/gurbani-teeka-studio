@@ -286,7 +286,7 @@ Related folders: `app/(studio)/`, `app/layout.tsx`, `app/page.tsx`, `app/globals
 
 ### P1
 - [x] **FE-10** Browse the full Guru Granth Sahib by ang, raag, writer · FR-04 · Done (2026-10-17, D-98): `GET /api/browse`, verified on 5,542 Sabads
-- [x] **FE-11** Mockup p2 word lookup: occurrences, prior renderings and similar lines, read-only and sourced from available data · FR-05 · Done (2026-10-17, D-98): occurrences by stem key and line-level references; similar lines shown unavailable (no sourced method). Limit: the stem prefilter has no row cap (~400 ms for one-letter stems)
+- [x] **FE-11** Mockup p2 word lookup: occurrences, prior renderings and similar lines, read-only and sourced from available data · FR-05 · Done (2026-10-17, D-98): occurrences by stem key and line-level references; similar lines shown unavailable (no sourced method). Limit: the stem prefilter has no row cap (~400 ms for one-letter stems) Fix (2026-10-17): a dev server started before FE-10/FE-11 kept a cached store without the new methods (500 on browse and lookup); the cached SQLite store now rebuilds its repository on hot reload. Restart once any dev server started before this fix.
 - [ ] **FE-12** Mockup p7 ruleset version-history tab and prefilled change proposal
 - [ ] **FE-13** Mockup p8 Run backtest and Export JSON controls; needs a separately agreed API contract and server execution path
 - [ ] **FE-14** Mockup p8 detailed caught/missed/false-flag examples and per-version comparison beyond the P0 summary

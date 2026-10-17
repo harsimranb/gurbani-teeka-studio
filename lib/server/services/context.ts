@@ -1,7 +1,7 @@
 import path from "node:path";
 import { SabadSchema, type Draft, type Sabad } from "../../contracts/domain";
 import { rulesFixture } from "../../contracts/fixtures";
-import { assertPrivateAppDbPath, migrateAppDb, openAppDb } from "../db/client";
+import { assertPrivateAppDbPath, migrateAppDb, openAppDb, type AppDb } from "../db/client";
 import { createRepository } from "../db/repo";
 import { buildResolvedRules, seedResolvedRules } from "../ingest/rules";
 import { ingestBanidb, useFullSqlite } from "../ingest/banidb-source";
@@ -10,13 +10,14 @@ import { createMemoryRepository, type AppStore } from "./memory-repo";
 /**
  * Process-wide service context: the store and source status.
  * Normally the store is the SQLite database (`DATABASE_URL`, default `eko.db`), opened once, migrated and
- * bootstrapped, then cached on globalThis so it survives Next dev hot reload. Tests inject an in-memory
+ * bootstrapped, then cached on globalThis so it survives Next dev hot reload (the repository wrapper is rebuilt
+ * when a reload brings a new `createRepository`, so methods added since startup exist). Tests inject an in-memory
  * repository instead (`__setStoreForTests` / `__setSourceForTests`) and never touch SQLite.
  */
 export type SourceStatus = { available: true } | { available: false; reason: string };
 export type IdKind = "draft" | "run" | "decision" | "reference" | "proposal" | "rule" | "drift";
 
-interface Holder { store: AppStore; source: SourceStatus; close?: () => void }
+interface Holder { store: AppStore; source: SourceStatus; close?: () => void; db?: AppDb; factory?: typeof createRepository }
 const HOLDER_KEY = "__ekoStore";
 const globals = globalThis as unknown as Record<string, Holder | undefined>;
 
@@ -85,7 +86,7 @@ function buildSqlite(): Holder {
         source = { available: false, reason: ingestFailureReason(error, fullCopy) };
       }
     }
-    return { store, source, close: () => { if (sqlite.open) sqlite.close(); } };
+    return { store, source, close: () => { if (sqlite.open) sqlite.close(); }, db, factory: createRepository };
   } catch (error) {
     sqlite.close();
     throw error;
@@ -93,7 +94,14 @@ function buildSqlite(): Holder {
 }
 
 function holder(): Holder {
-  return (globals[HOLDER_KEY] ??= sourceOverride === undefined ? buildSqlite() : buildMemory());
+  const current = (globals[HOLDER_KEY] ??= sourceOverride === undefined ? buildSqlite() : buildMemory());
+  // Next dev hot reload re-evaluates this module but keeps the cached holder; reuse its connection and source status
+  // with this module's repository code, or routes added since startup call methods the old wrapper lacks.
+  if (current.db && current.factory !== createRepository) {
+    current.store = createRepository(current.db);
+    current.factory = createRepository;
+  }
+  return current;
 }
 
 function dropHolder(): void {

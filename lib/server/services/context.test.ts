@@ -170,6 +170,19 @@ describe("SQLite store (temp DATABASE_URL)", () => {
     expect(getStore().getRuleset(1)).toHaveLength(66);
   });
 
+  it("rebuilds the repository wrapper after a hot reload, reusing the open connection", () => {
+    const first = getStore();
+    // What an earlier module version leaves on globalThis: its own wrapper and factory, lacking newer methods.
+    const cached = (globalThis as unknown as Record<string, { store: unknown; factory: unknown }>).__ekoStore;
+    cached.store = {};
+    cached.factory = () => ({});
+    const rebuilt = getStore();
+    expect(rebuilt).not.toBe(first);
+    expect(typeof rebuilt.browseSabads).toBe("function");
+    expect(rebuilt.getRuleset(1)).toHaveLength(66);
+    expect(getStore()).toBe(rebuilt);
+  });
+
   it("reports a provenance failure without echoing source text", () => {
     provisionFixture(numericSabad("55"), "0".repeat(64));
     expect(getSourceStatus()).toEqual({ available: false, reason: "The demo source fixture failed its provenance check." });
