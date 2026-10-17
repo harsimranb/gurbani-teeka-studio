@@ -160,3 +160,6 @@ lib/contracts/fixtures/sabad.demo.json
 
 # Turbo Repo
 .turbo
+
+# Agent worktrees (local git worktrees of this repo)
+.claude/worktrees/
