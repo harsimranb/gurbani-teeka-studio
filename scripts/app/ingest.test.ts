@@ -18,7 +18,7 @@ describe("BaniDB app ingest", () => {
     const script = fileURLToPath(new URL("./ingest.ts", import.meta.url));
     const source = SabadSchema.parse(JSON.parse(readFileSync(sourcePath, "utf8")));
     try {
-      const env = { ...process.env, DATABASE_URL: target };
+      const env = { ...process.env, DATABASE_URL: target, BANIDB_SOURCE: "fixture" };
       execFileSync(process.execPath, ["--import", "tsx", script], { env, stdio: "pipe" });
       execFileSync(process.execPath, ["--import", "tsx", script], { env, stdio: "pipe" });
       const { db, sqlite } = openAppDb(target);

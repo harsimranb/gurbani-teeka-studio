@@ -49,6 +49,13 @@ export function assessSqliteSource(db: Database.Database) {
   };
 }
 
+export function assertSqliteCoverage(coverage: ReturnType<typeof assessSqliteSource>): void {
+  if (coverage.missing_mapped_g_rows || coverage.mixed_source_rows || coverage.missing_unicode ||
+      coverage.shared_unicode_mismatches || coverage.g_source_rows !== coverage.last_g_id - coverage.first_g_id + 1) {
+    throw new Error("BaniDB SQLite source coverage or overlap validation failed.");
+  }
+}
+
 export function readSqliteSabad(db: Database.Database, shabadId: number, table: SourceTable = "tmp_Verse") {
   if (!Number.isSafeInteger(shabadId) || shabadId < 1) throw new Error("Invalid BaniDB Sabad ID.");
   const mapped = db.prepare("SELECT COUNT(*) AS count FROM Shabad WHERE ShabadID = ?").get(shabadId) as { count: number };
@@ -82,10 +89,7 @@ async function main() {
   let sabad: ReturnType<typeof readSqliteSabad>;
   try {
     coverage = assessSqliteSource(db);
-    if (coverage.missing_mapped_g_rows || coverage.mixed_source_rows || coverage.missing_unicode ||
-        coverage.shared_unicode_mismatches || coverage.g_source_rows !== coverage.last_g_id - coverage.first_g_id + 1) {
-      throw new Error("BaniDB SQLite source coverage or overlap validation failed.");
-    }
+    assertSqliteCoverage(coverage);
     sabad = readSqliteSabad(db, Number(id));
     if (!sabad.lines.some((line) => line.is_rahao)) throw new Error("Selected Sabad has no verified Rahao marker.");
   } finally {

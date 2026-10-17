@@ -11,28 +11,36 @@ import { checkRuns, decisions, drafts, driftResults, findings, lines, proposals,
 const encode = (value: unknown) => JSON.stringify(value);
 const decode = (value: string) => JSON.parse(value) as unknown;
 
+type Tx = Parameters<Parameters<AppDb["transaction"]>[0]>[0];
+
+function saveSabadIn(tx: Tx, sabad: Sabad): void {
+  const existingIds = tx.select({ id: lines.id }).from(lines).where(eq(lines.shabadId, sabad.shabad_id)).all();
+  const incomingIds = new Set(sabad.lines.map((line) => line.line_id));
+  if (existingIds.length && (existingIds.length !== incomingIds.size || existingIds.some((row) => !incomingIds.has(row.id)))) {
+    throw new Error(`BaniDB source line set changed for Sabad ${sabad.shabad_id}; refusing a mixed export.`);
+  }
+  for (const line of sabad.lines) {
+    const existing = tx.select().from(lines).where(eq(lines.id, line.line_id)).get();
+    const row = {
+      id: line.line_id, shabadId: line.shabad_id, ang: line.ang,
+      raag: line.raag, writer: line.writer, isRahao: line.is_rahao, gurmukhi: line.gurmukhi,
+    };
+    if (existing) {
+      if (JSON.stringify(existing) !== JSON.stringify(row)) throw new Error(`BaniDB source line ${line.line_id} changed; refusing silent replacement.`);
+    } else tx.insert(lines).values(row).run();
+  }
+}
+
 /** App-owned storage. Contract schemas validate both writes and reads. */
 export function createRepository(db: AppDb) {
   return {
     saveSabad(raw: Sabad): void {
-      const sabad = SabadSchema.parse(raw);
-      db.transaction((tx) => {
-        const existingIds = tx.select({ id: lines.id }).from(lines).where(eq(lines.shabadId, sabad.shabad_id)).all();
-        const incomingIds = new Set(sabad.lines.map((line) => line.line_id));
-        if (existingIds.length && (existingIds.length !== incomingIds.size || existingIds.some((row) => !incomingIds.has(row.id)))) {
-          throw new Error(`BaniDB source line set changed for Sabad ${sabad.shabad_id}; refusing a mixed export.`);
-        }
-        for (const line of sabad.lines) {
-          const existing = tx.select().from(lines).where(eq(lines.id, line.line_id)).get();
-          const row = {
-            id: line.line_id, shabadId: line.shabad_id, ang: line.ang,
-            raag: line.raag, writer: line.writer, isRahao: line.is_rahao, gurmukhi: line.gurmukhi,
-          };
-          if (existing) {
-            if (JSON.stringify(existing) !== JSON.stringify(row)) throw new Error(`BaniDB source line ${line.line_id} changed; refusing silent replacement.`);
-          } else tx.insert(lines).values(row).run();
-        }
-      });
+      db.transaction((tx) => saveSabadIn(tx, SabadSchema.parse(raw)));
+    },
+    /** All-or-nothing bulk load; each Sabad keeps the same refuse-silent-replacement checks as saveSabad. */
+    saveSabads(raws: Sabad[]): void {
+      const sabads = raws.map((raw) => SabadSchema.parse(raw));
+      db.transaction((tx) => { for (const sabad of sabads) saveSabadIn(tx, sabad); });
     },
     getSabad(shabadId: string): Sabad | undefined {
       const stored = db.select().from(lines).where(eq(lines.shabadId, shabadId)).all();

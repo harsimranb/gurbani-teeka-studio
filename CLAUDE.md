@@ -138,8 +138,10 @@ The scaffold, F0 ingest and LLM-02 bake-off commands run now. The evaluation scr
 | Command | Does |
 |---|---|
 | `docker compose --env-file data/banidb/.env -f data/banidb/docker-compose.yml up -d --wait` | Start local MariaDB; first create credentials using `_docs/c03-banidb.md` |
-| `pnpm ingest` | Read the ignored, provenance-checked local BaniDB demo export into `eko.db` and seed the 66 resolved rules; repeatable without duplicates |
-| `node --import tsx scripts/app/seed-demo.ts` | Seed only the BaniDB demo source lines; no English draft or decision is created (D-75) |
+| `pnpm ingest` | Load every Guru Granth Sahib Sabad from the ignored `data/banidb/banidb.sqlite` into `eko.db` (null writers inherit a single-writer Sabad's writer, else "Not recorded in BaniDB"); without that copy, load the provenance-checked demo fixture (one Sabad). Seeds the 66 resolved rules; repeatable without duplicates |
+| `node --import tsx scripts/app/seed-demo.ts` | Seed only the BaniDB source lines (same source selection as ingest); no English draft or decision is created (D-75) |
+| `node --import tsx scripts/app/audit-banidb-coverage.ts` | P-05: check the SQLite copy's internal consistency and sample live BaniDB parity → ignored `data/banidb/coverage-audit.json` |
+| `node --import tsx scripts/app/find-demo-sabads.ts` | P-07: list provisional demo Sabads (Kartar/Karta, opens with Ik Onkar) → ignored `data/banidb/demo-sabads.json` |
 | `pnpm dev` | Run the app at http://localhost:3000 |
 | Mock mode (shell examples above) | FE-02 stateful browser mock of every route with labelled synthetic checks (D-78); "Reset demo data" in the footer clears it |
 | `pnpm test` | Run the Vitest suite |

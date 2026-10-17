@@ -68,6 +68,18 @@ describe("app repository", () => {
     expect(repo.listDriftResultsForProposal(proposalFixture.id)).toEqual([driftFixtures[0]]);
   }));
 
+  it("bulk-saves Sabads all-or-nothing and idempotently", async () => withTempDb(async (db) => {
+    const { createRepository } = await import("./repo");
+    const repo = createRepository(db);
+    const sabad = (id: string, text: string) => SabadSchema.parse({ shabad_id: id, lines: [{
+      line_id: `${id}01`, shabad_id: id, ang: 1, raag: "Synthetic raag", writer: "Synthetic writer", is_rahao: false, gurmukhi: text }] });
+    repo.saveSabads([sabad("1", "SYNTHETIC ONE"), sabad("2", "SYNTHETIC TWO")]);
+    repo.saveSabads([sabad("1", "SYNTHETIC ONE"), sabad("2", "SYNTHETIC TWO")]);
+    expect(repo.listSabads().map((entry) => entry.shabad_id)).toEqual(["1", "2"]);
+    expect(() => repo.saveSabads([sabad("3", "SYNTHETIC THREE"), sabad("2", "SYNTHETIC CHANGED")])).toThrow("silent replacement");
+    expect(repo.getSabad("3")).toBeUndefined();
+  }));
+
   let privateSabad: ReturnType<typeof SabadSchema.parse> | undefined;
   try {
     privateSabad = SabadSchema.parse(JSON.parse(readFileSync(new URL("../../contracts/fixtures/sabad.demo.json", import.meta.url), "utf8")));
