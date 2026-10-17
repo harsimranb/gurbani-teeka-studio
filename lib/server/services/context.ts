@@ -3,8 +3,8 @@ import { SabadSchema, type Draft, type Sabad } from "../../contracts/domain";
 import { rulesFixture } from "../../contracts/fixtures";
 import { assertPrivateAppDbPath, migrateAppDb, openAppDb } from "../db/client";
 import { createRepository } from "../db/repo";
-import { ingestDemoSabad } from "../ingest/banidb";
 import { buildResolvedRules, seedResolvedRules } from "../ingest/rules";
+import { ingestBanidb, useFullSqlite } from "../../../scripts/app/banidb-source";
 import { createMemoryRepository, type AppStore } from "./memory-repo";
 
 /**
@@ -20,8 +20,6 @@ interface Holder { store: AppStore; source: SourceStatus; close?: () => void }
 const HOLDER_KEY = "__ekoStore";
 const globals = globalThis as unknown as Record<string, Holder | undefined>;
 
-const DEMO_SABAD_PATH = "lib/contracts/fixtures/sabad.demo.json";
-const DEMO_METADATA_PATH = "data/banidb/export-metadata.json";
 /** D-88 demo Sabads, in display order. `EKO_DEMO_SABADS` (comma-separated) overrides. */
 const DEFAULT_DEMO_SABADS = ["1356", "1568", "693"];
 /** `undefined` = open SQLite; a Sabad = injected memory store (tests); `null` = memory store with no source (tests). */
@@ -36,8 +34,9 @@ const SYNTHETIC_TEXT = {
 
 export const nowIso = (): string => new Date().toISOString();
 
-/** Neutral, source-text-free reason for a failed demo ingest. */
-function ingestFailureReason(error: unknown): string {
+/** Neutral, source-text-free reason for a failed bootstrap ingest (`fullCopy`: it read the local BaniDB SQLite copy). */
+function ingestFailureReason(error: unknown, fullCopy: boolean): string {
+  if (fullCopy) return "The local BaniDB copy failed its coverage check, so no source lines were loaded.";
   return (error as NodeJS.ErrnoException | null)?.code === "ENOENT"
     ? "The demo source fixture is not provisioned in this clone."
     : "The demo source fixture failed its provenance check.";
@@ -75,10 +74,14 @@ function buildSqlite(): Holder {
     }
     let source: SourceStatus = { available: true };
     if (!store.hasSourceLines()) {
+      // The same source selection as `pnpm ingest` (D-86): the full corpus from the local BaniDB SQLite copy when it
+      // exists, else the provenance-checked demo fixture. Seeding the same lines a later `pnpm ingest` reads means that
+      // ingest finds identical lines and succeeds, instead of refusing a fixture Sabad that differs from the copy.
+      const fullCopy = useFullSqlite(root);
       try {
-        ingestDemoSabad(store, path.join(root, DEMO_SABAD_PATH), path.join(root, DEMO_METADATA_PATH));
+        ingestBanidb(db, root);
       } catch (error) {
-        source = { available: false, reason: ingestFailureReason(error) };
+        source = { available: false, reason: ingestFailureReason(error, fullCopy) };
       }
     }
     return { store, source, close: () => { if (sqlite.open) sqlite.close(); } };

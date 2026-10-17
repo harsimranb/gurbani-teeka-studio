@@ -2,7 +2,9 @@ import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { ingestBanidb } from "../../../scripts/app/banidb-source";
 import type { Sabad } from "../../contracts/domain";
 import { __closeStoreForTests, __setSourceForTests, __setStoreForTests, demoSabadSummaries, getSourceStatus, getStore, nextId, nowIso, resetStore, seedSyntheticDrafts } from "./context";
 import { openAppDb } from "../db/client";
@@ -250,4 +252,50 @@ describe("SQLite store (temp DATABASE_URL)", () => {
     expect(store.listDraftsForSabad("9999")).toEqual([]);
     expect(seedSyntheticDrafts()).toEqual([]);
   });
+});
+
+// Real private copy, so this runs only where data/banidb/banidb.sqlite exists (skipped in a fresh clone), like the
+// full-corpus ingest test. The cwd is the real repository root: the loader checks that the copy is Git-ignored.
+const repoRoot = fileURLToPath(new URL("../../..", import.meta.url));
+const hasLocalCopy = existsSync(join(repoRoot, "data/banidb/banidb.sqlite"));
+
+describe.skipIf(!hasLocalCopy)("empty-database bootstrap with the local BaniDB copy", () => {
+  let dbDir: string;
+  beforeEach(() => {
+    dbDir = mkdtempSync(join(tmpdir(), "eko-ctx-full-"));
+    vi.stubEnv("DATABASE_URL", join(dbDir, "app.db"));
+    vi.stubEnv("BANIDB_SOURCE", "");
+    __setSourceForTests(undefined);
+  });
+  afterEach(() => {
+    __closeStoreForTests();
+    rmSync(dbDir, { recursive: true, force: true });
+  });
+
+  it("loads the full corpus once, and a later pnpm ingest then inserts nothing instead of refusing", () => {
+    const store = getStore();
+    expect(getSourceStatus()).toEqual({ available: true });
+    expect(store.listSabads().length).toBeGreaterThan(5000);
+    expect(store.getLatestRulesetVersion()).toBe(1);
+    __closeStoreForTests();
+    const { db, sqlite } = openAppDb(join(dbDir, "app.db"));
+    try {
+      expect(ingestBanidb(db, repoRoot)).toMatchObject({ mode: "sqlite_full", inserted_lines: 0 });
+    } finally {
+      sqlite.close();
+    }
+  }, 60_000);
+
+  it("bootstraps from the fixture when BANIDB_SOURCE=fixture, the same choice ingest makes", () => {
+    vi.stubEnv("BANIDB_SOURCE", "fixture");
+    const store = getStore();
+    if (getSourceStatus().available) expect(store.listSabads()).toHaveLength(1);
+    __closeStoreForTests();
+    const { db, sqlite } = openAppDb(join(dbDir, "app.db"));
+    try {
+      expect(ingestBanidb(db, repoRoot)).toMatchObject({ mode: "demo_fixture", inserted_lines: 0 });
+    } finally {
+      sqlite.close();
+    }
+  }, 60_000);
 });
