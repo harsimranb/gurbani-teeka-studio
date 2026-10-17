@@ -65,9 +65,9 @@
 
 **Interfaces:** Export a repository factory for a supplied SQLite connection; expose typed save/load operations for Sabads, drafts, findings, check runs, decisions, rules, proposals, drift results, and references. Parse records through the C-02 schemas at the boundary.
 
-- [ ] Write temporary-database tests for each record family, including grouped line IDs, versioned rules, reasoned decisions, and reference exceptions.
-- [ ] Implement only the operations needed by F0 and the declared API seams; use transactions for multi-record writes that must be atomic.
-- [ ] Run focused repository tests and typecheck.
+- [x] Write temporary-database tests for each record family, including grouped line IDs, versioned rules, reasoned decisions, and reference exceptions.
+- [x] Implement only the operations needed by F0 and the declared API seams; use transactions for multi-record writes that must be atomic.
+- [x] Run focused repository tests and typecheck.
 
 ### Task 5: C-03 and DATA-03 — validate local SQLite source and ingest
 
