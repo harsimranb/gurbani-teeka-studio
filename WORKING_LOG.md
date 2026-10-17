@@ -25,7 +25,7 @@ Mark a feature complete only when its acceptance paragraph in [`_docs/10-feature
 |---|---|---|
 | **F0 · Foundation, contracts and source data** | Complete for approved Mac/source-only scope | C-01 to C-04, DATA-01 to DATA-05 and API-01 pass. C-05 Mac privacy verified; Windows validation remains open by user direction. Human-authored draft is deferred to P-09/F1. M0 checks, production build and fresh review with fixes pass; P-05 corpus currency/coverage remains open. |
 | **F1 · Workspace** | Not started | Needs F0 contracts, data and API. |
-| **F2 · Checks and report card** | Not started | Needs C-02 contracts and C-03 BaniDB fixture. |
+| **F2 · Checks and report card** | In progress: CHECKS code phase complete | CHK-01 to CHK-11 pass (193 tests); CHK-12 cut (D-77). Model findings need LLM-01/03–05; persistence and report card need API-03 and FE-04. TERM-02 and CONS-01 have no transcreation golden cases. |
 | **F3 · Reference and style evidence** | Not started | Eko-published references can exercise mechanics; SikhRI sample and term mappings remain pending. |
 | **F4 · Review and publishing** | Not started | Needs current check results and app storage. |
 | **F5 · Rules catalog** | Not started | Needs seeded rules and API. |
@@ -40,8 +40,8 @@ Cross-workstream dependencies. The provider ticks a row when the real implementa
 
 | Ready | Seam | Provider → consumer | Real by | Stub until then |
 |---|---|---|---|---|
-| [ ] | **S1** `engine.runChecks` (code phase) | CHK-10 → API-03 | M1 | engine stub returns fixture `CheckResult` |
-| [ ] | **S1** `engine.runChecks` (LLM phase) | CHK-11 → API-03 | M2 | code phase only |
+| [x] | **S1** `engine.runChecks` (code phase) | CHK-10 → API-03 | M1 | real; use `codePhaseScope`/`isCodeFinding` to replace code findings (D-77) |
+| [ ] | **S1** `engine.runChecks` (LLM phase) | CHK-11 → API-03 | M2 | pipeline real; reports `notEvaluable` until LLM-01 supplies a judge |
 | [ ] | **S2** `CheckInput` from real data | DATA-03, API-03 → CHECKS | M1 | `fixtures/sabad.demo.json` |
 | [ ] | **S3** SikhRI references (normalized JSON) | DATA-06 → LLM-07 | M2 | `fixtures/references.json` |
 | [ ] | **S3** SikhRI corrections (normalized JSON) | DATA-06 → EVAL-02 | M3 | `fixtures/corrections.json` |
@@ -84,6 +84,7 @@ Append-only. Record decisions that add, remove or change planned behavior here *
 | D-74 | Use the user-supplied, ignored BaniDB SQLite copy's validated `tmp_Verse` table for the local demo export. Its mapped-line coverage and shared-text parity unblock C-03/DATA-03, but do not establish corpus currency or full textual completeness. Keep the partial Docker image and API fallback provenance distinct. |
 | D-75 | Harsimran directed F0's demo seed to include source lines only. Defer a human-written English draft to P-09/F1; do not generate one or silently treat synthetic test markers as a demo transcreation. |
 | D-76 | F0 route skeletons validate every request. Safe read endpoints return labelled contract fixtures; stateful and evidence-dependent endpoints return a contract-valid unavailable error until their actual persistence/check behavior is built, avoiding false success claims. |
+| D-77 | CHECKS: real code phase; CHK-11 pipeline with pluggable judge, no adapter (`notEvaluable`); CHK-12 cut, CONS-01 `notEvaluable`; TERM-07 gloss hint included; resolution decisions govern prefilter actions; code-phase scope replaces code findings only. |
 
 ---
 
@@ -140,18 +141,18 @@ Related folders: `lib/engine/checks/`, `lib/engine/gurmukhi/`, `lib/engine/rules
 - _(none)_
 
 ### Next
-- [ ] **CHK-01** Gurmukhi: tokenize NFC lines, stem + ending matra, Divine-name matcher (Kartar/Karta family) · Needs: C-03 fixture
-- [ ] **CHK-02** Rules: active rules for the transcreation from `CheckInput.rules`; compile prefilters from the seed · FR-08 · Needs: C-02
-- [ ] **CHK-03** Golden test harness: reads `_docs/rules/rules.resolved.json` and the SYNTHETIC cases in `RULES_NOTES.md` §10 · FR-08
-- [ ] **CHK-04** TERM-01 capitalized God/Lord and compounds → error
-- [ ] **CHK-05** LAYER-07 any ( ) [ ] → error
-- [ ] **CHK-06** TERM-03 IkOankar spelling; gloss at first use in the Sabad (comma/dash) → warning
-- [ ] **CHK-07** TERM-07 non-preferred spellings; Bani titles exempt → warning
-- [ ] **CHK-08** LAYER-06 closed archaism list → flag
-- [ ] **CHK-09** Validator: drop findings whose span isn't in the draft or whose rule/reference IDs don't exist · FR-07
-- [ ] **CHK-10** Pipeline code phase: changed authored units plus affected Sabad-scoped checks; real `engine.runChecks(input, 'code')` in `index.ts` · FR-06, FR-12 · **Provides S1 for M1**
-- [ ] **CHK-11** Pipeline LLM phase: run registered LLM checks with p-limit, then the validator · Needs: LLM-01 · **Provides S1 for M2**
-- [ ] **CHK-12** Deterministic CONS-01 → warning with reason before publish only when an applicable reference has explicit term-to-rendering mapping; otherwise stay silent · FR-09 · Needs: LLM-08, OQ-17 (stub: no mapping) · First to cut
+- [x] **CHK-01** Gurmukhi: tokenize NFC lines, stem + ending matra, Divine-name matcher (Kartar/Karta family) · Needs: C-03 fixture · Done (2026-10-16, D-77): families come from the TERM-02 seed alternatives (7 families); family meaning is left to LLM-03. A danda attached to a word would stay in its stem (none in the demo Sabad)
+- [x] **CHK-02** Rules: active rules for the transcreation from `CheckInput.rules`; compile prefilters from the seed · FR-08 · Needs: C-02 · Done (2026-10-16, D-77): exactly 8 rules; seed `(?i)` converted to the `i` flag
+- [x] **CHK-03** Golden test harness: reads `_docs/rules/rules.resolved.json` and the SYNTHETIC cases in `RULES_NOTES.md` §10 · FR-08 · Done (2026-10-16, D-77): 17 transcreation rows pass; TERM-02 and CONS-01 have no transcreation golden case
+- [x] **CHK-04** TERM-01 capitalized God/Lord and compounds → error · Done (2026-10-16, D-77): plurals (Gods/Lords) and lowercase go to model candidates per the resolution
+- [x] **CHK-05** LAYER-07 any ( ) [ ] → error · Done (2026-10-16, D-77)
+- [x] **CHK-06** TERM-03 IkOankar spelling; gloss at first use in the Sabad (comma/dash) → warning · Done (2026-10-16, D-77)
+- [x] **CHK-07** TERM-07 non-preferred spellings; Bani titles exempt → warning · Done (2026-10-16, D-77): also the resolved first-use gloss hint; substitutes go to model candidates
+- [x] **CHK-08** LAYER-06 closed archaism list → flag · Done (2026-10-16, D-77)
+- [x] **CHK-09** Validator: drop findings whose span isn't in the draft or whose rule/reference IDs don't exist · FR-07 · Done (2026-10-16, D-77): model findings validated one at a time
+- [x] **CHK-10** Pipeline code phase: changed authored units plus affected Sabad-scoped checks; real `engine.runChecks(input, 'code')` in `index.ts` · FR-06, FR-12 · **Provides S1 for M1** · Done (2026-10-16, D-77): `codePhaseScope` tells API-03 what a result replaces
+- [x] **CHK-11** Pipeline LLM phase: run registered LLM checks with p-limit, then the validator · Needs: LLM-01 · **Provides S1 for M2** · Done (2026-10-16, D-77): pluggable `LlmJudge`; without LLM-01 each rule with packets reports `notEvaluable`. Follow-up for LLM-03: TERM-02 collapse needs a Sabad-wide packet (current packets are per unit)
+- [ ] **CHK-12** Deterministic CONS-01 → warning with reason before publish only when an applicable reference has explicit term-to-rendering mapping; otherwise stay silent · FR-09 · Needs: LLM-08, OQ-17 (stub: no mapping) · First to cut · **Cut (D-77):** CONS-01 reports `notEvaluable` until explicit term mappings exist
 
 ### Blocked
 - _(none)_
