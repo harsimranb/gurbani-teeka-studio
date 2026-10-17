@@ -31,7 +31,7 @@ function parseGolden(): GoldenRow[] {
   return rows;
 }
 
-const CODE_TIER = new Set(["TERM-01", "TERM-03", "TERM-07", "LAYER-06", "LAYER-07", "PRIN-04"]);
+const CODE_TIER = new Set(["TERM-01", "TERM-03", "TERM-07", "LAYER-06", "LAYER-07", "LAYER-08", "PRIN-04"]);
 const checked = new Set(checkedRules(rulesFixture).map((rule) => rule.id));
 const allRows = parseGolden();
 const rows = allRows.filter((row) => checked.has(row.rule));
@@ -47,11 +47,16 @@ describe("CHK-03 golden harness: RULES_NOTES section 10 transcreation rows", () 
     const covered = new Set(rows.map((row) => row.rule));
     const gap = [...checked].filter((id) => !covered.has(id)).sort();
     console.info(`Checked rules with no transcreation golden rows: ${gap.join(", ")}`);
-    expect(gap).toEqual(["CONS-01", "TERM-02"]);
+    expect(gap).toEqual(["CONS-01", "LAYER-09", "PRIN-01", "PRIN-06", "PRIN-07", "PRIN-08", "TERM-02"]);
   });
 
   it.each(rows.map((row) => [`${row.rule} · ${row.expect}${row.quoted ? ` "${row.quoted}"` : ""} · ${row.sentence}`, row] as const))("%s", (_name, row) => {
     const input = syntheticInput([row.sentence]);
+    if (row.rule === "LAYER-08") {
+      const literal = { ...input.draft, id: "synthetic-literal-1", layer: "literal" as const,
+        text: row.expect === "flag" ? "The restless mind (is) steadied (by) wisdom." : "A different synthetic literal." };
+      input.relatedDrafts = [literal];
+    }
     const { result, candidates } = runCodePhase(input);
     const findings = result.findings.filter((finding) => finding.rule_id === row.rule);
     const own = candidates.filter((candidate) => candidate.ruleId === row.rule);

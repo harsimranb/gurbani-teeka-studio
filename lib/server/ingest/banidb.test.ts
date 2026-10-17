@@ -14,7 +14,7 @@ const identity = {
 };
 const local = {
   source: "user-provided local BaniDB SQLite copy",
-  source_path: "data/banidb/banidb.sqlite", source_table: "tmp_Verse", ...identity,
+  source_path: "data/banidb/banidb-upload.sqlite", source_table: "tmp_Verse", ...identity,
 };
 const api = {
   exported_at: "2026-01-01T00:00:00.000Z",

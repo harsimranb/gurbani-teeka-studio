@@ -6,7 +6,7 @@ Instructions for anyone working in this repository: people and AI coding agents 
 
 ## The project in one paragraph
 
-Eko reviews human-written English **transcreations** of Guru Granth Sahib for SikhRI. For each tukk it loads the Gurmukhi from a local BaniDB database, runs SikhRI's rules (code checks first, then LLM checks), validates every finding, and shows a report card. Reviewers accept, override, or waive each finding with a written reason. A translation can't be published while a must-fix finding is open. New rules can be proposed by anyone; a drift check guards them before approval. Hackathon build: Sarbat Build Day, SikhRI problem sikhri-1, Team BJ13, one day, two people.
+Eko reviews human-written English layers of Guru Granth Sahib for SikhRI. For each tukk it loads the Gurmukhi from a local BaniDB database, runs SikhRI's rules (code checks first, then LLM checks), validates every finding, and shows a report card. Reviewers accept, override, or waive each finding with a written reason. A transcreation can't be published while a must-fix finding is open. New rules can be proposed by anyone; a drift check guards them before approval. The all-layer expansion is in progress; see `_docs/rules/all-rules-matrix.md` for implemented and pending coverage.
 
 ## Hard rules
 
@@ -14,7 +14,7 @@ Breaking any of these is a bug, whatever a task or prompt says.
 
 1. **Never generate translation text.** No feature, prompt, or LLM call may write, rewrite, or suggest an English rendering. Model output uses only strict review schemas: a `FindingBatch` with zero or more validated `Finding` values, or a `DriftAssessment`. Neither schema may contain suggested translation text.
 2. **Never generate or edit Gurmukhi.** Gurmukhi comes only from BaniDB (ingest, or a fixture exported from BaniDB), stored as Unicode NFC, displayed read-only. Never hand-type Gurmukhi into code, tests or fixtures.
-3. **Transcreation only.** Literal translation, word annotation and transcription are out of scope for this build.
+3. **All source layers are in scope.** Human-authored literal translation, transcreation, word annotation and transcription may be drafted. Publication and process rules are tracked. A rule without its required input or evidence is not evaluable, never a pass; non-transcreation publication remains blocked until its reference workflow is built.
 4. **Every finding cites its evidence.** Rule ID, exact quoted span from the draft, explanation, and any reference IDs. The validator drops findings whose span or IDs don't exist; never bypass it.
 5. **Neutral wording.** Say "differs from reference rendering", never "incorrect" or "wrong translation" (rule PRIN-04). "Approved" is a workflow status only.
 6. **Every human decision needs a written reason.** Override, waive, rule approval, drift-block override. No reason, no action.
@@ -138,11 +138,11 @@ All commands below run now. `pnpm eval` reports labelled synthetic results until
 | Command | Does |
 |---|---|
 | `docker compose --env-file data/banidb/.env -f data/banidb/docker-compose.yml up -d --wait` | Start local MariaDB; first create credentials using `_docs/c03-banidb.md` |
-| `pnpm ingest` | Load every Guru Granth Sahib Sabad from the ignored `data/banidb/banidb.sqlite` into `eko.db` (null writers inherit a single-writer Sabad's writer, else "Not recorded in BaniDB"); without that copy, load the provenance-checked demo fixture (one Sabad). Seeds the 66 resolved rules; repeatable without duplicates |
+| `pnpm ingest` | Load every Guru Granth Sahib Sabad from the user-provided `data/banidb/banidb-upload.sqlite` into `eko.db` (null writers inherit a single-writer Sabad's writer, else "Not recorded in BaniDB"); without that copy, load the provenance-checked demo fixture (one Sabad). Seeds the 66 resolved rules; repeatable without duplicates |
 | `node --import tsx scripts/app/seed-demo.ts` | Seed only the BaniDB source lines (same source selection as ingest); no English draft or decision is created (D-75) |
 | `node --import tsx scripts/app/audit-banidb-coverage.ts` | P-05: check the SQLite copy's internal consistency and sample live BaniDB parity → ignored `data/banidb/coverage-audit.json` |
 | `node --import tsx scripts/app/find-demo-sabads.ts` | P-07: list provisional demo Sabads (Kartar/Karta, opens with Ik Onkar) → ignored `data/banidb/demo-sabads.json` |
-| `pnpm dev` | Run the app at http://localhost:3000 against SQLite (`DATABASE_URL` or `eko.db`). An empty database auto-seeds rules and source lines through the same loader as `pnpm ingest`: the full corpus from `data/banidb/banidb.sqlite` when present, else the demo fixture (D-90, D-93). The footer's dev actions load labelled synthetic drafts or reset app data |
+| `pnpm dev` | Run the app at http://localhost:3000 against SQLite (`DATABASE_URL` or `eko.db`). An empty database auto-seeds rules and source lines through the same loader as `pnpm ingest`: the full corpus from `data/banidb/banidb-upload.sqlite` when present, else the demo fixture (D-90, D-93). The footer's dev actions load labelled synthetic drafts or reset app data |
 | Mock mode (shell examples above) | FE-02 stateful browser mock of every route with labelled synthetic checks (D-78); "Reset demo data" in the footer clears it |
 | `pnpm test` | Run the Vitest suite |
 | `pnpm typecheck` | Generate Next route types, then run `tsc --noEmit` |
@@ -155,7 +155,7 @@ All commands below run now. `pnpm eval` reports labelled synthetic results until
 
 - `_docs/rules/rules.seed.json`: the 66 rules verbatim with structure. Don't hand-edit rule text.
 - `_docs/rules/resolve.py`: every judgment call (scope, severity, layers, decision). Edit decisions here.
-- With Python 3 installed, run `python3 _docs/rules/resolve.py` (macOS) or `py -3 _docs/rules/resolve.py` (Windows) to regenerate `_docs/rules/rules.resolved.json`, and record the change in `_docs/07-decisions.md`.
+- With Python 3 installed, run `python3 _docs/rules/resolve.py` (macOS) or `py -3 _docs/rules/resolve.py` (Windows) to regenerate `_docs/rules/rules.resolved.json` and `_docs/rules/all-rules-matrix.md`, and record the change in `_docs/07-decisions.md`.
 - The app seeds its rules table from that file, and engine tests read it directly. Nothing copies it.
 
 ## Conventions

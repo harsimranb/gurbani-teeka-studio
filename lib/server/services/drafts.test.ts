@@ -1,4 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { existsSync, readFileSync } from "node:fs";
+import Database from "better-sqlite3";
+import { resolve } from "node:path";
 import type { z } from "zod";
 import { ApiErrorSchema, routes, type RouteName } from "../../contracts/api";
 import { GET as listSabadsRoute } from "../../../app/api/sabads/route";
@@ -62,6 +65,87 @@ describe("sabads", () => {
 });
 
 describe("saveDraft", () => {
+  it.skipIf(!existsSync("lib/contracts/fixtures/sabad.demo.json"))("rejects editable Gurmukhi copied from the BaniDB source", async () => {
+    const fixture = JSON.parse(readFileSync("lib/contracts/fixtures/sabad.demo.json", "utf8")) as { lines: Array<{ gurmukhi: string }> };
+    await failure(await save({ layer: "annotation", text: fixture.lines[0].gurmukhi }), 400, "invalid_request");
+  });
+  it("keeps a human-authored literal beside a transcreation on the same source line", async () => {
+    const transcreation = (await ok("saveDraft", await save())).draft;
+    const literal = (await ok("saveDraft", await save({ layer: "literal", text: "SYNTHETIC TEST: literal wording" }))).draft;
+    expect(literal.layer).toBe("literal");
+    expect(literal.id).not.toBe(transcreation.id);
+    const response = await ok("getSabad", await getSabad());
+    if (response.status !== "available") throw new Error("expected available");
+    expect(response.drafts.map((draft) => [draft.id, draft.layer])).toEqual([
+      [transcreation.id, "transcreation"], [literal.id, "literal"],
+    ]);
+  });
+  it("stores publication notes as a separate authored layer", async () => {
+    const note = (await ok("saveDraft", await save({ layer: "publication", text: "SYNTHETIC publication note." }))).draft;
+    expect(note).toMatchObject({ layer: "publication", text: "SYNTHETIC publication note." });
+  });
+  it("invalidates a transcreation mirror finding when literal wording or line coverage changes", async () => {
+    const transcreation = (await ok("saveDraft", await save())).draft;
+    const literal = (await ok("saveDraft", await save({ layer: "literal", text: "SYNTHETIC TEST: one" }))).draft;
+    const store = getStore();
+    store.saveFinding(makeFinding({ id: "mirror-1", draft_id: transcreation.id, rule_id: "LAYER-08", severity: "warning",
+      quoted_span: transcreation.text, start: 0, end: transcreation.text.length, model: "eko-code" }));
+    store.saveCheckRun(makeRun({ id: "mirror-run", draft_id: transcreation.id, phase: "code" }));
+    store.saveFinding(makeFinding({ id: "mirror-llm-1", draft_id: transcreation.id, rule_id: "LAYER-09", severity: "warning",
+      quoted_span: transcreation.text, start: 0, end: transcreation.text.length, model: "synthetic-model", prompt_version: "test-v1" }));
+    store.saveCheckRun(makeRun({ id: "mirror-llm-run", draft_id: transcreation.id, phase: "llm" }));
+    await ok("saveDraft", await save({ draft_id: literal.id, expected_version: 1, layer: "literal", line_ids: [L(2)], text: "SYNTHETIC TEST: changed" }));
+    expect(store.getFinding("mirror-1")?.state).toBe("cleared");
+    expect(store.getFinding("mirror-llm-1")?.state).toBe("cleared");
+    expect(currentRuns(store, transcreation, 1).find((run) => run.phase === "code")?.status).toBe("failed");
+    expect(currentRuns(store, transcreation, 1).find((run) => run.phase === "llm")?.status).toBe("failed");
+  });
+  it("stores separate word annotations for two source words on one line", async () => {
+    const source = testSabad(SABAD, 2);
+    source.lines[0].gurmukhi = "TEST SOURCE"; // ASCII test marker, never a Gurmukhi fixture
+    __setSourceForTests(source);
+    const first = (await ok("saveDraft", await save({ layer: "annotation", source_word_start: 0, text: "noun; implied sense" }))).draft;
+    const second = (await ok("saveDraft", await save({ layer: "annotation", source_word_start: 5, text: "verb; implied sense" }))).draft;
+    expect(first.id).not.toBe(second.id);
+    expect(first.source_word_start).toBe(0);
+    expect(second.source_word_start).toBe(5);
+    expect(getStore().listDraftsForSabad(SABAD)).toHaveLength(2);
+    const checked = await runCodeChecks({ draft_id: first.id, draft_version: 1, ruleset_version: 1, changed_line_ids: [L(1)] });
+    expect(checked.affected_drafts.map((draft) => draft.id).sort()).toEqual([first.id, second.id].sort());
+  });
+  it.skipIf(!existsSync(resolve(process.cwd(), "data/banidb/banidb-upload.sqlite")))("allows a transcription to target a standalone BaniDB numeral token", async () => {
+    const db = new Database(resolve(process.cwd(), "data/banidb/banidb-upload.sqlite"), { readonly: true, fileMustExist: true });
+    let sourceText = "";
+    let sourceWordStart = -1;
+    let roman = "";
+    try {
+      const rows = db.prepare("SELECT GurmukhiUni AS gurmukhi FROM tmp_Verse WHERE SourceID = 'G'").iterate() as Iterable<{ gurmukhi: string }>;
+      for (const row of rows) {
+        const tokens = [...row.gurmukhi.matchAll(/\S+/gu)].filter((match) => Array.from(match[0]).some((character) => {
+          const point = character.codePointAt(0)!;
+          return point >= 0x0a66 && point <= 0x0a6f;
+        }));
+        const number = tokens.find((match) => Array.from(match[0]).some((character) => {
+          const point = character.codePointAt(0)!;
+          return !(point >= 0x0a66 && point <= 0x0a6f);
+        })) ?? tokens[0];
+        if (!number || number.index === undefined) continue;
+        sourceText = row.gurmukhi;
+        sourceWordStart = number.index;
+        roman = Array.from(number[0], (character) => {
+          const point = character.codePointAt(0)!;
+          return point >= 0x0a66 && point <= 0x0a6f ? String(point - 0x0a66) : "";
+        }).join("");
+        break;
+      }
+    } finally { db.close(); }
+    expect(sourceWordStart).toBeGreaterThanOrEqual(0);
+    const source = testSabad(SABAD, 5);
+    source.lines[0].gurmukhi = sourceText;
+    __setSourceForTests(source);
+    const { draft } = await ok("saveDraft", await save({ layer: "transcription", source_word_start: sourceWordStart, text: roman }));
+    expect(draft).toMatchObject({ layer: "transcription", source_word_start: sourceWordStart, text: roman });
+  });
   it("creates version 1 with status draft", async () => {
     const { draft } = await ok("saveDraft", await save());
     expect(draft).toMatchObject({ version: 1, status: "draft", line_ids: [L(1)], author: "Writer", layer: "transcreation" });
@@ -313,6 +397,25 @@ describe("getReport", () => {
     expect(report.history.map((finding) => finding.id)).toEqual(["old"]);
     expect(report.decisions.map((decision) => decision.id)).toEqual(["dec-t1"]);
     expect(report.check_runs.map((run) => run.id)).toEqual(["run-new"]);
+  });
+  it("keeps a publication's original review visible after the current ruleset advances", async () => {
+    const store = getStore();
+    const { draft } = await ok("saveDraft", await save());
+    store.saveFinding(makeFinding({ id: "published-v1-finding", draft_id: draft.id, draft_version: 1, ruleset_version: 1,
+      quoted_span: draft.text, start: 0, end: draft.text.length }));
+    store.saveCheckRun(makeRun({ id: "published-v1-run", draft_id: draft.id, draft_version: 1, ruleset_version: 1 }));
+    store.savePublication({
+      reference: { id: "PUB-TEST-1", line_ids: draft.line_ids, english: "SYNTHETIC REFERENCE", source: "published", exceptions: [] },
+      draft_id: draft.id, approver: "Reviewer", at: TEST_AT,
+      gate: { draft_id: draft.id, draft_version: 1, ruleset_version: 1, can_publish: true, blockers: [], warning_ids: [] },
+    });
+    store.saveDraft({ ...draft, status: "published" });
+    store.saveRuleset(2, store.getRuleset(1));
+
+    const report = await ok("getReport", await getReport(draft.id));
+    expect(report.ruleset_version).toBe(1);
+    expect(report.findings.map((finding) => finding.id)).toEqual(["published-v1-finding"]);
+    expect(report.check_runs.map((run) => run.id)).toEqual(["published-v1-run"]);
   });
 });
 

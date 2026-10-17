@@ -85,6 +85,8 @@ export function PublishedView({ shabadId }: { shabadId: string }) {
         <Link href="/rules/proposals" className={cn(buttonStyles({ variant: "primary" }), "min-h-11 px-[18px] font-semibold")}>Propose a rule</Link>
       </div>
 
+      <Banner tone="info">These published renderings express the team&apos;s current understanding of Sabad. Other renderings may coexist as understanding deepens.</Banner>
+
       {unpublished.length > 0 ? (
         <Banner tone="warning">
           <b>Not published yet:</b>{" "}

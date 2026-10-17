@@ -2,26 +2,42 @@ import pLimit from "p-limit";
 import { z } from "zod";
 import { CheckResultSchema, FindingBatchSchema, FindingSeveritySchema } from "../../contracts/domain";
 import type { CheckInput, CheckResult, Draft, Finding, Line, NotEvaluable, Rule } from "../../contracts/domain";
-import { divineNameFamilies, findDivineNames } from "../gurmukhi";
+import { divineNameFamilies, findDivineNames, tokenize } from "../gurmukhi";
 import type { DivineNameHit } from "../gurmukhi";
 import { passesReviewGuards } from "../llm/guards";
 import { checkedRules, compilePrefilter } from "../rules";
 import type { RankedReference, ReferenceIndex } from "../retrieval/types";
 import { CODE_MODEL, inSabadOrder } from "./finding";
 import { genericCheck, layer07Check, term01Check } from "./generic";
+import { anno02Check } from "./anno02";
+import { anno04Check, anno05Check, anno08Check } from "./annotation";
+import { layer03Check } from "./layer03";
+import { layer08Check } from "./layer08";
 import { term03Check } from "./term03";
 import { term07Check } from "./term07";
+import { tran09Check, tran10Check, tran14Check } from "./translation";
 import type { Candidate, CodeCheck } from "./types";
 import { validateFindings } from "./validate";
 
 // TERM-02 is judged only in the model phase from Gurmukhi-side evidence.
 const CODE_CHECKS: CodeCheck[] = [
-  genericCheck("PRIN-04"), term01Check, term03Check, term07Check, genericCheck("LAYER-06"), layer07Check,
+  genericCheck("PRIN-04"), term01Check, term03Check, genericCheck("TERM-04"), genericCheck("TERM-05"), term07Check, layer03Check, layer08Check, anno02Check, anno04Check, anno05Check, anno08Check, genericCheck("LAYER-06"), layer07Check, tran09Check, tran10Check, tran14Check,
 ];
 const CODE_UNAVAILABLE: Record<string, string> = {
   // CHK-12 is cut until references carry explicit term mappings (OQ-17).
   "CONS-01": "Reference consistency is unavailable: no deterministic term-mapping check is implemented, so no CONS-01 finding is claimed.",
+  "LAYER-03": "Only literal-layer parenthesis structure was checked; unmarked additions need source-word alignment and were not evaluated.",
+  "ANNO-02": "The literal/implied semicolon was checked; comma boundaries between multiple literal meaning sets were not evaluated.",
+  "LAYER-08": "Only similarity to an available human-authored literal was checked; source-line and Panjabi transcreation comparisons were not evaluated.",
+  "ANNO-04": "The second-line separator was checked; completeness and correctness of grammatical features were not evaluated.",
+  "ANNO-05": "The supplied part-of-speech label was checked against the allowed classes; its linguistic correctness was not evaluated.",
+  "ANNO-08": "Separators in a supplied language-form line were checked; required source-language forms and quote references remain unevaluated.",
+  "TRAN-14": "Only source numeral-to-Roman-digit correspondence is checked; pronunciation and other transcription conventions remain unevaluated.",
+  "TRAN-09": "Only BaniDB tippi/bindī to Roman ṁ correspondence is checked; broader pronunciation rules remain unevaluated.",
+  "TRAN-10": "Only BaniDB visarg to aḥ correspondence is checked; broader pronunciation rules remain unevaluated.",
 };
+const GENERIC_MODEL_RULES = new Set(["PRIN-01", "PRIN-06", "PRIN-07", "PRIN-08", "PRIN-09", "FLOW-07", "CONS-04", "LAYER-01", "LAYER-05", "LAYER-09",
+  "ANNO-01", "ANNO-03", "ANNO-06", "ANNO-09", "ANNO-10"]);
 
 /** Units whose source lines changed, plus the selected draft. */
 export function changedDrafts(input: CheckInput): Draft[] {
@@ -38,7 +54,7 @@ export function changedDrafts(input: CheckInput): Draft[] {
 export interface CodePhaseScope { draftIds: string[]; ruleIds: string[] }
 
 export function codePhaseScope(input: CheckInput): CodePhaseScope {
-  const active = new Set(checkedRules(input.rules).map((rule) => rule.id));
+  const active = new Set(checkedRules(input.rules, input.draft.layer).map((rule) => rule.id));
   return {
     draftIds: changedDrafts(input).map((draft) => draft.id),
     ruleIds: [...new Set(CODE_CHECKS.filter((check) => check.scope === "sabad" && active.has(check.ruleId)).map((check) => check.ruleId))],
@@ -52,10 +68,10 @@ export function runCodePhase(input: CheckInput): { result: CheckResult; candidat
   const findings: Finding[] = [];
   const candidates: Candidate[] = [];
   const notEvaluable: NotEvaluable[] = [];
-  for (const rule of checkedRules(input.rules)) {
+  for (const rule of checkedRules(input.rules, input.draft.layer)) {
     const checks = CODE_CHECKS.filter((check) => check.ruleId === rule.id);
+    if (CODE_UNAVAILABLE[rule.id]) notEvaluable.push({ ruleId: rule.id, reason: CODE_UNAVAILABLE[rule.id] });
     if (checks.length === 0) {
-      if (CODE_UNAVAILABLE[rule.id]) notEvaluable.push({ ruleId: rule.id, reason: CODE_UNAVAILABLE[rule.id] });
       continue;
     }
     const patterns = compilePrefilter(rule);
@@ -83,6 +99,10 @@ export interface LlmPacket {
   sabad?: { units: SabadUnitContext[]; divineNames: DivineNameHit[]; distinctFamilies: number };
   /** `style`: retrieved references the model may cite. */
   references?: RankedReference[];
+  /** Read-only literal evidence for cross-layer review such as LAYER-09. */
+  relatedDrafts?: Draft[];
+  /** The exact BaniDB word an annotation is about, with its source-line offsets. */
+  sourceWord?: { lineId: string; surface: string; start: number; end: number };
 }
 /** Returns a strict review-only `FindingBatch`; it never returns translation text. */
 export type LlmJudge = (packet: LlmPacket) => Promise<unknown>;
@@ -96,7 +116,7 @@ const BatchEnvelopeSchema = z.discriminatedUnion("status", [
 
 /** What a model-phase result replaces: changed units, plus Sabad-scoped model rules on every unit. */
 export function llmPhaseScope(input: CheckInput): CodePhaseScope {
-  const termRule = checkedRules(input.rules).some((rule) => rule.id === "TERM-02");
+  const termRule = checkedRules(input.rules, input.draft.layer).some((rule) => rule.id === "TERM-02");
   return { draftIds: changedDrafts(input).map((draft) => draft.id), ruleIds: termRule ? ["TERM-02"] : [] };
 }
 
@@ -109,10 +129,23 @@ async function planLlmPhase(input: CheckInput, index?: ReferenceIndex, lookup = 
   const families = divineNameFamilies(input.rules);
   const lineById = new Map(input.sabad.lines.map((line) => [line.line_id, line]));
   const linesOf = (draft: Draft) => draft.line_ids.map((id) => lineById.get(id)).filter((line): line is Line => !!line);
-  const base = (kind: LlmPacketKind, rule: Rule, draft: Draft): LlmPacket => ({ kind, rule, draft, lines: linesOf(draft), rulesetVersion: input.rulesetVersion, candidates: [], divineNames: [] });
+  const base = (kind: LlmPacketKind, rule: Rule, draft: Draft): LlmPacket => {
+    const lines = linesOf(draft);
+    const sourceWord = draft.layer === "annotation" && draft.source_word_start !== undefined
+      ? lines.flatMap((line) => tokenize(line.gurmukhi).map((token) => ({ lineId: line.line_id, ...token })))
+        .find((token) => token.start === draft.source_word_start)
+      : undefined;
+    return {
+      kind, rule, draft, lines, rulesetVersion: input.rulesetVersion, candidates: [], divineNames: [],
+      relatedDrafts: rule.id === "LAYER-09"
+        ? (input.relatedDrafts ?? []).filter((other) => other.layer === "literal" && other.line_ids.some((id) => draft.line_ids.includes(id)))
+        : [],
+      ...(sourceWord ? { sourceWord: { lineId: sourceWord.lineId, surface: sourceWord.surface, start: sourceWord.start, end: sourceWord.end } } : {}),
+    };
+  };
   const packets: LlmPacket[] = [];
   const notes: PacketNote[] = [];
-  for (const rule of checkedRules(input.rules)) {
+  for (const rule of checkedRules(input.rules, input.draft.layer)) {
     if (rule.id === "TERM-02") {
       const everyUnit = inSabadOrder(input, input.sabadDrafts);
       const sabadHits = input.sabad.lines.flatMap((line) => findDivineNames(line, families));
@@ -133,8 +166,16 @@ async function planLlmPhase(input: CheckInput, index?: ReferenceIndex, lookup = 
         if (references.length === 0) notes.push({ ruleId: rule.id, draftId: draft.id, reason: "no applicable reference; style comparison not run." });
         else packets.push({ ...packet, references });
       }
-    } else if (rule.source === "proposal") {
-      for (const draft of units) packets.push(base("free_text", rule, draft));
+    } else if (rule.source === "proposal" || GENERIC_MODEL_RULES.has(rule.id)) {
+      for (const draft of units) {
+        const packet = base("free_text", rule, draft);
+        if (["ANNO-01", "ANNO-03", "ANNO-06", "ANNO-09", "ANNO-10"].includes(rule.id) && !packet.sourceWord) {
+          notes.push({ ruleId: rule.id, draftId: draft.id, reason: "the annotation source-word offset does not resolve to a BaniDB token." });
+        } else if (rule.id === "LAYER-09" && !draft.line_ids.every((lineId) => packet.relatedDrafts?.some((literal) =>
+          literal.text.trim().length > 0 && literal.line_ids.includes(lineId)))) {
+          notes.push({ ruleId: rule.id, draftId: draft.id, reason: "a related literal layer does not cover every line in the transcreation unit." });
+        } else packets.push(packet);
+      }
     } else {
       for (const draft of units) {
         const own = candidates.filter((candidate) => candidate.ruleId === rule.id && candidate.draftId === draft.id);
@@ -202,7 +243,7 @@ const REASON_WITHHELD = "model reported this unit not evaluable; its reason was 
 export function allowedQuotes(packet: LlmPacket): string[] {
   // A Sabad-wide packet (TERM-02 collapse) also shows the model other units' Divine-name surfaces from BaniDB.
   const sabadNames = packet.sabad?.divineNames.map((hit) => hit.token.surface) ?? [];
-  return [packet.draft.text, packet.rule.text, packet.rule.resolution.decision ?? "", ...packet.lines.map((line) => line.gurmukhi), ...sabadNames];
+  return [packet.draft.text, packet.rule.text, packet.rule.resolution.decision ?? "", ...packet.lines.map((line) => line.gurmukhi), ...(packet.relatedDrafts ?? []).map((draft) => draft.text), ...sabadNames];
 }
 
 const SEVERITY_RANK = { hint: 0, warning: 1, flag: 2, error: 3 } as const;

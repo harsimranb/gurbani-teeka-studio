@@ -93,7 +93,7 @@ export async function publish(req: ParsedRequest<"publish">, deps: { indexRefere
 
   const gate = computeGate(store, draft, departureIds);
   if (!gate.can_publish) {
-    const rules = [...new Set(gate.blockers.map((blocker) => (blocker.kind === "check_phase" ? `check phase ${blocker.phase}` : blocker.rule_id)))];
+    const rules = [...new Set(gate.blockers.map((blocker) => blocker.kind === "check_phase" ? `check phase ${blocker.phase}` : blocker.kind === "layer_unavailable" ? `${blocker.layer} publication` : blocker.rule_id))];
     throw new ServiceError("publish_blocked", `Publishing is blocked until every blocker is resolved: ${rules.join(", ")}.`, gate.blockers);
   }
 

@@ -146,20 +146,28 @@ vite.config.ts.timestamp-*
 # Astro generated types
 .astro/
 
-# Private source data and local Eko state
-eko.db
-eko.db-*
-*.sqlite
-*.sqlite-*
-data/sikhri-sample/
-data/cache/
-data/eval/
-data/banidb/*
-!data/banidb/docker-compose.yml
-lib/contracts/fixtures/sabad.demo.json
 
 # Turbo Repo
 .turbo
 
 # Agent worktrees (local git worktrees of this repo)
 .claude/worktrees/
+
+# Private SikhRI source samples, corrections and review history
+data/sikhri-sample/
+# Keep local database copies, app data, and generated BaniDB artifacts out of source control.
+banidb.sql
+banidb.sqlite
+data/banidb/banidb.sqlite*
+data/banidb/banidb-upload.sqlite
+data/banidb/export-metadata.json
+eko.db*
+data/cache/
+data/eval/
+data/banidb/api-sabad-*.json
+data/banidb/*api-fallback.json
+data/banidb/coverage-audit.json
+data/banidb/demo-sabads.json
+data/banidb/local-coverage.json
+data/banidb/sqlite-coverage.json
+lib/contracts/fixtures/sabad.demo.json

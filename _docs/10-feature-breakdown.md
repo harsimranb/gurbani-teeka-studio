@@ -71,7 +71,7 @@ The hour labels below are estimates, not hard stop times; pass each milestone's 
 | DATA-01 | A migration creates the records in [03](03-architecture.md#core-records), including durable `CheckRun` phase state; a temporary SQLite file can apply it from empty state. |
 | DATA-02 | Repository functions save/load the contract records without engine imports; a temporary SQLite file exercises draft, finding, decision, rule and reference operations. |
 | DATA-03 | Ingest creates BaniDB-backed lines and metadata with NFC text from the verified local export; re-running does not duplicate rows. |
-| DATA-04 | Rules seed reads `rules.resolved.json` in place and preserves all 66 rule IDs and 10 active resolutions; re-running does not duplicate versions. |
+| DATA-04 | Rules seed reads `rules.resolved.json` in place and preserves all 66 rule IDs; the all-layer expansion versions changed decisions without deleting older snapshots. Re-running does not duplicate versions. |
 | DATA-05 | For F0, demo seed loads only the chosen BaniDB-exported source Sabad and is repeatable without duplicating lines (D-75). A human-written English draft is deferred to P-09/F1; no synthetic marker is presented as a transcreation. |
 | API-01 | Every route declared in `api.ts` has a handler skeleton with a response-schema test. Safe reads may return labelled contract fixtures; stateful or evidence-dependent actions return a contract-valid unavailable error until their real implementation exists (D-76). |
 
@@ -115,7 +115,7 @@ The hour labels below are estimates, not hard stop times; pass each milestone's 
 | API-03 | Separate code and model endpoints build `CheckInput` with current references, persist the engine `CheckResult` only when draft and ruleset versions still match, and keep `CheckRun` phase state durable as pending/succeeded/failed. A failed current phase can be retried without duplicating findings. Responses validate against contracts. |
 | FE-04 | Report card shows current source/draft beside exact highlights, rule ID/text, severity, explanation, valid references, provenance and distinct pending/completed/failed phase states plus per-rule `not_evaluable` results, with retry for a failed phase. |
 
-**Feature acceptance:** A save with planted TERM-01 and LAYER-07 issues displays code findings first; a suitable TERM-02 case yields a model finding from structured BaniDB evidence. Each finding's quoted span equals the saved English draft slice at its offsets and links only to existing rule/reference IDs. An injected bad model span or ID is absent from storage and UI. Unrelated tukks are not re-checked, while a changed first use or Sabad-wide collapse rechecks dependent findings. A delayed model response from an older draft/ruleset cannot replace current results. Code checks meet the under-one-second target; model checks aim for about 15 seconds per authored unit and report measured timing rather than mockup numbers. Eight checks have golden cases; CONS-02/03 are verified through review workflow, not invented text checks.
+**Feature acceptance:** A save with planted TERM-01 and LAYER-07 issues displays code findings first; a suitable TERM-02 case yields a model finding from structured BaniDB evidence. Each finding's quoted span equals the saved English draft slice at its offsets and links only to existing rule/reference IDs. An injected bad model span or ID is absent from storage and UI. Unrelated tukks are not re-checked, while a changed first use or Sabad-wide collapse rechecks dependent findings. A delayed model response from an older draft/ruleset cannot replace current results. Code checks meet the under-one-second target; model checks aim for about 15 seconds per authored unit and report measured timing rather than mockup numbers. Implemented checks have focused cases; CONS-02/03 are verified through review workflow, not invented text checks. F8 covers the new layers.
 
 ## F3 · Reference and style evidence
 
@@ -153,7 +153,7 @@ The hour labels below are estimates, not hard stop times; pass each milestone's 
 | API-06 | Rules response lists all 66 seeded rules and current approved additions with rule text, level, resolution, source, version and provenance; it derives counts from the stored rules. |
 | FE-07 | Rules list filters by status and shows a detail panel with verbatim rule text, check plan, severity, team judgment and approval history. |
 
-**Feature acceptance:** The initial catalog shows 66 rules and 10 active resolutions (eight checks, one suppressor, one by-design rule); PRIN-04 is active and three rules are removed. No text or count is hard-coded from mockup page 7. After approval of a new rule, the list and version update from live data. Version-history browsing beyond provenance is P1.
+**Feature acceptance:** The catalog shows all 66 source rules, their applicable layers and a separate implemented-layer count. PRIN-03, TERM-04 and TERM-05 are reinstated. No text or count is hard-coded from mockup page 7. After approval of a new rule, the list and version update from live data. Version-history browsing beyond provenance is P1.
 
 ## F6 · Proposals, drift guard and ruleset activation
 
@@ -181,6 +181,16 @@ The hour labels below are estimates, not hard stop times; pass each milestone's 
 | FE-09 | Evaluation page shows catch rate, false-flag rate, sample size and ruleset version from the API; missing data is labelled unavailable, never displayed as 0%. |
 
 **Feature acceptance:** With a real held-back sample, the page reports the two rates and their denominators for the selected ruleset version; recomputation with cached model responses matches. A sampled caught and missed correction can be traced to the underlying finding or lack of one. Without pre-edit drafts, beat 6 is explicitly unavailable and no synthetic rate is presented as measured. Per-rule UI breakdown is an M2 cut; keep the JSON output. Browser Run/Export controls and example cards are P1.
+
+## F8 · All-layer rule reconciliation and expanded checks
+
+**Workstreams:** CONTRACTS, CHECKS, LLM, API, FE and DOCS. **Design:** [`docs/superpowers/specs/2026-10-16-all-rules-design.md`](../docs/superpowers/specs/2026-10-16-all-rules-design.md). **Matrix:** [`rules/all-rules-matrix.md`](rules/all-rules-matrix.md).
+
+| Task | Independently reviewable deliverable |
+|---|---|
+| RULE-ALL | Track all 66 verbatim seed rules, reinstate PRIN-03/TERM-04/TERM-05, store layer-specific human drafts, and expose the actual implemented and pending status for each rule. Add evidence-backed checks and version the rule decisions without deleting earlier decisions. |
+
+**Feature acceptance:** Literal, transcreation, word annotation and transcription drafts coexist and reload by source location; Gurmukhi remains BaniDB-sourced and read-only. Each rule has an applicable layer, required evidence, check or workflow mode, and a visible result or honest unavailable reason. Every implemented text finding quotes an exact span from the current authored field. A literal edit invalidates a dependent LAYER-08 result. Only the transcreation enters the current published-reference workflow until layer-specific publication records are designed. The all-rule matrix names which subchecks still lack source data or implementation; an active catalog entry alone is never called a pass. The expansion stays in progress while any check that can be implemented from available, trustworthy inputs is still pending.
 
 ## P1 tasks if capacity remains
 

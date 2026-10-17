@@ -4,7 +4,7 @@
 
 **Goal:** Finish F0's Mac-verifiable foundation: contract fixtures, private-data guardrails, durable app storage, BaniDB-backed source ingest and source-only demo seed, and contract-valid P0 route skeletons.
 
-**Architecture:** Keep the existing contracts as the source of truth. The app owns one SQLite database and imports source text only through the ingest script; route handlers never query BaniDB. The engine remains a synthetic stub for F0. The user-provided, ignored `data/banidb/banidb.sqlite` has a partial `Verse` table but a full-looking `tmp_Verse` staging table. Validate that table and export a complete local Sabad from it, preserving the older private API fixture and its provenance until replacement passes all checks.
+**Architecture:** Keep the existing contracts as the source of truth. The app owns one SQLite database and imports source text only through the ingest script; route handlers never query BaniDB. The engine remains a synthetic stub for F0. The user-provided, ignored `data/banidb/banidb-upload.sqlite` has a partial `Verse` table but a full-looking `tmp_Verse` staging table. Validate that table and export a complete local Sabad from it, preserving the older private API fixture and its provenance until replacement passes all checks.
 
 **Tech Stack:** Node 22, pnpm 11.25.0, Next.js 16 App Router, TypeScript strict, Zod 4, better-sqlite3, Drizzle ORM/Kit, Vitest. The existing mysql2 exporter remains available for the Docker development image.
 

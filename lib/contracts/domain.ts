@@ -1,6 +1,20 @@
 import { z } from "zod";
 
 export const NonblankSchema = z.string().refine((value) => value.trim().length > 0, "Must not be blank");
+export const containsGurmukhi = (text: string): boolean => [...text].some((character) => {
+  const point = character.codePointAt(0) ?? 0;
+  return point >= 0x0a00 && point <= 0x0a7f;
+});
+/** True for BaniDB numeral tokens with optional surrounding punctuation or symbols. */
+export function isGurmukhiNumericToken(text: string): boolean {
+  const characters = Array.from(text);
+  const isDigit = (character: string) => {
+    const point = character.codePointAt(0)!;
+    return point >= 0x0a66 && point <= 0x0a6f;
+  };
+  return characters.some(isDigit) && characters.every((character) => isDigit(character) || /[\p{P}\p{S}]/u.test(character));
+}
+export const EditableEnglishSchema = z.string().refine((text) => !containsGurmukhi(text), "Gurmukhi is read-only and comes from BaniDB");
 export const IdSchema = NonblankSchema;
 export const VersionSchema = z.number().int().positive();
 export const TimestampSchema = z.iso.datetime({ offset: true });
@@ -10,6 +24,7 @@ export const CheckPhaseSchema = z.enum(["code", "llm"]);
 export const FindingSeveritySchema = z.enum(["error", "flag", "warning", "hint"]);
 export const RuleSeveritySchema = z.enum(["error", "flag", "warning", "hint", "lens", "none"]);
 export const SourceLayerSchema = z.enum(["literal", "transcreation", "annotation", "transcription", "publication", "process"]);
+export const AuthoredLayerSchema = z.enum(["literal", "transcreation", "annotation", "transcription", "publication"]);
 export const ReferenceSourceSchema = z.enum(["sikhri_sample", "published"]);
 
 export const LineSchema = z.strictObject({
@@ -24,8 +39,9 @@ export const SabadSchema = z.strictObject({ shabad_id: IdSchema, lines: z.array(
 });
 export const WordSchema = z.strictObject({ line_id: IdSchema, index: z.number().int().nonnegative(), surface: NonblankSchema, stem_key: NonblankSchema, ending_matra: z.string() });
 export const DraftSchema = z.strictObject({
-  id: IdSchema, shabad_id: IdSchema, line_ids: GroupedLineIdsSchema, layer: z.literal("transcreation"),
-  text: z.string(), author: NonblankSchema, status: z.enum(["draft", "ready_for_review", "changes_requested", "published"]),
+  id: IdSchema, shabad_id: IdSchema, line_ids: GroupedLineIdsSchema, layer: AuthoredLayerSchema,
+  source_word_start: z.number().int().nonnegative().nullable().optional(),
+  text: EditableEnglishSchema, author: NonblankSchema, status: z.enum(["draft", "ready_for_review", "changes_requested", "published"]),
   version: VersionSchema, updated_at: TimestampSchema,
 });
 // The complete current authored-unit snapshot permits first-use/collapse checks without app I/O.
@@ -33,15 +49,18 @@ export const AuthoredUnitSnapshotSchema = z.strictObject({ draft: DraftSchema, s
   const selected = input.sabadDrafts.find((unit) => unit.id === input.draft.id);
   if (!selected || JSON.stringify(selected) !== JSON.stringify(input.draft)) ctx.addIssue({ code: "custom", message: "Selected draft must match its current snapshot entry", path: ["draft"] });
   if (input.sabadDrafts.some((unit) => unit.shabad_id !== input.draft.shabad_id)) ctx.addIssue({ code: "custom", message: "Every authored unit must belong to the same Sabad", path: ["sabadDrafts"] });
+  if (input.sabadDrafts.some((unit) => unit.layer !== input.draft.layer)) ctx.addIssue({ code: "custom", message: "A check snapshot must contain one authored layer", path: ["sabadDrafts"] });
   const ids = input.sabadDrafts.map((unit) => unit.id);
-  const lineIds = input.sabadDrafts.flatMap((unit) => unit.line_ids);
-  if (new Set(ids).size !== ids.length || new Set(lineIds).size !== lineIds.length) ctx.addIssue({ code: "custom", message: "Authored units must have unique IDs and disjoint source groups", path: ["sabadDrafts"] });
+  const coordinates = input.sabadDrafts.flatMap((unit) => unit.line_ids.map((lineId) => `${lineId}:${unit.source_word_start ?? "line"}`));
+  if (new Set(ids).size !== ids.length || new Set(coordinates).size !== coordinates.length) ctx.addIssue({ code: "custom", message: "Authored units must have unique IDs and disjoint source groups or word positions", path: ["sabadDrafts"] });
 });
 export const ProvenanceSchema = z.strictObject({ actor: NonblankSchema, reason: NonblankSchema, at: TimestampSchema });
 export const RuleResolutionSchema = z.strictObject({
-  active: z.boolean(), scope: z.enum(["p0_check", "p0_by_design", "p0_suppressor", "p1_check", "review_lens", "out_of_scope", "merged", "removed"]),
+  active: z.boolean(), scope: z.enum(["p0_check", "p0_by_design", "p0_suppressor", "p0_process", "p1_check", "review_lens", "out_of_scope", "merged", "removed"]),
   severity: RuleSeveritySchema, blocks_publish: z.boolean(), publish_requires_reason: z.boolean().optional(),
   layers: z.array(SourceLayerSchema), conditional: NonblankSchema.nullable(), decision: NonblankSchema.nullable(),
+  mode: z.enum(["code", "model", "hybrid", "workflow", "suppressor", "existing"]).nullable().optional(),
+  implemented_layers: z.array(SourceLayerSchema).optional(),
 });
 export const RuleSchema = z.strictObject({
   id: IdSchema, text: NonblankSchema, level: z.enum(["MUST", "SHOULD", "GUIDE"]),
@@ -99,11 +118,13 @@ export const ReferenceSchema = z.strictObject({
 });
 export const CheckInputSchema = z.strictObject({
   sabad: SabadSchema, draft: DraftSchema, sabadDrafts: z.array(DraftSchema).min(1), changedLineIds: IdsSchema, rules: z.array(RuleSchema), rulesetVersion: VersionSchema, references: z.array(ReferenceSchema),
+  relatedDrafts: z.array(DraftSchema).optional(),
 }).superRefine((input, ctx) => {
   const snapshot = AuthoredUnitSnapshotSchema.safeParse({ draft: input.draft, sabadDrafts: input.sabadDrafts });
   if (!snapshot.success) for (const issue of snapshot.error.issues) ctx.addIssue({ code: "custom", message: issue.message, path: issue.path });
   const ids = new Set(input.sabad.lines.map((line) => line.line_id));
   if (input.draft.shabad_id !== input.sabad.shabad_id || [...input.sabadDrafts.flatMap((unit) => unit.line_ids), ...input.changedLineIds].some((id) => !ids.has(id))) ctx.addIssue({ code: "custom", message: "Draft and changed source IDs must belong to the input Sabad" });
+  if (input.relatedDrafts?.some((unit) => unit.shabad_id !== input.sabad.shabad_id || unit.line_ids.some((id) => !ids.has(id)))) ctx.addIssue({ code: "custom", message: "Related authored evidence must belong to the input Sabad", path: ["relatedDrafts"] });
   const partialGroup = input.sabadDrafts.some((unit) => { const changed = unit.line_ids.filter((id) => input.changedLineIds.includes(id)); return changed.length > 0 && changed.length !== unit.line_ids.length; });
   if (partialGroup) ctx.addIssue({ code: "custom", message: "Changed authored groups must include every covered source line ID", path: ["changedLineIds"] });
   if (new Set(input.rules.map((rule) => rule.id)).size !== input.rules.length || new Set(input.references.map((reference) => reference.id)).size !== input.references.length) ctx.addIssue({ code: "custom", message: "Snapshot IDs must be unique" });
@@ -142,6 +163,8 @@ export const PublishBlockerSchema = z.discriminatedUnion("kind", [
   z.strictObject({ kind: z.literal("finding"), finding_id: IdSchema, rule_id: IdSchema, severity: z.enum(["error", "flag"]) }),
   z.strictObject({ kind: z.literal("check_phase"), draft_id: IdSchema, phase: CheckPhaseSchema, status: z.enum(["missing", "pending", "failed"]) }),
   z.strictObject({ kind: z.literal("departure_reason"), finding_id: IdSchema, rule_id: z.literal("CONS-01") }),
+  z.strictObject({ kind: z.literal("layer_unavailable"), draft_id: IdSchema, layer: AuthoredLayerSchema }),
+  z.strictObject({ kind: z.literal("workflow"), draft_id: IdSchema, rule_id: z.literal("FLOW-01") }),
 ]);
 export const PublishGateSchema = z.strictObject({ draft_id: IdSchema, draft_version: VersionSchema, ruleset_version: VersionSchema, can_publish: z.boolean(), blockers: z.array(PublishBlockerSchema), warning_ids: IdsSchema }).refine((gate) => gate.can_publish === (gate.blockers.length === 0), "Publish permission must agree with its blockers");
 

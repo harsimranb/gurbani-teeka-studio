@@ -27,9 +27,10 @@ export function RulesCatalog() {
     setPicked(categoryOf(paramRule));
   }
   if (!paramRule && seenParam !== null) setSeenParam(null);
-  const filter: FilterKey = picked ?? "active";
+  const filter: FilterKey = picked ?? "all";
 
   const counts = useMemo(() => countsByFilter(rules), [rules]);
+  const implementedCount = rules.filter((rule) => (rule.resolution.implemented_layers?.length ?? 0) > 0).length;
   const seedCount = rules.filter((rule) => rule.source === "sikhri_seed").length;
   const addedCount = rules.length - seedCount;
   const visible = useMemo(() => {
@@ -64,7 +65,7 @@ export function RulesCatalog() {
         <div className="min-w-0 flex-[1_1_560px]">
           <h1 className="m-0 text-[28px] font-semibold tracking-tight text-ink">Ruleset {rulesetLabel(data.ruleset_version)}</h1>
           <p className="mt-0.5 mb-0 max-w-[820px] text-sm text-muted">
-            {seedCount} rules from SikhRI&apos;s published Approach and Methodology{addedCount > 0 ? ` plus ${addedCount} added by approved proposals` : ""}, verbatim, with the team&apos;s decision beside each. Eko checks the English transcreation only, so {counts.active} rules are active today.
+            {seedCount} source rules{addedCount > 0 ? ` plus ${addedCount} approved additions` : ""}, verbatim, with the team&apos;s decision beside each. {implementedCount} have a check or workflow on at least one layer today; the rest await inputs or implementation.
           </p>
         </div>
         <Link href="/rules/proposals" className={cn(buttonStyles({ variant: "primary" }), "min-h-11 px-[18px] no-underline")}>Propose a rule</Link>
@@ -94,7 +95,7 @@ export function RulesCatalog() {
         <section aria-label={FILTERS.find((item) => item.key === filter)?.label} className="min-w-0 flex-[999_1_620px] overflow-hidden rounded-xl border border-line bg-card">
           <RuleTable rules={visible} selectedId={selected?.id ?? null} onSelect={select} />
           <div className="flex flex-col gap-1 border-t border-divider bg-subtle px-4 py-3 text-[13px] leading-[1.6] text-body">
-            {footnote.inactive.length > 0 ? <p className="m-0"><b className="font-semibold text-ink">Inactive while only the transcreation is reviewed:</b> {footnote.inactive.join(", ")}.</p> : null}
+            {footnote.inactive.length > 0 ? <p className="m-0"><b className="font-semibold text-ink">Other dispositions:</b> {footnote.inactive.join(", ")}.</p> : null}
             {footnote.removed.length > 0 ? <p className="m-0"><b className="font-semibold text-ink">Removed by the team:</b> {footnote.removed.join(", ")}.</p> : null}
             {footnote.merged.length > 0 ? (
               <p className="m-0">

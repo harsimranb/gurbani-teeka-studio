@@ -5,7 +5,8 @@ import { checkedRules, compilePrefilter, scanPatterns } from "./index";
 
 const EXPECTED_SEVERITY: Record<string, string> = {
   "PRIN-04": "flag", "TERM-01": "error", "TERM-02": "flag", "TERM-03": "warning",
-  "TERM-07": "warning", "LAYER-06": "flag", "LAYER-07": "error", "CONS-01": "warning",
+  "PRIN-01": "hint", "PRIN-06": "lens", "PRIN-07": "lens", "PRIN-08": "warning",
+  "TERM-04": "flag", "TERM-05": "flag", "TERM-07": "warning", "LAYER-06": "flag", "LAYER-07": "error", "LAYER-08": "warning", "LAYER-09": "hint", "CONS-01": "warning",
 };
 
 const rule = (id: string): Rule => rulesFixture.find((entry) => entry.id === id)!;
@@ -13,7 +14,7 @@ const patch = (id: string, change: (rule: Rule) => Rule): Rule[] => rulesFixture
 const hits = (id: string, text: string) => scanPatterns(compilePrefilter(rule(id)), text).map((hit) => ({ text: hit.text, start: hit.start, end: hit.end, action: hit.action }));
 
 describe("checkedRules", () => {
-  it("is exactly the eight active approved p0_check transcreation rules with resolved severities", () => {
+  it("selects only implemented transcreation checks with resolved severities", () => {
     const checked = checkedRules(rulesFixture);
     expect(checked.map((entry) => entry.id).sort()).toEqual(Object.keys(EXPECTED_SEVERITY).sort());
     for (const entry of checked) expect(entry.resolution.severity, entry.id).toBe(EXPECTED_SEVERITY[entry.id]);
@@ -26,7 +27,7 @@ describe("checkedRules", () => {
     expect(ids(patch("TERM-01", (entry) => ({ ...entry, resolution: { ...entry.resolution, scope: "p1_check" } })))).not.toContain("TERM-01");
     expect(ids(patch("TERM-01", (entry) => ({ ...entry, resolution: { ...entry.resolution, layers: ["literal"] } })))).not.toContain("TERM-01");
     expect(ids(patch("TERM-01", (entry) => ({ ...entry, resolution: { ...entry.resolution, layers: ["literal", "transcreation"] } })))).toContain("TERM-01");
-    expect(ids(patch("TERM-01", (entry) => ({ ...entry, status: "retired" }))).length).toBe(7);
+    expect(ids(patch("TERM-01", (entry) => ({ ...entry, status: "retired" }))).length).toBe(15);
   });
 
   it("leaves out rules whose resolution scope is not p0_check", () => {

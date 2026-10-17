@@ -82,7 +82,7 @@ describe("shared review contracts", () => {
     const rules = seed.rules.map((rule) => RuleSchema.parse({ id: rule.id, text: rule.text, level: rule.level, layers: rule.resolution.layers, plan: rule.check_type, severity: rule.resolution.severity, decision: rule.resolution.decision, version: 1, status: "approved", source: "sikhri_seed", source_tag: rule.source_tag, prefilter: rule.prefilter, resolution: rule.resolution, provenance: null }));
     expect(rules).toHaveLength(66);
     expect(rules.map((rule) => rule.text)).toEqual(seed.rules.map((rule) => rule.text));
-    expect(rules.filter((rule) => rule.resolution.active)).toHaveLength(10);
+    expect(rules.filter((rule) => rule.resolution.active)).toHaveLength(66);
     expect(rules.filter((rule) => rule.resolution.publish_requires_reason).map((rule) => rule.id)).toEqual(["CONS-01"]);
     expect(rulesetLabel(1)).toBe("v1");
   });

@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 import Database from "better-sqlite3";
 import { SabadSchema } from "../../lib/contracts/domain";
 
-const privatePath = new URL("../../data/banidb/banidb.sqlite", import.meta.url);
+const privatePath = new URL("../../data/banidb/banidb-upload.sqlite", import.meta.url);
 const sourceTest = existsSync(privatePath) ? it : it.skip;
 
 describe("local BaniDB SQLite export", () => {

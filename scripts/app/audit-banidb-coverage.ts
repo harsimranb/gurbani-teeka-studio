@@ -194,11 +194,16 @@ export async function runLiveCheck(db: Database.Database, sample: number[], fetc
   return { live_check: "done" as const, sample_size: sample.length, matched, parity: `${matched}/${sample.length}`, results };
 }
 
+function assertGitManagedOrIgnored(root: string, path: string) {
+  try { execFileSync("git", ["check-ignore", "-q", "--", path], { cwd: root }); }
+  catch { execFileSync("git", ["ls-files", "--error-unmatch", "--", path], { cwd: root, stdio: "ignore" }); }
+}
+
 async function main() {
   const root = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
-  const sourcePath = "data/banidb/banidb.sqlite";
+  const sourcePath = "data/banidb/banidb-upload.sqlite";
   const reportPath = "data/banidb/coverage-audit.json";
-  for (const path of [sourcePath, reportPath]) execFileSync("git", ["check-ignore", "-q", "--", path], { cwd: root });
+  assertGitManagedOrIgnored(root, reportPath);
   const db = new Database(resolve(root, sourcePath), { readonly: true, fileMustExist: true });
   let internal: ReturnType<typeof auditInternalConsistency>;
   let live: Awaited<ReturnType<typeof runLiveCheck>>;

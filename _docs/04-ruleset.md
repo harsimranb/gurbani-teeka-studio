@@ -2,7 +2,7 @@
 
 Eko's rules come from the team's draft ruleset v0.1, built from SikhRI's published Approach and Methodology pages: 66 rules, each with a strength level (MUST, SHOULD, GUIDE) and a source tag. Rule text is kept verbatim. How each rule is applied (scope, severity, layers) is a team judgment call, recorded per rule in [`rules/rules.resolved.json`](rules/rules.resolved.json).
 
-**Status:** judgment calls are provisional until the reviewer answers [reviewer-questions.md](reviewer-questions.md) and SikhRI's style guide arrives.
+**Status:** all 66 rules are tracked across their source layers, with 42 having an implemented check or workflow on at least one layer. Some are partial checks and explicitly report what remains unevaluable. The other 24 have a planned mode and required evidence in [the all-rules matrix](rules/all-rules-matrix.md). Judgment calls remain provisional until the reviewer answers [reviewer-questions.md](reviewer-questions.md) and SikhRI's style guide arrives.
 
 ## Files
 
@@ -12,6 +12,7 @@ Eko's rules come from the team's draft ruleset v0.1, built from SikhRI's publish
 | [`rules/rules.seed.json`](rules/rules.seed.json) | 66 rules, verbatim, with category, check type, prefilter proposals, ambiguities |
 | [`rules/resolve.py`](rules/resolve.py) | All judgment calls. **Edit here** |
 | [`rules/rules.resolved.json`](rules/rules.resolved.json) | Generated output the app loads. Each rule has a `resolution` block |
+| [`rules/all-rules-matrix.md`](rules/all-rules-matrix.md) | Generated 66-ID layer, mode, evidence and implementation inventory |
 | [`rules/RULES_NOTES.md`](rules/RULES_NOTES.md) | Analysis: tensions, precision risks, questions, synthetic test cases (§10). Written before the Oct 16 team decisions; where it disagrees, `rules.resolved.json` wins |
 
 ### The `resolution` block
@@ -42,7 +43,9 @@ Eko's rules come from the team's draft ruleset v0.1, built from SikhRI's publish
 | `removed` | Removed by the team |
 | `merged` | Folded into another rule |
 
-## Counts
+## Prior transcreation-only counts (historical)
+
+The table and original active-rule list below describe the pre-expansion baseline. Current scope and implementation counts come from `rules.resolved.json` and `all-rules-matrix.md`; the catalog derives its counts from the stored ruleset.
 
 | Scope | Count |
 |---|---|
@@ -68,7 +71,7 @@ Severity follows the draft's own strength table.
 | **Hint** | Anything Eko can't verify | Shown; no action needed (none active in this build) |
 | **Lens** | GUIDE | Shown to reviewers as guidance; never flagged |
 
-## Active rules
+## Original transcreation checks and workflow rules
 
 | Rule | What it checks | Level | How Eko checks it | Severity |
 |---|---|---|---|---|
@@ -85,15 +88,14 @@ Severity follows the draft's own strength table.
 
 Prefilter patterns for each active rule are proposals in `rules.seed.json` (`prefilter` field). Treat them as a starting point, then tune against the golden tests.
 
-**Removed by the team:** TERM-04, TERM-05, PRIN-03, and the interim pronoun check EKO-PRON-01.
-**Inactive while only the transcreation is reviewed:** TERM-08, LAYER-01 to 04, LAYER-08. Their earlier calls are kept in `resolve.py` for later.
+**Reinstated by the user for the all-layer expansion:** TERM-04, TERM-05 and PRIN-03. The interim pronoun check EKO-PRON-01 remains outside the 66-rule seed. Literal, annotation, transcription, publication and process rules are tracked even where a check remains pending.
 
 ## Global decisions
 
 1. Severity follows the strength table above.
 2. PRIN rules win conflicts, as the draft states. A specific rule is cited over an umbrella rule (LAYER-10 → TERM-01 to 03).
 3. The review unit is the Sabad: "first use" and "same word" are scoped to one Sabad.
-4. Each rule runs only on its own layer; in this build that means the transcreation.
+4. Each rule runs only on its own applicable layer; the all-layer expansion tracks literal, transcreation, annotation, transcription, publication and process, with implementation status shown separately.
 5. Wording follows PRIN-04: "differs from reference rendering", never "incorrect". "Approved" is a workflow status only.
 6. Open questions for SikhRI never become flags.
 7. Eko never generates translation text.
@@ -116,7 +118,7 @@ Prefilter patterns for each active rule are proposals in `rules.seed.json` (`pre
 ## How to change a rule decision
 
 1. Edit the decision in `_docs/rules/resolve.py`. Never edit rule text in `rules.seed.json`.
-2. With Python 3 installed, run `python3 _docs/rules/resolve.py` on macOS or `py -3 _docs/rules/resolve.py` on Windows. It prints the active rules; check the list is what you expect.
+2. With Python 3 installed, run `python3 _docs/rules/resolve.py` on macOS or `py -3 _docs/rules/resolve.py` on Windows. It regenerates the resolved JSON and all-rules matrix; check their counts and evidence status.
 3. Nothing to copy: the DATA seed and engine tests read `_docs/rules/rules.resolved.json` in place. Re-run the seed so the app's rules table picks up the change.
 4. Update this file's tables if the active set or a severity changed.
 5. Add a line to [07-decisions.md](07-decisions.md).
@@ -124,7 +126,7 @@ Prefilter patterns for each active rule are proposals in `rules.seed.json` (`pre
 
 ## Synthetic test cases
 
-`rules/RULES_NOTES.md` §10 has 38 SYNTHETIC English sentences (pass and flag pairs) for golden tests and the model bake-off. Use only the transcreation cases for active rules. They contain no Gurbani.
+`rules/RULES_NOTES.md` §10 has 38 SYNTHETIC English sentences (pass and flag pairs) for golden tests and the model bake-off. They contain no Gurbani. New-layer checks use additional focused synthetic English cases and BaniDB-exported source fixtures.
 
 ## Rules for the video
 

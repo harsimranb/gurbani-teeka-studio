@@ -2,11 +2,11 @@ import { routes, type ApiError, type ApiRequest, type ApiResponse, type RouteNam
 import { evalFixture } from "../contracts/fixtures";
 import {
   DriftResultSchema,
-  type CheckRun, type Decision, type Draft, type DriftResult, type Finding, type Proposal, type PublishGate, type Reference, type Rule, type Sabad,
+  isGurmukhiNumericToken, type CheckRun, type Decision, type Draft, type DriftResult, type Finding, type Proposal, type PublishGate, type Reference, type Rule, type Sabad,
 } from "../contracts/domain";
 import { notifyDataChanged } from "./events";
 import { runMockChecks, type MockPhase } from "./mock-checks";
-import { activeRunIds, currentRules, getMockEvalMode, getState, loadMockSabad, nextId, nowIso, persist } from "./mock-store";
+import { activeRunIds, currentRules, getMockEvalMode, getState, loadMockSabad, nextId, nowIso, persist, rulesForVersion } from "./mock-store";
 
 /**
  * MOCK ONLY (FE-02). Stateful stand-in for the real API. Semantics here are a UI aid:
@@ -40,9 +40,9 @@ function clearFindings(predicate: (finding: Finding) => boolean): void {
   const at = nowIso();
   s.findings = s.findings.map((finding) => (finding.state === "current" && predicate(finding) ? { ...finding, state: "cleared" as const, cleared_at: at } : finding));
 }
-function currentFindings(draft: Draft): Finding[] {
+function currentFindings(draft: Draft, rulesetVersion = getState().rulesetVersion): Finding[] {
   const s = getState();
-  return s.findings.filter((f) => f.draft_id === draft.id && f.state === "current" && f.draft_version === draft.version && f.ruleset_version === s.rulesetVersion);
+  return s.findings.filter((f) => f.draft_id === draft.id && f.state === "current" && f.draft_version === draft.version && f.ruleset_version === rulesetVersion);
 }
 function latestRun(draft: Draft, phase: MockPhase): CheckRun | undefined {
   const s = getState();
@@ -51,6 +51,7 @@ function latestRun(draft: Draft, phase: MockPhase): CheckRun | undefined {
 function computeGate(draft: Draft, resolvedDepartures: Set<string>): PublishGate {
   const s = getState();
   const blockers: PublishGate["blockers"] = [];
+  if (draft.layer !== "transcreation") blockers.push({ kind: "layer_unavailable", draft_id: draft.id, layer: draft.layer });
   const findings = currentFindings(draft);
   for (const f of findings) {
     if (f.rule_id === "CONS-01") { if (!resolvedDepartures.has(f.id)) blockers.push({ kind: "departure_reason", finding_id: f.id, rule_id: "CONS-01" }); continue; }
@@ -77,7 +78,6 @@ function applyCheck(draft: Draft, phase: MockPhase, startedAt: string, runId?: s
   const layer = phaseLayer(phase);
   s.findings = s.findings.filter((f) => !(f.draft_id === draft.id && f.state === "current" && f.layer === layer));
   s.findings.push(...findings);
-  s.runs = s.runs.filter((run) => !(run.draft_id === draft.id && run.phase === phase));
   const run: CheckRun = {
     id: runId ?? nextId("run"), draft_id: draft.id, draft_version: draft.version, ruleset_version: s.rulesetVersion, phase,
     status: "succeeded", started_at: startedAt, completed_at: nowIso(), error: null, cached: false, not_evaluable: raw.notEvaluable,
@@ -246,44 +246,63 @@ const handlers: { [N in RouteName]: Handler<N> } = {
     const found = await requireSabad(req.shabad_id);
     if (isErr(found)) return found;
     const s = getState();
+    const layer = req.layer ?? "transcreation";
+    const sourceWordStart = req.source_word_start ?? null;
     const lineIds = new Set(found.sabad.lines.map((line) => line.line_id));
     if (req.line_ids.some((id) => !lineIds.has(id))) return err("invalid_request", "Every source line must belong to this Sabad.");
+    if (sourceWordStart !== null) {
+      if (!(layer === "annotation" || layer === "transcription") || req.line_ids.length !== 1) return err("invalid_request", "A word position needs one annotation or transcription source line.");
+      const line = found.sabad.lines.find((item) => item.line_id === req.line_ids[0])!;
+      const sourceToken = [...line.gurmukhi.matchAll(/\S+/gu)].find((match) => match.index === sourceWordStart)?.[0];
+      const isWord = sourceToken !== undefined && !/^[\p{P}\p{S}\p{N}\u0964\u0965]+$/u.test(sourceToken);
+      const isNumericTranscription = layer === "transcription" && sourceToken !== undefined && isGurmukhiNumericToken(sourceToken);
+      if (!isWord && !isNumericTranscription) return err("invalid_request", "That word position does not exist in the BaniDB source line.");
+    }
     if (req.draft_id === null) {
-      const overlapped = s.drafts.filter((d) => d.shabad_id === req.shabad_id && d.line_ids.some((id) => req.line_ids.includes(id)));
+      const overlapped = s.drafts.filter((d) => d.shabad_id === req.shabad_id && d.layer === layer
+        && (d.source_word_start ?? null) === sourceWordStart && d.line_ids.some((id) => req.line_ids.includes(id)));
       if (overlapped.length > 0) {
+        const published = overlapped.find((draft) => draft.status === "published");
+        if (published) return err("invalid_request", "This source line is part of published work; edit the published draft to reopen it instead of replacing it.");
         const gone = new Set(overlapped.map((d) => d.id));
         clearFindings((f) => gone.has(f.draft_id));
         s.drafts = s.drafts.filter((d) => !gone.has(d.id));
         s.runs = s.runs.filter((r) => !gone.has(r.draft_id));
       }
-      const draft: Draft = { id: nextId("draft"), shabad_id: req.shabad_id, line_ids: req.line_ids, layer: "transcreation", text: req.text, author: req.author, status: "draft", version: 1, updated_at: nowIso() };
+      const draft: Draft = { id: nextId("draft"), shabad_id: req.shabad_id, line_ids: req.line_ids, layer, text: req.text,
+        ...(sourceWordStart === null ? {} : { source_word_start: sourceWordStart }), author: req.author, status: "draft", version: 1, updated_at: nowIso() };
       s.drafts.push(draft);
       return { draft };
     }
     const existing = findDraft(req.draft_id);
     if (!existing) return err("not_found", "That draft does not exist.");
     if (existing.shabad_id !== req.shabad_id) return err("invalid_request", "The draft belongs to a different Sabad.");
+    if (existing.layer !== layer) return err("invalid_request", "A draft's layer cannot change; create a separate authored item.");
+    if ((existing.source_word_start ?? null) !== sourceWordStart) return err("invalid_request", "A draft's source word cannot change; create a separate authored item.");
     if (req.expected_version !== existing.version) return err("version_conflict", "The draft changed since you loaded it; reload before saving.");
     const changed = req.text !== existing.text || !sameList(req.line_ids, existing.line_ids);
     if (!changed) return { draft: existing };
-    if (!sameList(req.line_ids, existing.line_ids) && s.drafts.some((d) => d.id !== existing.id && d.line_ids.some((id) => req.line_ids.includes(id)))) {
+    if (!sameList(req.line_ids, existing.line_ids) && s.drafts.some((d) => d.id !== existing.id && d.layer === layer
+      && (d.source_word_start ?? null) === sourceWordStart && d.line_ids.some((id) => req.line_ids.includes(id)))) {
       return err("invalid_request", "Those source lines are already covered by another draft.");
     }
     const updated: Draft = { ...existing, text: req.text, line_ids: req.line_ids, author: req.author, version: existing.version + 1, updated_at: nowIso(), status: "draft" };
     s.drafts = s.drafts.map((d) => (d.id === existing.id ? updated : d));
     clearFindings((f) => f.draft_id === existing.id);
-    s.runs = s.runs.filter((r) => !(r.draft_id === existing.id && r.draft_version !== updated.version));
     return { draft: updated };
   },
   async getReport(req) {
     const s = getState();
     const draft = findDraft(req.draft_id);
     if (!draft) return err("not_found", "That draft does not exist.");
+    const publications = draft.status === "published" ? Object.values(s.refMeta).filter((meta) => meta.draft_id === draft.id) : [];
+    const publication = publications.filter((meta) => meta.gate?.draft_version === draft.version).at(-1) ?? publications.at(-1);
+    const rulesetVersion = publication?.gate?.ruleset_version ?? s.rulesetVersion;
     return {
-      draft, ruleset_version: s.rulesetVersion, findings: currentFindings(draft),
+      draft, ruleset_version: rulesetVersion, findings: currentFindings(draft, rulesetVersion),
       history: s.findings.filter((f) => f.draft_id === draft.id && f.state === "cleared"),
       decisions: s.decisions.filter((d) => d.draft_id === draft.id),
-      check_runs: s.runs.filter((r) => r.draft_id === draft.id && r.draft_version === draft.version && r.ruleset_version === s.rulesetVersion),
+      check_runs: s.runs.filter((r) => r.draft_id === draft.id && r.draft_version === draft.version && r.ruleset_version === rulesetVersion),
     };
   },
   runCodeChecks: (req) => runPhase("code", req),
@@ -370,7 +389,14 @@ const handlers: { [N in RouteName]: Handler<N> } = {
     const reference = getState().references.find((r) => r.id === req.reference_id);
     return reference ? { reference } : err("not_found", "That reference does not exist.");
   },
-  async listRules() { return { ruleset_version: getState().rulesetVersion, rules: currentRules() }; },
+  async listRules(req) {
+    const s = getState();
+    if (typeof req.ruleset_version === "number") {
+      const rules = rulesForVersion(req.ruleset_version);
+      return rules ? { ruleset_version: req.ruleset_version, rules } : err("not_found", `Ruleset ${req.ruleset_version} is not available.`);
+    }
+    return { ruleset_version: s.rulesetVersion, rules: currentRules() };
+  },
   async listProposals() { return { proposals: getState().proposals }; },
   async getProposal(req) {
     const s = getState();
@@ -419,10 +445,12 @@ const handlers: { [N in RouteName]: Handler<N> } = {
     };
     s.rulesetVersion = newVersion;
     s.proposalRules.push(rule);
+    s.rulesets.push({ ruleset_version: newVersion, rules: currentRules() });
     s.proposals = s.proposals.map((p) => (p.id === proposal.id ? { ...p, status: "approved" as const } : p));
     if (driftOverride) { const ids = new Set(blocked.map((d) => d.id)); s.drift = s.drift.map((d) => (ids.has(d.id) ? { ...d, override: driftOverride } : d)); }
-    // The ruleset changed, so every earlier result is stale: history keeps it, checks must be run again.
-    clearFindings(() => true);
+    // Published drafts retain their historical review snapshot; only unpublished findings are cleared.
+    const publishedDraftIds = new Set(s.drafts.filter((draft) => draft.status === "published").map((draft) => draft.id));
+    clearFindings((finding) => !publishedDraftIds.has(finding.draft_id));
     return { rule, approval: { proposal_id: proposal.id, ruleset_version: newVersion, provenance, drift_override: driftOverride }, ruleset_version: newVersion };
   },
   async getEval() {

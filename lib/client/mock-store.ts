@@ -20,6 +20,7 @@ export interface MockRefMeta {
   gate?: PublishGate;
 }
 export interface MockCounters { draft: number; run: number; decision: number; reference: number; proposal: number; drift: number; rule: number }
+export interface MockRulesetSnapshot { ruleset_version: number; rules: Rule[] }
 export interface MockState {
   v: 1;
   drafts: Draft[];
@@ -34,13 +35,16 @@ export interface MockState {
   /** Rules created by approved proposals. */
   proposalRules: Rule[];
   rulesetVersion: number;
+  /** Mock-only immutable catalog snapshots for reports made before an approval. */
+  rulesets: MockRulesetSnapshot[];
   counters: MockCounters;
 }
 
 function freshState(): MockState {
   return {
     v: 1, drafts: [], findings: [], decisions: [], runs: [], references: [], refMeta: {}, proposals: [], drift: [], proposalRules: [],
-    rulesetVersion: 1, counters: { draft: 0, run: 0, decision: 0, reference: 0, proposal: 0, drift: 0, rule: 0 },
+    rulesetVersion: 1, rulesets: [{ ruleset_version: 1, rules: [...rulesFixture] }],
+    counters: { draft: 0, run: 0, decision: 0, reference: 0, proposal: 0, drift: 0, rule: 0 },
   };
 }
 
@@ -57,7 +61,18 @@ export function getState(): MockState {
   if (hasStorage()) {
     try {
       const raw = window.localStorage.getItem(MOCK_STORE_KEY);
-      if (raw) { const parsed = JSON.parse(raw) as MockState; if (parsed && parsed.v === 1) loaded = parsed; }
+      if (raw) {
+        const parsed = JSON.parse(raw) as MockState;
+        if (parsed && parsed.v === 1) {
+          // Legacy mock state did not retain snapshots. Preserve its current catalog, but never
+          // invent older versions from today's decisions.
+          const rulesets = parsed.rulesets ?? [{
+            ruleset_version: parsed.rulesetVersion,
+            rules: [...rulesFixture, ...(parsed.proposalRules ?? [])],
+          }];
+          loaded = { ...freshState(), ...parsed, rulesets };
+        }
+      }
     } catch { loaded = null; }
   }
   state = loaded ?? freshState();
@@ -93,6 +108,9 @@ export function nextId(kind: CounterKey): string {
 }
 
 export function currentRules(): Rule[] { return [...rulesFixture, ...getState().proposalRules]; }
+export function rulesForVersion(version: number): Rule[] | undefined {
+  return getState().rulesets.find((snapshot) => snapshot.ruleset_version === version)?.rules;
+}
 
 // ---- Eval sample mode -------------------------------------------------------------
 let evalMode: MockEvalMode = "unavailable";

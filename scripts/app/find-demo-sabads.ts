@@ -44,7 +44,7 @@ function main() {
   const root = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
   const output = "data/banidb/demo-sabads.json";
   execFileSync("git", ["check-ignore", "-q", "--", output], { cwd: root });
-  if (!useFullSqlite(root)) throw new Error("The private data/banidb/banidb.sqlite copy is required to search the corpus (and BANIDB_SOURCE must not be \"fixture\").");
+  if (!useFullSqlite(root)) throw new Error("The private data/banidb/banidb-upload.sqlite copy is required to search the corpus (and BANIDB_SOURCE must not be \"fixture\").");
   const rules = new Map(seed.rules.map((rule) => [rule.id, rule]));
   const family = kartarFamily(rules.get("TERM-02")!.prefilter!.patterns.find((p) => p.action === "llm_confirm")!.pattern);
   const glyph = openingGlyph(rules.get("TERM-03")!.prefilter!.keywords);

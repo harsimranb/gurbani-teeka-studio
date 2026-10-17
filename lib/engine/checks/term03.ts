@@ -4,6 +4,7 @@ import type { CheckOutput, CodeCheck } from "./types";
 
 const EXACT_PREFIX = "flag_if_not_exact:";
 const GLOSS_AFTER_TOKEN = /^\s*[,\-–—]\s*(?:the\s+)?One\s+Universal\s+Integrative\s+Force/i;
+const LITERAL_GLOSS = /^\s*\(\s*(?:the\s+)?One\s+Universal\s+Integrative\s+Force\s*\)/i;
 
 // Resolution: exact spelling "IkOankar"; first use in the Sabad takes an apposition gloss (comma or dash).
 export const term03Check: CodeCheck = {
@@ -30,10 +31,13 @@ export const term03Check: CodeCheck = {
 
         if (isTermPattern && !firstUseSeen) {
           firstUseSeen = true;
-          if (!GLOSS_AFTER_TOKEN.test(draft.text.slice(hit.end))) {
+          const gloss = draft.text.slice(hit.end);
+          if (!(draft.layer === "literal" ? LITERAL_GLOSS.test(gloss) || GLOSS_AFTER_TOKEN.test(gloss) : GLOSS_AFTER_TOKEN.test(gloss))) {
             output.findings.push(makeFinding({
               input, draft, rule, start: hit.start, end: hit.end, tag: "first-use-gloss",
-              explanation: `First use of "${hit.text}" in this Sabad has no apposition gloss (comma or dash), which TERM-03 asks for at first use.`,
+              explanation: draft.layer === "transcreation"
+                ? `First use of "${hit.text}" in this Sabad has no apposition gloss (comma or dash), which TERM-03 asks for at first use.`
+                : `First use of "${hit.text}" in this Sabad has no literal-layer gloss, which TERM-03 asks for at first use.`,
             }));
           }
         }

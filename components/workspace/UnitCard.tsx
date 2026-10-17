@@ -2,13 +2,14 @@
 
 import { useEffect, useId, useRef } from "react";
 import { Button, Mono, StatusPill } from "@/components/ui";
-import type { Line } from "@/lib/contracts/domain";
+import type { Draft, Line } from "@/lib/contracts/domain";
 import { lineLabel, type Report, type Unit } from "./model";
 import { SelectableGurmukhi } from "./SelectableGurmukhi";
 import { UnitStatus, type Inflight } from "./UnitStatus";
 
 export interface UnitCardProps {
   unit: Unit;
+  layer: Draft["layer"];
   lines: Line[];
   lineNumber: (lineId: string) => number;
   dirty: boolean;
@@ -24,10 +25,11 @@ export interface UnitCardProps {
   onRetry: (phase: "code" | "llm") => void;
 }
 
-export function UnitCard({ unit, lines, lineNumber, dirty, report, inflight, shabadId, autoFocus, onText, onGroupNext, onUngroup, onRetry }: UnitCardProps) {
+export function UnitCard({ unit, layer, lines, lineNumber, dirty, report, inflight, shabadId, autoFocus, onText, onGroupNext, onUngroup, onRetry }: UnitCardProps) {
   const textareaId = useId();
   const area = useRef<HTMLTextAreaElement>(null);
   const grouped = lines.length > 1;
+  const label = { transcreation: "Transcreation", literal: "Literal translation", annotation: "Word annotation", transcription: "Transcription", publication: "Publication notes" }[layer];
 
   useEffect(() => {
     if (!autoFocus) return;
@@ -39,7 +41,7 @@ export function UnitCard({ unit, lines, lineNumber, dirty, report, inflight, sha
     <article className="overflow-hidden rounded-xl border border-line bg-card" aria-label={lineLabel(unit.lineIds, lineNumber)}>
       {grouped ? (
         <div className="flex items-center justify-between gap-2 border-b border-divider bg-subtle px-5 py-2.5 text-xs text-body">
-          <span className="font-semibold">One transcreation for {lineLabel(unit.lineIds, lineNumber).toLowerCase()}</span>
+          <span className="font-semibold">One {label.toLowerCase()} for {lineLabel(unit.lineIds, lineNumber).toLowerCase()}</span>
           <Button size="sm" className="min-h-8 rounded-md px-2.5 text-xs" onClick={onUngroup}>Ungroup</Button>
         </div>
       ) : null}
@@ -55,15 +57,15 @@ export function UnitCard({ unit, lines, lineNumber, dirty, report, inflight, sha
         ))}
       </div>
       <div className="flex flex-col gap-2 px-5 pt-3 pb-4">
-        <label htmlFor={textareaId} className="text-xs font-semibold tracking-wider text-muted uppercase">Transcreation</label>
+        <label htmlFor={textareaId} className="text-xs font-semibold tracking-wider text-muted uppercase">{label}</label>
         <textarea
           ref={area}
           id={textareaId}
           rows={grouped ? 3 : 2}
           value={unit.text}
           onChange={(event) => onText(event.target.value)}
-          placeholder={grouped ? "Write the transcreation for these lines in your own words." : "Write the transcreation for this line in your own words."}
-          className="field-sizing-content w-full resize-y rounded-lg border border-faint bg-card px-3 py-2.5 font-serif text-[17px] leading-[1.55] text-ink placeholder:text-faint focus:border-navy"
+          placeholder={`Write the ${label.toLowerCase()} for ${grouped ? "these lines" : "this line"} in your own words.`}
+          className={`field-sizing-content w-full resize-y rounded-lg border border-faint bg-card px-3 py-2.5 font-serif text-[17px] leading-[1.55] text-ink placeholder:text-faint focus:border-navy ${layer === "literal" ? "italic" : ""}`}
         />
         <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1.5">
           <UnitStatus unit={unit} dirty={dirty} report={report} inflight={inflight} shabadId={shabadId} onRetry={onRetry} />

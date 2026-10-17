@@ -9,6 +9,7 @@ import type { Draft, Sabad } from "@/lib/contracts/domain";
 import { SabadEditor } from "./SabadEditor";
 import { SabadList } from "./SabadList";
 import { WordLookup } from "./WordLookup";
+import { WordLayerEditor } from "./WordLayerEditor";
 import { WordSelectionProvider, type SelectedWord } from "./word-selection";
 
 const unique = (values: string[]) => [...new Set(values)].join(" / ");
@@ -36,20 +37,33 @@ function Center({ shabadId, focus }: { shabadId: string; focus: string | null })
 }
 
 function CenterAvailable({ sabad, drafts, focus, refetch }: { sabad: Sabad; drafts: Draft[]; focus: string | null; refetch: () => void }) {
-  const maxVersion = drafts.reduce((max, d) => Math.max(max, d.version), 0);
+  const [layer, setLayer] = useState<Draft["layer"]>("transcreation");
+  const layerDrafts = drafts.filter((draft) => draft.layer === layer);
+  const maxVersion = layerDrafts.reduce((max, d) => Math.max(max, d.version), 0);
+  const label = { transcreation: "Transcreation", literal: "Literal translation", annotation: "Word annotation", transcription: "Transcription", publication: "Publication notes" }[layer];
   return (
     <>
       <PageHeader
         eyebrow={eyebrow(sabad)}
         title={`Sabad ${sabad.shabad_id}`}
-        badge={<StatusPill className="px-2.5 py-0.5 text-[13px] text-body">{maxVersion > 0 ? `Transcreation · draft v${maxVersion}` : "Transcreation · no draft yet"}</StatusPill>}
+        badge={<StatusPill className="px-2.5 py-0.5 text-[13px] text-body">{maxVersion > 0 ? `${label} · draft v${maxVersion}` : `${label} · no draft yet`}</StatusPill>}
         actions={
           <span className="flex items-center gap-2 rounded-lg bg-ok-bg px-3 py-1.5 text-[13px] text-ok">
             <Lock className="size-[15px]" aria-hidden="true" />Gurmukhi from BaniDB · read-only
           </span>
         }
       />
-      <SabadEditor sabad={sabad} drafts={drafts} focusDraftId={focus} refetch={refetch} />
+      <div role="group" aria-label="Authored layer" className="flex flex-wrap gap-2">
+        {(["transcreation", "literal", "annotation", "transcription", "publication"] as const).map((item) => (
+          <button key={item} type="button" aria-pressed={layer === item} onClick={() => setLayer(item)}
+            className={layer === item ? "rounded-full border border-navy bg-navy px-3 py-1.5 text-sm text-white" : "rounded-full border border-line bg-card px-3 py-1.5 text-sm text-body"}>
+            {{ transcreation: "Transcreation", literal: "Literal", annotation: "Annotation", transcription: "Transcription", publication: "Publication notes" }[item]}
+          </button>
+        ))}
+      </div>
+      {layer === "annotation" || layer === "transcription"
+        ? <WordLayerEditor key={layer} layer={layer} sabad={sabad} drafts={layerDrafts} refetch={refetch} />
+        : <SabadEditor key={layer} layer={layer} sabad={sabad} drafts={layerDrafts} focusDraftId={focus} refetch={refetch} />}
     </>
   );
 }
@@ -73,7 +87,7 @@ export function WorkspaceView() {
         <aside aria-label="Browse the Guru Granth Sahib" className="min-w-0">
           <SabadList sabads={sabads} selectedId={selectedId} />
         </aside>
-        <section aria-label="Transcreation" className="flex min-w-0 flex-col gap-3.5">
+        <section aria-label="Authored layers" className="flex min-w-0 flex-col gap-3.5">
           {error ? <Unavailable title="Sabads could not be loaded" reason={error.message} />
             : !data ? <p className="m-0 text-sm text-muted" role="status">Loading…</p>
             : !selectedId ? <Unavailable title="No Sabad available" reason="No Sabad has been exported from BaniDB yet." />

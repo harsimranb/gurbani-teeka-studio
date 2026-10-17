@@ -1,12 +1,13 @@
 import type { Rule } from "@/lib/contracts/domain";
 
-export type FilterKey = "active" | "later" | "guidance" | "process" | "removed" | "merged";
+export type FilterKey = "all" | "active" | "later" | "guidance" | "process" | "removed" | "merged";
 
 export const FILTERS: { key: FilterKey; label: string; scopes: Rule["resolution"]["scope"][] }[] = [
-  { key: "active", label: "Active on transcreation", scopes: ["p0_check", "p0_suppressor", "p0_by_design"] },
+  { key: "all", label: "All rules", scopes: ["p0_check", "p0_suppressor", "p0_by_design", "p0_process", "p1_check", "review_lens", "out_of_scope", "removed", "merged"] },
+  { key: "active", label: "Text checks", scopes: ["p0_check", "p0_suppressor", "p0_by_design"] },
   { key: "later", label: "Later", scopes: ["p1_check"] },
   { key: "guidance", label: "Reviewer guidance", scopes: ["review_lens"] },
-  { key: "process", label: "Process only", scopes: ["out_of_scope"] },
+  { key: "process", label: "Workflow", scopes: ["p0_process", "out_of_scope"] },
   { key: "removed", label: "Removed", scopes: ["removed"] },
   { key: "merged", label: "Merged", scopes: ["merged"] },
 ];
@@ -15,6 +16,7 @@ export const SCOPE_LABEL: Record<Rule["resolution"]["scope"], string> = {
   p0_check: "Active check",
   p0_suppressor: "Active suppressor",
   p0_by_design: "Active, by design",
+  p0_process: "Workflow assessment",
   p1_check: "Later",
   review_lens: "Reviewer guidance",
   out_of_scope: "Process only",
@@ -23,7 +25,7 @@ export const SCOPE_LABEL: Record<Rule["resolution"]["scope"], string> = {
 };
 
 export function categoryOf(rule: Rule): FilterKey {
-  return FILTERS.find((filter) => filter.scopes.includes(rule.resolution.scope))?.key ?? "active";
+  return FILTERS.find((filter) => filter.key !== "all" && filter.scopes.includes(rule.resolution.scope))?.key ?? "active";
 }
 
 export function isActiveScope(rule: Rule): boolean {
@@ -31,7 +33,7 @@ export function isActiveScope(rule: Rule): boolean {
 }
 
 export function countsByFilter(rules: Rule[]): Record<FilterKey, number> {
-  const counts: Record<FilterKey, number> = { active: 0, later: 0, guidance: 0, process: 0, removed: 0, merged: 0 };
+  const counts: Record<FilterKey, number> = { all: rules.length, active: 0, later: 0, guidance: 0, process: 0, removed: 0, merged: 0 };
   for (const rule of rules) counts[categoryOf(rule)] += 1;
   return counts;
 }

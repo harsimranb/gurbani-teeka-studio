@@ -111,7 +111,7 @@ export function UnitCard({ unit, sabad, rules, rulesetVersion, numbers, name, re
         <HighlightedText
           text={draft.text}
           spans={ordered.map((f) => ({ start: f.start, end: f.end, tone: f.severity, label: findingNumber.get(f.id) }))}
-          className="text-[17px] leading-[1.9]"
+          className={`text-[17px] leading-[1.9] ${draft.layer === "literal" ? "italic" : ""}`}
         />
         {ordered.length === 0 && decided.length === 0 ? (
           <p className="m-0 text-xs text-muted">

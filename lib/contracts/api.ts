@@ -1,6 +1,6 @@
 import { z } from "zod";
 import {
-  CheckResultSchema, CheckRunSchema, DecisionSchema, DraftSchema, DriftResultSchema,
+  AuthoredLayerSchema, CheckResultSchema, CheckRunSchema, DecisionSchema, DraftSchema, DriftResultSchema, EditableEnglishSchema,
   EvalRunSchema, ExactSpanSchema, FindingSchema, GroupedLineIdsSchema, IdSchema,
   NonblankSchema, ProposalSchema, PublicationSchema, PublishBlockerSchema, PublishGateSchema,
   ReferenceSchema, ReferenceSourceSchema, RuleApprovalSchema, RuleSchema, SabadSchema, VersionSchema,
@@ -75,7 +75,7 @@ export const WordLookupSchema = z.discriminatedUnion("status", [
 ]);
 export const SaveDraftRequestSchema = z.strictObject({
   draft_id: IdSchema.nullable(), expected_version: VersionSchema.nullable(), shabad_id: IdSchema,
-  line_ids: GroupedLineIdsSchema, text: z.string(), author: NonblankSchema,
+  line_ids: GroupedLineIdsSchema, layer: AuthoredLayerSchema.default("transcreation"), source_word_start: z.number().int().nonnegative().nullable().optional(), text: EditableEnglishSchema, author: NonblankSchema,
 }).refine((request) => (request.draft_id === null) === (request.expected_version === null), "Updates require a draft ID and its expected version; new drafts use null for both");
 export const CheckRequestSchema = z.strictObject({ ...CurrentVersionFields, changed_line_ids: GroupedLineIdsSchema });
 export const SabadResponseSchema = z.discriminatedUnion("status", [
@@ -83,6 +83,7 @@ export const SabadResponseSchema = z.discriminatedUnion("status", [
   z.strictObject({ status: z.literal("unavailable"), reason: NonblankSchema }),
 ]);
 export const RulesResponseSchema = z.strictObject({ ruleset_version: VersionSchema, rules: z.array(RuleSchema) });
+const RulesRequestSchema = z.strictObject({ ruleset_version: z.coerce.number().int().positive().optional() });
 export const ProposalResponseSchema = z.strictObject({ proposal: ProposalSchema, drift_results: z.array(DriftResultSchema) });
 export const DecisionResponseSchema = z.strictObject({ decision: DecisionSchema, finding: FindingSchema }).superRefine((response, ctx) => {
   const { decision, finding } = response;
@@ -106,7 +107,7 @@ export const routes = {
   publish: { method: "POST", path: "/api/drafts/:draft_id/publish", request: z.strictObject({ ...CurrentVersionFields, actor: NonblankSchema, departure_reasons: z.array(z.strictObject({ finding_id: IdSchema, reason: NonblankSchema })) }), response: PublishResponseSchema },
   listPublications: { method: "GET", path: "/api/sabads/:shabad_id/publications", request: z.strictObject({ shabad_id: IdSchema }), response: z.strictObject({ publications: z.array(PublicationSchema) }) },
   getReference: { method: "GET", path: "/api/references/:reference_id", request: z.strictObject({ reference_id: IdSchema }), response: z.strictObject({ reference: ReferenceSchema }) },
-  listRules: { method: "GET", path: "/api/rules", request: EmptySchema, response: RulesResponseSchema },
+  listRules: { method: "GET", path: "/api/rules", request: RulesRequestSchema, response: RulesResponseSchema },
   listProposals: { method: "GET", path: "/api/proposals", request: EmptySchema, response: z.strictObject({ proposals: z.array(ProposalSchema) }) },
   getProposal: { method: "GET", path: "/api/proposals/:proposal_id", request: z.strictObject({ proposal_id: IdSchema }), response: ProposalResponseSchema },
   submitProposal: { method: "POST", path: "/api/proposals", request: z.strictObject({ rule_text: NonblankSchema, example: NonblankSchema, reason: NonblankSchema, author: NonblankSchema }), response: ProposalResponseSchema },

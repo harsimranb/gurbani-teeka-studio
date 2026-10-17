@@ -44,7 +44,7 @@ describe("duplicate verses", () => {
 
 const root = fileURLToPath(new URL("../../..", import.meta.url));
 const fixture = new URL("../../contracts/fixtures/sabad.demo.json", import.meta.url);
-const sqlite = new URL("../../../data/banidb/banidb.sqlite", import.meta.url);
+const sqlite = new URL("../../../data/banidb/banidb-upload.sqlite", import.meta.url);
 const fullTest = existsSync(sqlite) && existsSync(fixture) ? it : it.skip;
 
 describe("full-corpus ingest", () => {

@@ -65,7 +65,7 @@ export function summarizeBlockers(blockers: Blocker[], units: Unit[], sabad: Sab
     const unit = units.find((u) => [...u.report.findings, ...u.report.history].some((f) => f.id === findingId));
     return unit ? unitLabel(sabad, unit.draft) : "an authored unit";
   };
-  const ruleIds = unique(blockers.flatMap((b) => (b.kind === "finding" ? [b.rule_id] : [])));
+  const ruleIds = unique(blockers.flatMap((b) => (b.kind === "finding" || b.kind === "workflow" ? [b.rule_id] : [])));
   const sentences: string[] = [];
   const phases = blockers.filter((b): b is Extract<Blocker, { kind: "check_phase" }> => b.kind === "check_phase");
   for (const phase of ["llm", "code"] as const) {
@@ -81,5 +81,7 @@ export function summarizeBlockers(blockers: Blocker[], units: Unit[], sabad: Sab
   }
   const departures = unique(blockers.flatMap((b) => (b.kind === "departure_reason" ? [labelOfFinding(b.finding_id)] : [])));
   if (departures.length > 0) sentences.push(`A CONS-01 departure needs a recorded reason (${joinList(departures)}).`);
+  const unavailable = unique(blockers.flatMap((b) => b.kind === "layer_unavailable" ? [b.layer] : []));
+  if (unavailable.length > 0) sentences.push(`Publishing ${joinList(unavailable)} is not available yet.`);
   return { ruleIds, sentences };
 }

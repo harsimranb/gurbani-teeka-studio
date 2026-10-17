@@ -1,22 +1,24 @@
 "use client";
 
 import { Check } from "lucide-react";
+import { rulesetLabel } from "@/lib/contracts/domain";
 import { GurmukhiText, HighlightedText, Mono } from "@/components/ui";
 import { lineLabel, type FindingEntry, type UnitData } from "./data";
 
-export function UnitCard({ unit, entries }: { unit: UnitData; entries: FindingEntry[] }) {
+export function UnitCard({ unit, entries, hasPendingRules = false }: { unit: UnitData; entries: FindingEntry[]; hasPendingRules?: boolean }) {
   const numbers = unit.lines.map((l) => l.number);
   const grouped = unit.lines.length > 1;
   // "Clear" only when both phases ran and judged every rule; not-evaluable results are never a pass.
   const fullyJudged = (run: UnitData["codeRun"]) => run?.status === "succeeded" && run.not_evaluable.length === 0;
-  const clear = unit.findings.length === 0 && fullyJudged(unit.codeRun) && fullyJudged(unit.llmRun);
+  const clear = unit.draft.status !== "published" && !hasPendingRules && unit.findings.length === 0 && fullyJudged(unit.codeRun) && fullyJudged(unit.llmRun);
   const spans = entries.filter((e) => e.unit.draft.id === unit.draft.id).map((e) => ({ start: e.finding.start, end: e.finding.end, tone: e.finding.severity, label: e.number }));
   return (
     <section className="overflow-hidden rounded-xl border border-line bg-card" aria-label={lineLabel(numbers)}>
       <div className="flex items-center justify-between gap-3 border-b border-divider px-[18px] py-3 text-xs text-muted">
-        <span className="text-sm font-semibold text-ink">{grouped ? `${lineLabel(numbers)} · one transcreation` : lineLabel(numbers)}</span>
+        <span className="text-sm font-semibold text-ink">{lineLabel(numbers)} · {unit.draft.layer}{grouped ? " group" : ""}</span>
         <span className="flex items-center gap-3">
           {clear ? <span className="inline-flex items-center gap-1 text-ok"><Check className="size-3.5" aria-hidden="true" />Clear</span> : null}
+          {unit.draft.status === "published" ? <span className="text-muted">Published · report version {rulesetLabel(unit.report.ruleset_version)}{unit.reportRules.length === 0 ? " · rule catalog unavailable" : ""}</span> : null}
           <Mono>{unit.lines.map((l) => l.line.line_id).join(" · ")}</Mono>
         </span>
       </div>
@@ -28,8 +30,8 @@ export function UnitCard({ unit, entries }: { unit: UnitData; entries: FindingEn
           </div>
         ))}
         {unit.draft.text.trim().length === 0
-          ? <p className="m-0 text-sm text-muted">No transcreation text has been saved for this unit.</p>
-          : <HighlightedText text={unit.draft.text} spans={spans} className="block text-[17px] leading-[1.9]" />}
+          ? <p className="m-0 text-sm text-muted">No {unit.draft.layer} text has been saved for this unit.</p>
+          : <HighlightedText text={unit.draft.text} spans={spans} className={`block text-[17px] leading-[1.9] ${unit.draft.layer === "literal" ? "italic" : ""}`} />}
       </div>
     </section>
   );

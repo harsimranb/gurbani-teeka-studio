@@ -35,7 +35,7 @@ describe("source-only demo seed", () => {
     }
   }, 60_000);
 
-  const fullTest = existsSync(sourcePath) && existsSync(new URL("../../data/banidb/banidb.sqlite", import.meta.url)) ? it : it.skip;
+  const fullTest = existsSync(sourcePath) && existsSync(new URL("../../data/banidb/banidb-upload.sqlite", import.meta.url)) ? it : it.skip;
   fullTest("seeds the full corpus source-only, with the demo Sabad identical to its fixture", () => {
     const dir = mkdtempSync(join(tmpdir(), "eko-seed-full-"));
     const target = join(dir, "eko.db");

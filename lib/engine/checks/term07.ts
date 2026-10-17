@@ -31,10 +31,14 @@ function firstUseHints(context: CodeCheckContext, drafts: Draft[], output: Check
     const found = firstOccurrence(drafts, termPattern);
     if (!found) continue;
     const { draft, start, end } = found;
-    if (apposition.test(draft.text.slice(end))) continue;
+    const after = draft.text.slice(end);
+    const literalGloss = draft.layer === "literal" && after.trimStart().toLowerCase().startsWith(`(${gloss.toLowerCase()})`);
+    if (apposition.test(after) || literalGloss) continue;
     output.findings.push(makeFinding({
       input: context.input, draft, rule: context.rule, start, end, severity: "hint", tag: "first-use-gloss",
-      explanation: `First use of "${draft.text.slice(start, end)}" in this Sabad has no apposition gloss (comma or dash); ${context.rule.id} asks for a gloss at first use.`,
+      explanation: draft.layer === "transcreation"
+        ? `First use of "${draft.text.slice(start, end)}" in this Sabad has no apposition gloss (comma or dash); ${context.rule.id} asks for a gloss at first use.`
+        : `First use of "${draft.text.slice(start, end)}" in this Sabad has no literal-layer gloss; ${context.rule.id} asks for a gloss at first use.`,
     }));
   }
 }

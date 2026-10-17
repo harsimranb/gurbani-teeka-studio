@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { ApiClientError } from "@/lib/client/api";
 import type { ApiResponse } from "@/lib/contracts/api";
 import type { CheckRun, Draft, Finding, Line, Rule } from "@/lib/contracts/domain";
 import { numberFindings, orderFindings } from "@/lib/client/finding-order";
@@ -12,6 +13,8 @@ export type GateData = ApiResponse<"getPublishGate">;
 export interface UnitData {
   draft: Draft;
   report: ReportData;
+  /** Rules exactly as stored for this report's ruleset version. */
+  reportRules: Rule[];
   gate: GateData;
   /** Source lines covered by the unit, in the unit's own order, with 1-based Sabad positions. */
   lines: Array<{ line: Line; number: number }>;
@@ -49,7 +52,7 @@ export function buildEntries(units: UnitData[]): FindingEntry[] {
   });
 }
 
-interface Loaded { key: string; items: Array<{ report: ReportData; gate: GateData }>; error: Error | null }
+interface Loaded { key: string; items: Array<{ report: ReportData; gate: GateData; rules: Rule[] }>; error: Error | null }
 
 export interface ReportPageData {
   loading: boolean;
@@ -57,7 +60,6 @@ export interface ReportPageData {
   unavailableReason: string | null;
   shabadId: string;
   rulesetVersion: number | null;
-  rules: Map<string, Rule>;
   ruleList: Rule[];
   units: UnitData[];
   entries: FindingEntry[];
@@ -92,10 +94,21 @@ export function useReportData(shabadId: string): ReportPageData {
     Promise.all(draftIds.map(async (id) => {
       const [report, gate] = await Promise.all([callApi("getReport", { draft_id: id }), callApi("getPublishGate", { draft_id: id })]);
       return { report, gate };
-    })).then(
-      (items) => { if (!cancelled) setLoaded({ key, items, error: null }); },
-      (error: unknown) => { if (!cancelled) setLoaded({ key, items: [], error: error instanceof Error ? error : new Error(String(error)) }); },
-    );
+    })).then(async (items) => {
+      const versions = [...new Set(items.map((item) => item.report.ruleset_version))];
+      const snapshots = await Promise.all(versions.map(async (ruleset_version) => {
+        try { return await callApi("listRules", { ruleset_version }); }
+        catch (error) {
+          if (error instanceof ApiClientError && error.code === "not_found") return { ruleset_version, rules: [] };
+          throw error;
+        }
+      }));
+      const rulesByVersion = new Map(snapshots.map((snapshot) => [snapshot.ruleset_version, snapshot.rules] as const));
+      const withRules = items.map((item) => ({ ...item, rules: rulesByVersion.get(item.report.ruleset_version) ?? [] }));
+      if (!cancelled) setLoaded({ key, items: withRules, error: null });
+    }).catch((error: unknown) => {
+      if (!cancelled) setLoaded({ key, items: [], error: error instanceof Error ? error : new Error(String(error)) });
+    });
     return () => { cancelled = true; };
   }, [key, draftIds, tick, sabadQ.data?.status]);
 
@@ -103,13 +116,13 @@ export function useReportData(shabadId: string): ReportPageData {
 
   const units: UnitData[] = useMemo(() => {
     if (!sabad || !current) return [];
-    return current.items.map(({ report, gate }) => {
+    return current.items.map(({ report, gate, rules }) => {
       const lines = report.draft.line_ids.flatMap((id) => {
         const index = sabad.lines.findIndex((line) => line.line_id === id);
         return index >= 0 ? [{ line: sabad.lines[index], number: index + 1 }] : [];
       });
       const runFor = (phase: "code" | "llm") => [...report.check_runs].reverse().find((run) => run.phase === phase) ?? null;
-      return { draft: report.draft, report, gate, lines, findings: report.findings.filter((f) => isCurrent(f, report)), codeRun: runFor("code"), llmRun: runFor("llm") };
+      return { draft: report.draft, report, reportRules: rules, gate, lines, findings: report.findings.filter((f) => isCurrent(f, report)), codeRun: runFor("code"), llmRun: runFor("llm") };
     });
   }, [sabad, current]);
 
@@ -122,12 +135,11 @@ export function useReportData(shabadId: string): ReportPageData {
 
   const entries = useMemo(() => buildEntries(units), [units]);
   const ruleList = rulesQ.data?.rules ?? [];
-  const rules = useMemo(() => new Map(ruleList.map((rule) => [rule.id, rule] as const)), [ruleList]);
 
   const error = sabadQ.error ?? rulesQ.error ?? current?.error ?? null;
   const unavailableReason = sabadQ.data?.status === "unavailable" ? sabadQ.data.reason : null;
   const loading = !error && !unavailableReason && (sabadQ.data === null || rulesQ.data === null || current === null);
-  return { loading, error, unavailableReason, shabadId, rulesetVersion: rulesQ.data?.ruleset_version ?? null, rules, ruleList, units, entries, anyLlmPending };
+  return { loading, error, unavailableReason, shabadId, rulesetVersion: rulesQ.data?.ruleset_version ?? null, ruleList, units, entries, anyLlmPending };
 }
 
 /** "Line 3", "Lines 2–3" or "Lines 2, 5" from 1-based line numbers. */

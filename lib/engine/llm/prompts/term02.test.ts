@@ -38,8 +38,8 @@ function syntheticPacket(texts: string[], hitsByUnit: DivineNameHit[][], distinc
 }
 
 describe("LLM-03 TERM-02 prompt", () => {
-  it("is version term02-v2 and its schema has no field for English text beyond the quoted span", () => {
-    expect(term02Prompt.version).toBe("term02-v2");
+  it("is version term02-v3 and its schema has no field for English text beyond the quoted span", () => {
+    expect(term02Prompt.version).toBe("term02-v3");
     expect(Object.keys(OpenFindingsOutputSchema.shape.findings.element.shape)).toEqual(["quoted_span", "occurrence", "explanation", "reference_ids", "subcheck"]);
   });
 
@@ -103,7 +103,7 @@ describe("LLM-03 TERM-02 prompt", () => {
       const { client } = fakeClient(open([finding("The Divine", "attribute")]));
       const batch = FindingBatchSchema.parse(await createLlmJudge(client)(packet));
       expect(batch.findings).toHaveLength(1);
-      expect(batch.findings[0]).toMatchObject({ rule_id: "TERM-02", severity: "flag", layer: "L2", quoted_span: "The Divine", prompt_version: "term02-v2", id: "llm-pending:attribute" });
+      expect(batch.findings[0]).toMatchObject({ rule_id: "TERM-02", severity: "flag", layer: "L2", quoted_span: "The Divine", prompt_version: "term02-v3", id: "llm-pending:attribute" });
     });
 
     it("turns a collapse verdict into a warning, distinct from an attribute finding on the same span", async () => {
@@ -136,7 +136,7 @@ describe.skipIf(!existsSync(fixturePath))("TERM-02 over the BaniDB demo Sabad", 
     id: `synthetic-draft-${index + 1}`, shabad_id: sabad.shabad_id, line_ids: [line.line_id], layer: "transcreation" as const, text: texts[index],
     author: "Synthetic test author", status: "draft" as const, version: 1, updated_at: "2026-10-16T12:00:00.000Z",
   }));
-  const input = CheckInputSchema.parse({ sabad, draft: drafts[0], sabadDrafts: drafts, changedLineIds: sabad.lines.map((line) => line.line_id), rules: rulesFixture, rulesetVersion: 1, references: [] });
+  const input = CheckInputSchema.parse({ sabad, draft: drafts[0], sabadDrafts: drafts, changedLineIds: sabad.lines.map((line) => line.line_id), rules: rulesFixture.filter((rule) => !["PRIN-01", "PRIN-06", "PRIN-07", "PRIN-08", "LAYER-01", "LAYER-05", "LAYER-09"].includes(rule.id)), rulesetVersion: 1, references: [] });
 
   it("gives the model the BaniDB source line and the code-found hits for the unit", async () => {
     const packets = (await llmPackets(input)).filter((packet) => packet.kind === "term02");

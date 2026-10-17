@@ -16,7 +16,7 @@ export function runPrefilter(context: CodeCheckContext, promote: (hit: PatternHi
         output.findings.push(makeFinding({
           input: context.input, draft, rule: context.rule, start: hit.start, end: hit.end,
           // The highlighted span carries the evidence; echoing it could put draft words like "wrong" in Eko's voice.
-          explanation: `The highlighted span matches a ${context.rule.id} pattern for the transcreation. See the rule text for the guidance it differs from.`,
+          explanation: `The highlighted span matches a ${context.rule.id} pattern for the ${draft.layer}. See the rule text for the guidance it differs from.`,
         }));
       } else if (!isDeterministic(action)) {
         output.candidates.push({ ruleId: context.rule.id, draftId: draft.id, start: hit.start, end: hit.end, quoted_span: hit.text, patternIndex: hit.patternIndex });

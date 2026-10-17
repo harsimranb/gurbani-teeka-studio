@@ -4,7 +4,7 @@ What Eko must do for the hackathon build (P0) and what waits (P1). Each P0 requi
 
 ## Scope in one line
 
-Eko reviews **English transcreations** of Guru Granth Sahib, one Sabad at a time, against SikhRI's rules and the BaniDB Gurmukhi. It never writes translation text. Anyone can write, review, propose and approve; there are no roles.
+Eko reviews human-authored literal translation, transcreation, word annotation and transcription, one Sabad at a time, against SikhRI's rules and BaniDB Gurmukhi. Publication and process rules are tracked too. The expansion is in progress; `_docs/rules/all-rules-matrix.md` distinguishes implemented checks from pending ones. Eko never writes translation text. Anyone can write, review, propose and approve; there are no roles.
 
 The eight-page UI reference is mapped to these requirements in [09-ui-mockups.md](09-ui-mockups.md). Illustrative mockup data and labels do not change rule decisions or P0/P1 scope.
 
@@ -26,7 +26,7 @@ The eight-page UI reference is mapped to these requirements in [09-ui-mockups.md
 |---|---|---|---|---|
 | FR-06 | Every save checks changed authored tukks/groups and any Sabad-scoped checks affected by them. Code checks return first; LLM checks follow | P0 | Unrelated tukks are not re-checked; first-use/collapse checks affected elsewhere in the Sabad are refreshed; code findings under 1 s and LLM findings under about 15 s per authored unit (targets); the UI distinguishes pending, cached, completed, failed and not-evaluable results | 2 |
 | FR-07 | Each finding shows rule ID, rule text, severity, the exact words highlighted, an explanation, and any cited reference renderings | P0 | The validator drops any finding whose quoted words or cited IDs don't exist; the report card shows rule, model and prompt provenance for surviving findings | 2, 3 |
-| FR-08 | Only the 10 rules active on the transcreation run, at the severity in `rules.resolved.json` | P0 | Golden tests pass for every active rule | |
+| FR-08 | Track all 66 source rules across their applicable layers; run only implemented checks at their resolved severity and show missing evidence as unevaluable | P0 | The rules matrix covers every ID, focused tests prove each implemented check, and the report never labels pending rules as passed | |
 | FR-09 | Style and consistency checks cite the reference renderings they draw on | P0 | Every such finding lists at least one valid reference ID and labels its source; a check runs when an applicable SikhRI-supplied or Eko-published reference exists | 3 |
 | FR-10 | Grammar hints from the ending matra, only where unambiguous, labelled as hints | P1 | Deferred: a free transcreation doesn't map word for word onto the line | |
 
@@ -78,7 +78,7 @@ The eight-page UI reference is mapped to these requirements in [09-ui-mockups.md
 | Item | Status |
 |---|---|
 | Generating or suggesting translation text | Never. Eko only reviews |
-| Literal translation, word annotation, transcription | Future. Eko reviews the transcreation only |
+| Non-transcreation publication | Pending. Other authored layers can be drafted and checked, but cannot enter the transcreation reference set |
 | Sign-in, roles, permissions | Future. Anyone can write, review and approve |
 | Offline demo mode | Not planned. The LLM cache stays, for speed and cost |
 | Fine-tuning, multi-round history, diffs, versioning UI, Panjabi teeka | Future |

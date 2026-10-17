@@ -39,11 +39,19 @@ beforeEach(() => {
   __setSourceForTests(testSabad());
   resetStore();
   getStore().saveDraft(makeDraft());
+  getStore().saveDraft(makeDraft({ id: "literal-t1", layer: "literal", text: "Synthetic literal." }));
+  getStore().saveDraft(makeDraft({ id: "annotation-t1", layer: "annotation", source_word_start: 0, text: "literal; implied\nnoun; singular" }));
   __setIndexReferencesForTests(async () => {}); // never start the real embedder
 });
 afterEach(() => __setIndexReferencesForTests(undefined));
 
 describe("markReady and reviewQueue", () => {
+  it("allows a transcreation into review without requiring related literal and word-annotation drafts", async () => {
+    getStore().deleteDraft("literal-t1");
+    getStore().deleteDraft("annotation-t1");
+    const { draft } = await ok("markReady", await readyRoute(post({ draft_version: 1, actor: "Writer" }), ctx({ draft_id: "draft-t1" })));
+    expect(draft.status).toBe("ready_for_review");
+  });
   it("moves a draft into the review queue, in source order, and rejects a stale version", async () => {
     getStore().saveDraft(makeDraft({ id: "draft-t2", line_ids: ["TEST-SABAD-L3"], status: "changes_requested" }));
     getStore().saveDraft(makeDraft({ id: "draft-t3", line_ids: ["TEST-SABAD-L2"] }));
@@ -133,6 +141,8 @@ describe("publish gate", () => {
   });
   it("is clear when both phases succeeded and only warnings remain", async () => {
     bothRuns();
+    getStore().deleteDraft("literal-t1");
+    getStore().deleteDraft("annotation-t1");
     getStore().saveFinding(makeFinding({ severity: "warning" }));
     const gate = await ok("getPublishGate", await gateRoute(get(), ctx({ draft_id: "draft-t1" })));
     expect(gate.can_publish).toBe(true);
@@ -142,6 +152,14 @@ describe("publish gate", () => {
 
 describe("publish", () => {
   const run = (body: unknown, draftId = "draft-t1") => publishRoute(post(body), ctx({ draft_id: draftId }));
+
+  it("does not put a literal draft into the transcreation reference set", async () => {
+    getStore().saveDraft(makeDraft({ layer: "literal" }));
+    bothRuns();
+    const blocked = await fail(await run(publishBody()), 409, "publish_blocked");
+    expect(blocked.blockers).toContainEqual({ kind: "layer_unavailable", draft_id: "draft-t1", layer: "literal" });
+    expect(getStore().listReferences()).toEqual([]);
+  });
 
   it("returns publish_blocked with blockers and the blocking rule IDs", async () => {
     bothRuns();
@@ -239,6 +257,8 @@ describe("publish", () => {
   });
   it("lists publications oldest first and returns an empty list for unknown Sabads", async () => {
     getStore().saveDraft(makeDraft({ id: "draft-t2", line_ids: ["TEST-SABAD-L2"] }));
+    getStore().saveDraft(makeDraft({ id: "literal-t2", layer: "literal", line_ids: ["TEST-SABAD-L2"], text: "Synthetic literal." }));
+    getStore().saveDraft(makeDraft({ id: "annotation-t2", layer: "annotation", line_ids: ["TEST-SABAD-L2"], source_word_start: 0, text: "literal; implied\nnoun; singular" }));
     bothRuns();
     bothRuns("draft-t2");
     await ok("publish", await run(publishBody()));

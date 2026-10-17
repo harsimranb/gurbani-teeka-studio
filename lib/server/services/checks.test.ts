@@ -267,14 +267,18 @@ describe("POST /api/check/llm (model phase)", () => {
     expect(response.check_runs[0].not_evaluable).toEqual(response.result.notEvaluable);
   });
 
-  it("lists every active p0_check rule as not evaluable even when the text has no candidates", async () => {
+  it("lists every active model or hybrid rule as not evaluable without a judge", async () => {
     const draft = seed("d1", [1], CLEAN);
     const response = await ok(await post(postLlm, body(draft)));
-    const active = rulesFixture.filter((rule) => rule.resolution.active && rule.resolution.scope === "p0_check").map((rule) => rule.id);
+    const active = rulesFixture.filter((rule) => rule.resolution.active && rule.resolution.scope === "p0_check"
+      && ["model", "hybrid"].includes(rule.resolution.mode ?? "") && rule.resolution.layers.includes("transcreation")).map((rule) => rule.id);
+    const codeOnly = rulesFixture.filter((rule) => rule.resolution.active && rule.resolution.scope === "p0_check"
+      && rule.resolution.mode === "code" && rule.resolution.layers.includes("transcreation")).map((rule) => rule.id);
     expect(active.length).toBeGreaterThan(0);
     const listed = response.result.notEvaluable.map((entry) => entry.ruleId);
     expect(new Set(listed).size).toBe(listed.length);
     expect(active.every((id) => listed.includes(id))).toBe(true);
+    expect(codeOnly.every((id) => !listed.includes(id))).toBe(true);
     expect(response.check_runs[0].not_evaluable).toEqual(response.result.notEvaluable);
     expect(response.check_runs[0].not_evaluable.length).toBeGreaterThan(0);
   });

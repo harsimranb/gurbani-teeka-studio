@@ -3,7 +3,7 @@ import { SabadSchema, type Draft, type Sabad } from "../../contracts/domain";
 import { rulesFixture } from "../../contracts/fixtures";
 import { assertPrivateAppDbPath, migrateAppDb, openAppDb, type AppDb } from "../db/client";
 import { createRepository } from "../db/repo";
-import { buildResolvedRules, seedResolvedRules } from "../ingest/rules";
+import { buildResolvedRules, reconcileResolvedRules, seedResolvedRules } from "../ingest/rules";
 import { ingestBanidb, useFullSqlite } from "../ingest/banidb-source";
 import { createMemoryRepository, type AppStore } from "./memory-repo";
 
@@ -73,7 +73,7 @@ function buildSqlite(): Holder {
     if (store.getLatestRulesetVersion() === undefined) seedResolvedRules(store);
     else if (rulesetDiffers(store)) {
       console.warn("Stored ruleset v1 differs from rules.resolved.json; delete eko.db (or run against a fresh DATABASE_URL) to reseed.");
-    }
+    } else reconcileResolvedRules(store);
     let source: SourceStatus = { available: true };
     if (!store.hasSourceLines()) {
       // The same source selection as `pnpm ingest` (D-86): the full corpus from the local BaniDB SQLite copy when it
@@ -124,6 +124,8 @@ export function getSourceStatus(): SourceStatus {
 export function resetStore(): AppStore {
   const store = getStore();
   store.resetAppData();
+  // Older v1 snapshots are kept intact; the all-layer ruleset is re-created as a new version after the demo reset.
+  reconcileResolvedRules(store);
   return store;
 }
 

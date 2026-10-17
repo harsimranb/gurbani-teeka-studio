@@ -4,11 +4,11 @@
     "Severity follows the draft's strength table: MUST -> flag (blocks publish until fixed or waived with a reason); SHOULD -> warning (needs a reason to dismiss; CONS-01 also needs a recorded reason before publish); GUIDE -> review lens (never flagged). Deterministic MUST checks with near-zero false positives are 'error'.",
     "Precedence: PRIN rules win conflicts (as the draft says); a specific rule is cited over an umbrella rule; a reviewer's context reason (CONS-02) clears consistency warnings.",
     "Review unit is the Sabad: 'first use' and 'same word' are scoped to one Sabad.",
-    "Every rule runs only on the layers it applies to (literal, transcreation, publication).",
+    "Every rule runs only on the layers it applies to (literal, transcreation, annotation, transcription, publication, or process).",
     "Wording (PRIN-04): flags say 'differs from reference rendering'. 'Approved' is used only as a workflow status, never as 'correct'.",
     "'Same word' grouping uses the stem key from BaniDB text; the ending matra is kept as a feature for grammar hints.",
     "Open SikhRI questions never become flags: Eko reports variation within a Sabad, not a choice it can't verify.",
-    "Scope: Eko reviews the English transcreation only, and never generates translation text.",
+    "Scope: Eko reviews human-authored literal translation, transcreation, word annotation and transcription; publication and process rules apply to their recorded workflow evidence. Eko never generates translation text.",
     "No roles: anyone may resolve a finding, propose a rule, or approve one, always with a written reason."
   ],
   "interim_checks": [],
@@ -43,9 +43,9 @@
       ],
       "confidence": "low",
       "resolution": {
-        "active": false,
-        "scope": "review_lens",
-        "severity": "lens",
+        "active": true,
+        "scope": "p0_check",
+        "severity": "hint",
         "blocks_publish": false,
         "layers": [
           "literal",
@@ -53,7 +53,12 @@
           "annotation"
         ],
         "conditional": null,
-        "decision": null
+        "decision": "The model may raise a nonblocking exact-span hint when the authored literal or transcreation appears to conflict with the source context. This is reviewer guidance, not an authoritative interpretation.",
+        "mode": "model",
+        "implemented_layers": [
+          "literal",
+          "transcreation"
+        ]
       }
     },
     {
@@ -85,15 +90,19 @@
       ],
       "confidence": "low",
       "resolution": {
-        "active": false,
-        "scope": "out_of_scope",
+        "active": true,
+        "scope": "p0_process",
         "severity": "none",
         "blocks_publish": false,
         "layers": [
           "process"
         ],
         "conditional": null,
-        "decision": null
+        "decision": "BaniDB is the read-only source of record for the Guru Granth Sahib text used by Eko. External sources cannot replace or edit that source; no external authority is treated as primary in the workspace.",
+        "mode": "workflow",
+        "implemented_layers": [
+          "process"
+        ]
       }
     },
     {
@@ -141,15 +150,19 @@
       ],
       "confidence": "medium",
       "resolution": {
-        "active": false,
-        "scope": "removed",
+        "active": true,
+        "scope": "p0_by_design",
         "severity": "none",
         "blocks_publish": false,
         "layers": [
           "publication"
         ],
         "conditional": null,
-        "decision": "Removed from automated checks by the team (Oct 16). Reviewer asked to confirm (Q1)."
+        "decision": "Enforced by a visible humility statement beside every published rendering; it describes the team's current understanding rather than a final one.",
+        "mode": "workflow",
+        "implemented_layers": [
+          "publication"
+        ]
       }
     },
     {
@@ -214,10 +227,16 @@
         "severity": "flag",
         "blocks_publish": true,
         "layers": [
-          "transcreation"
+          "transcreation",
+          "publication"
         ],
         "conditional": null,
-        "decision": "Prefilter + LLM confirm on claims of a single correct reading or that other renderings are wrong. Eko's own UI follows this rule too: flags say 'differs from reference rendering', never 'incorrect'."
+        "decision": "Prefilter + LLM confirm on claims of a single correct reading or that other renderings are wrong. Eko's own UI follows this rule too: flags say 'differs from reference rendering', never 'incorrect'.",
+        "mode": "hybrid",
+        "implemented_layers": [
+          "transcreation",
+          "publication"
+        ]
       }
     },
     {
@@ -251,16 +270,21 @@
       ],
       "confidence": "low",
       "resolution": {
-        "active": false,
-        "scope": "review_lens",
-        "severity": "lens",
+        "active": true,
+        "scope": "p0_by_design",
+        "severity": "none",
         "blocks_publish": false,
         "layers": [
           "literal",
           "transcreation"
         ],
         "conditional": null,
-        "decision": null
+        "decision": "Enforced by distinct authored layers and separate stored drafts for literal and transcreation.",
+        "mode": "workflow",
+        "implemented_layers": [
+          "literal",
+          "transcreation"
+        ]
       }
     },
     {
@@ -292,15 +316,19 @@
       ],
       "confidence": "low",
       "resolution": {
-        "active": false,
-        "scope": "review_lens",
+        "active": true,
+        "scope": "p0_check",
         "severity": "lens",
         "blocks_publish": false,
         "layers": [
           "transcreation"
         ],
         "conditional": null,
-        "decision": null
+        "decision": "All-layer expansion: model assessment with cited evidence.",
+        "mode": "model",
+        "implemented_layers": [
+          "transcreation"
+        ]
       }
     },
     {
@@ -332,15 +360,19 @@
       ],
       "confidence": "low",
       "resolution": {
-        "active": false,
-        "scope": "review_lens",
+        "active": true,
+        "scope": "p0_check",
         "severity": "lens",
         "blocks_publish": false,
         "layers": [
           "transcreation"
         ],
         "conditional": null,
-        "decision": null
+        "decision": "All-layer expansion: model assessment with cited evidence.",
+        "mode": "model",
+        "implemented_layers": [
+          "transcreation"
+        ]
       }
     },
     {
@@ -376,16 +408,21 @@
       ],
       "confidence": "low",
       "resolution": {
-        "active": false,
-        "scope": "review_lens",
-        "severity": "lens",
+        "active": true,
+        "scope": "p0_check",
+        "severity": "warning",
         "blocks_publish": false,
         "layers": [
           "transcreation",
           "publication"
         ],
         "conditional": null,
-        "decision": null
+        "decision": "All-layer expansion: model assessment with cited evidence.",
+        "mode": "model",
+        "implemented_layers": [
+          "transcreation",
+          "publication"
+        ]
       }
     },
     {
@@ -416,15 +453,19 @@
       ],
       "confidence": "low",
       "resolution": {
-        "active": false,
-        "scope": "out_of_scope",
-        "severity": "none",
+        "active": true,
+        "scope": "p0_check",
+        "severity": "hint",
         "blocks_publish": false,
         "layers": [
           "publication"
         ],
         "conditional": null,
-        "decision": "Duplicate of FLOW-07; out of scope for text checks."
+        "decision": "The model may raise a nonblocking, evidence-backed reviewer hint from human-authored publication notes. It cannot invent citations or write footnotes; uncertainty remains not evaluable.",
+        "mode": "model",
+        "implemented_layers": [
+          "publication"
+        ]
       }
     },
     {
@@ -496,10 +537,18 @@
         "severity": "error",
         "blocks_publish": true,
         "layers": [
-          "transcreation"
+          "literal",
+          "transcreation",
+          "annotation"
         ],
         "conditional": null,
-        "decision": "The rule text governs: it bans 'God'/'Lord' as renderings of the Divine. The checklist's 'anywhere' is read as shorthand. Capitalized God/Lord (and Godhead, Lordship, Lord-X) -> error, deterministic L1. Lowercase or plural (gods, lords, goddess) -> LLM confirms the referent with the BaniDB line; a worldly or other-tradition referent passes."
+        "decision": "The rule text governs: it bans 'God'/'Lord' as renderings of the Divine. The checklist's 'anywhere' is read as shorthand. Capitalized God/Lord (and Godhead, Lordship, Lord-X) -> error, deterministic L1. Lowercase or plural (gods, lords, goddess) -> LLM confirms the referent with the BaniDB line; a worldly or other-tradition referent passes.",
+        "mode": "hybrid",
+        "implemented_layers": [
+          "literal",
+          "transcreation",
+          "annotation"
+        ]
       }
     },
     {
@@ -558,10 +607,16 @@
         "severity": "flag",
         "blocks_publish": true,
         "layers": [
+          "literal",
           "transcreation"
         ],
         "conditional": null,
-        "decision": "Narrowed until SikhRI supplies the Divine-name table (Section 8 gap). Two checks only: (a) names whose attribute is explicit in the word itself: the karta/kartar family must keep 'Creator' (the rule's own example) -> flag. (b) collapse detector: 3+ distinct Divine names in one Sabad all rendered by the same single English word -> warning for the reviewer. Eko does not judge other names' renderings yet."
+        "decision": "Narrowed until SikhRI supplies the Divine-name table (Section 8 gap). Two checks only: (a) names whose attribute is explicit in the word itself: the karta/kartar family must keep 'Creator' (the rule's own example) -> flag. (b) collapse detector: 3+ distinct Divine names in one Sabad all rendered by the same single English word -> warning for the reviewer. Eko does not judge other names' renderings yet.",
+        "mode": "model",
+        "implemented_layers": [
+          "literal",
+          "transcreation"
+        ]
       }
     },
     {
@@ -627,10 +682,16 @@
         "severity": "warning",
         "blocks_publish": false,
         "layers": [
+          "literal",
           "transcreation"
         ],
         "conditional": null,
-        "decision": "Exact spelling 'IkOankar'; any variant -> warning. First use = first occurrence in the Sabad. Gloss 'One Universal Integrative Force' at first use, written as an apposition (comma or dash), because LAYER-07 bans parentheses in the transcreation."
+        "decision": "Exact spelling 'IkOankar'; any variant -> warning. First use = first occurrence in the Sabad. Gloss 'One Universal Integrative Force' at first use, written as an apposition (comma or dash), because LAYER-07 bans parentheses in the transcreation.",
+        "mode": "code",
+        "implemented_layers": [
+          "literal",
+          "transcreation"
+        ]
       }
     },
     {
@@ -696,17 +757,23 @@
       ],
       "confidence": "high",
       "resolution": {
-        "active": false,
-        "scope": "removed",
-        "severity": "none",
-        "blocks_publish": false,
+        "active": true,
+        "scope": "p0_check",
+        "severity": "flag",
+        "blocks_publish": true,
         "layers": [
           "literal",
           "transcreation",
           "publication"
         ],
         "conditional": null,
-        "decision": "Removed from automated checks by the team (Oct 16). Reviewer asked to confirm (Q1)."
+        "decision": "All-layer expansion: hybrid assessment; run only with applicable authored input and sufficient evidence.",
+        "mode": "hybrid",
+        "implemented_layers": [
+          "literal",
+          "transcreation",
+          "publication"
+        ]
       }
     },
     {
@@ -773,17 +840,23 @@
       ],
       "confidence": "medium",
       "resolution": {
-        "active": false,
-        "scope": "removed",
-        "severity": "none",
-        "blocks_publish": false,
+        "active": true,
+        "scope": "p0_check",
+        "severity": "flag",
+        "blocks_publish": true,
         "layers": [
           "literal",
           "transcreation",
           "publication"
         ],
         "conditional": null,
-        "decision": "Removed from automated checks by the team (Oct 16). Reviewer asked to confirm (Q1)."
+        "decision": "All-layer expansion: hybrid assessment; run only with applicable authored input and sufficient evidence.",
+        "mode": "hybrid",
+        "implemented_layers": [
+          "literal",
+          "transcreation",
+          "publication"
+        ]
       }
     },
     {
@@ -818,9 +891,9 @@
       ],
       "confidence": "low",
       "resolution": {
-        "active": false,
-        "scope": "review_lens",
-        "severity": "lens",
+        "active": true,
+        "scope": "p0_check",
+        "severity": "warning",
         "blocks_publish": false,
         "layers": [
           "literal",
@@ -828,7 +901,9 @@
           "process"
         ],
         "conditional": null,
-        "decision": "Review lens only."
+        "decision": "All-layer expansion: model assessment; run only with applicable authored input and sufficient evidence.",
+        "mode": "model",
+        "implemented_layers": []
       }
     },
     {
@@ -925,10 +1000,18 @@
         "severity": "warning",
         "blocks_publish": false,
         "layers": [
-          "transcreation"
+          "literal",
+          "transcreation",
+          "publication"
         ],
         "conditional": null,
-        "decision": "Non-preferred spellings (Shabad, Naam, Padshah, Parkash Purab) -> warning; titles of Banis are proper nouns and exempt. English substitutes ('the Word', 'the Name', 'hymn') -> LLM confirm -> warning. Missing gloss at first use in the Sabad -> hint only."
+        "decision": "Non-preferred spellings (Shabad, Naam, Padshah, Parkash Purab) -> warning; titles of Banis are proper nouns and exempt. English substitutes ('the Word', 'the Name', 'hymn') -> LLM confirm -> warning. Missing gloss at first use in the Sabad -> hint only.",
+        "mode": "hybrid",
+        "implemented_layers": [
+          "literal",
+          "transcreation",
+          "publication"
+        ]
       }
     },
     {
@@ -965,16 +1048,18 @@
       ],
       "confidence": "medium",
       "resolution": {
-        "active": false,
-        "scope": "p1_check",
-        "severity": "none",
+        "active": true,
+        "scope": "p0_process",
+        "severity": "warning",
         "blocks_publish": false,
         "layers": [
           "literal",
           "transcreation"
         ],
         "conditional": null,
-        "decision": "Inactive: applies to the literal translation, which is out of scope (transcreation only). Earlier call kept for later: Literal layer only (LAYER-08 frees the transcreation). 'Same word' = same stem key from the morphology analyzer within one Sabad, so inflected forms group together. Differing renderings -> warning, cleared by a reviewer reason (CONS-02/03)."
+        "decision": "All-layer expansion: workflow assessment; run only with applicable authored input and sufficient evidence.",
+        "mode": "workflow",
+        "implemented_layers": []
       }
     },
     {
@@ -1013,9 +1098,9 @@
       ],
       "confidence": "medium",
       "resolution": {
-        "active": false,
-        "scope": "merged",
-        "severity": "none",
+        "active": true,
+        "scope": "p0_process",
+        "severity": "warning",
         "blocks_publish": false,
         "layers": [
           "process",
@@ -1023,7 +1108,9 @@
           "transcreation"
         ],
         "conditional": null,
-        "decision": "Merged into CONS-01 (same check)."
+        "decision": "All-layer expansion: workflow assessment; run only with applicable authored input and sufficient evidence.",
+        "mode": "workflow",
+        "implemented_layers": []
       }
     },
     {
@@ -1055,15 +1142,18 @@
       ],
       "confidence": "low",
       "resolution": {
-        "active": false,
-        "scope": "p1_check",
+        "active": true,
+        "scope": "p0_process",
         "severity": "flag",
         "blocks_publish": false,
         "layers": [
+          "transcreation",
           "process"
         ],
         "conditional": null,
-        "decision": "Process rule. Eko has no annotation data, so this stays p1."
+        "decision": "Advisory only. Eko does not gate review or publication on related literal or word-annotation drafts. Missing workflow evidence remains not evaluable, never a pass.",
+        "mode": "workflow",
+        "implemented_layers": []
       }
     },
     {
@@ -1092,15 +1182,19 @@
       ],
       "confidence": "low",
       "resolution": {
-        "active": false,
-        "scope": "out_of_scope",
+        "active": true,
+        "scope": "p0_process",
         "severity": "none",
         "blocks_publish": false,
         "layers": [
           "process"
         ],
         "conditional": null,
-        "decision": null
+        "decision": "The workspace is organized around Sabads (compositions), with their source lines kept together and in BaniDB order.",
+        "mode": "workflow",
+        "implemented_layers": [
+          "process"
+        ]
       }
     },
     {
@@ -1131,15 +1225,17 @@
       ],
       "confidence": "low",
       "resolution": {
-        "active": false,
-        "scope": "out_of_scope",
-        "severity": "none",
-        "blocks_publish": false,
+        "active": true,
+        "scope": "p0_process",
+        "severity": "flag",
+        "blocks_publish": true,
         "layers": [
           "process"
         ],
         "conditional": null,
-        "decision": null
+        "decision": "All-layer expansion: workflow assessment with cited evidence.",
+        "mode": "workflow",
+        "implemented_layers": []
       }
     },
     {
@@ -1172,15 +1268,17 @@
       ],
       "confidence": "low",
       "resolution": {
-        "active": false,
-        "scope": "out_of_scope",
-        "severity": "none",
-        "blocks_publish": false,
+        "active": true,
+        "scope": "p0_process",
+        "severity": "flag",
+        "blocks_publish": true,
         "layers": [
           "process"
         ],
         "conditional": null,
-        "decision": null
+        "decision": "All-layer expansion: workflow assessment with cited evidence.",
+        "mode": "workflow",
+        "implemented_layers": []
       }
     },
     {
@@ -1212,15 +1310,17 @@
       ],
       "confidence": "low",
       "resolution": {
-        "active": false,
-        "scope": "out_of_scope",
-        "severity": "none",
-        "blocks_publish": false,
+        "active": true,
+        "scope": "p0_process",
+        "severity": "flag",
+        "blocks_publish": true,
         "layers": [
           "process"
         ],
         "conditional": null,
-        "decision": null
+        "decision": "All-layer expansion: workflow assessment with cited evidence.",
+        "mode": "workflow",
+        "implemented_layers": []
       }
     },
     {
@@ -1252,15 +1352,17 @@
       ],
       "confidence": "low",
       "resolution": {
-        "active": false,
-        "scope": "out_of_scope",
-        "severity": "none",
+        "active": true,
+        "scope": "p0_process",
+        "severity": "warning",
         "blocks_publish": false,
         "layers": [
           "process"
         ],
         "conditional": null,
-        "decision": null
+        "decision": "All-layer expansion: workflow assessment with cited evidence.",
+        "mode": "workflow",
+        "implemented_layers": []
       }
     },
     {
@@ -1292,16 +1394,20 @@
       ],
       "confidence": "low",
       "resolution": {
-        "active": false,
-        "scope": "out_of_scope",
-        "severity": "none",
+        "active": true,
+        "scope": "p0_check",
+        "severity": "hint",
         "blocks_publish": false,
         "layers": [
           "publication",
           "process"
         ],
         "conditional": null,
-        "decision": null
+        "decision": "The model may raise a nonblocking, evidence-backed reviewer hint from human-authored publication notes. It cannot invent citations or write footnotes; uncertainty remains not evaluable.",
+        "mode": "model",
+        "implemented_layers": [
+          "publication"
+        ]
       }
     },
     {
@@ -1336,15 +1442,19 @@
       ],
       "confidence": "low",
       "resolution": {
-        "active": false,
-        "scope": "p1_check",
-        "severity": "none",
+        "active": true,
+        "scope": "p0_check",
+        "severity": "hint",
         "blocks_publish": false,
         "layers": [
           "literal"
         ],
         "conditional": null,
-        "decision": "Inactive: applies to the literal translation, which is out of scope (transcreation only). Earlier call kept for later: Possible omissions only: the LLM lists content words in the BaniDB line with no English counterpart. Non-blocking hint, because without annotation data Eko can't verify grammatical position. 'Grammatical position' is read as grammatical role, not word order (see LAYER-04)."
+        "decision": "The model may raise a nonblocking exact-span hint about possible literal omissions. It does not establish exhaustive word coverage or grammar; uncertain cases remain not evaluable.",
+        "mode": "model",
+        "implemented_layers": [
+          "literal"
+        ]
       }
     },
     {
@@ -1388,15 +1498,19 @@
       ],
       "confidence": "high",
       "resolution": {
-        "active": false,
-        "scope": "p1_check",
+        "active": true,
+        "scope": "p0_by_design",
         "severity": "none",
         "blocks_publish": false,
         "layers": [
           "literal"
         ],
         "conditional": null,
-        "decision": "Inactive: applies to the literal translation, which is out of scope (transcreation only). Earlier call kept for later: Satisfied by design: Eko stores each layer separately and always renders the literal in italics, so italics can't be wrong. The transcreation is rendered upright (the draft's layer table)."
+        "decision": "Enforced by italic literal presentation in the workspace, report and review surfaces.",
+        "mode": "workflow",
+        "implemented_layers": [
+          "literal"
+        ]
       }
     },
     {
@@ -1433,15 +1547,19 @@
       ],
       "confidence": "low",
       "resolution": {
-        "active": false,
-        "scope": "p1_check",
-        "severity": "none",
-        "blocks_publish": false,
+        "active": true,
+        "scope": "p0_check",
+        "severity": "flag",
+        "blocks_publish": true,
         "layers": [
           "literal"
         ],
         "conditional": null,
-        "decision": "Inactive: applies to the literal translation, which is out of scope (transcreation only). Earlier call kept for later: Two parts. (1) Parentheses must be balanced, non-empty and not nested -> error, deterministic. (2) Unmarked additions: the LLM flags added content words (nouns, verbs, adjectives, adverbs) with no source counterpart -> hint. Grammar-required function words (articles, copulas, case prepositions) are not flagged until annotation data exists. Parentheses holding a known gloss (TERM-03/07) are exempt."
+        "decision": "The literal-layer code check reports unmatched or empty parentheses with an exact draft span. Unmarked additions require source-word alignment and remain not evaluable until that evidence exists.",
+        "mode": "code",
+        "implemented_layers": [
+          "literal"
+        ]
       }
     },
     {
@@ -1475,15 +1593,19 @@
       ],
       "confidence": "low",
       "resolution": {
-        "active": false,
-        "scope": "p1_check",
+        "active": true,
+        "scope": "p0_suppressor",
         "severity": "none",
         "blocks_publish": false,
         "layers": [
           "literal"
         ],
         "conditional": null,
-        "decision": "Inactive: applies to the literal translation, which is out of scope (transcreation only). Earlier call kept for later: Suppressor: word-order changes are never flagged. Meaning added outside parentheses is reported under LAYER-03."
+        "decision": "Order changes are not flagged. LAYER-03 handles literal additions outside parentheses; no independent order violation is raised.",
+        "mode": "suppressor",
+        "implemented_layers": [
+          "literal"
+        ]
       }
     },
     {
@@ -1514,15 +1636,19 @@
       ],
       "confidence": "low",
       "resolution": {
-        "active": false,
-        "scope": "review_lens",
+        "active": true,
+        "scope": "p0_check",
         "severity": "lens",
         "blocks_publish": false,
         "layers": [
           "literal"
         ],
         "conditional": null,
-        "decision": "Review lens only."
+        "decision": "All-layer expansion: model assessment; run only with applicable authored input and sufficient evidence.",
+        "mode": "model",
+        "implemented_layers": [
+          "literal"
+        ]
       }
     },
     {
@@ -1585,7 +1711,11 @@
           "transcreation"
         ],
         "conditional": null,
-        "decision": "Closed archaism list (thee, thou, thy, hath, unto ...) -> flag. Ambiguous words (art, ye, lo) and -eth/-est endings -> LLM confirm. Treats LAYER-06 as settling the archaism part of the Section 8 'Register' question; plain vs elevated register stays open."
+        "decision": "Closed archaism list (thee, thou, thy, hath, unto ...) -> flag. Ambiguous words (art, ye, lo) and -eth/-est endings -> LLM confirm. Treats LAYER-06 as settling the archaism part of the Section 8 'Register' question; plain vs elevated register stays open.",
+        "mode": "hybrid",
+        "implemented_layers": [
+          "transcreation"
+        ]
       }
     },
     {
@@ -1644,7 +1774,11 @@
           "transcreation"
         ],
         "conditional": null,
-        "decision": "Any parenthesis or square bracket in a transcreation -> error, deterministic. Brackets count, because they also mark text as added."
+        "decision": "Any parenthesis or square bracket in a transcreation -> error, deterministic. Brackets count, because they also mark text as added.",
+        "mode": "code",
+        "implemented_layers": [
+          "transcreation"
+        ]
       }
     },
     {
@@ -1678,15 +1812,19 @@
       ],
       "confidence": "medium",
       "resolution": {
-        "active": false,
-        "scope": "p1_check",
-        "severity": "none",
+        "active": true,
+        "scope": "p0_check",
+        "severity": "warning",
         "blocks_publish": false,
         "layers": [
           "transcreation"
         ],
         "conditional": null,
-        "decision": "Inactive: comparing against the literal needs a literal translation, which is out of scope. Revisit if SikhRI's sample includes literals as context."
+        "decision": "When a human-authored literal covers the same source lines, token-set similarity at or above 0.85 raises a reviewer warning. Other comparisons remain not evaluable without Panjabi transcreation or a calibrated source-relative measure.",
+        "mode": "code",
+        "implemented_layers": [
+          "transcreation"
+        ]
       }
     },
     {
@@ -1718,15 +1856,19 @@
       ],
       "confidence": "low",
       "resolution": {
-        "active": false,
-        "scope": "review_lens",
-        "severity": "lens",
+        "active": true,
+        "scope": "p0_check",
+        "severity": "hint",
         "blocks_publish": false,
         "layers": [
           "transcreation"
         ],
         "conditional": null,
-        "decision": "Review lens only; LAYER-08's check covers the measurable half."
+        "decision": "The model may offer a nonblocking reviewer hint when a literal draft is available as context. It cannot suggest wording; no literal means the check is not evaluable.",
+        "mode": "model",
+        "implemented_layers": [
+          "transcreation"
+        ]
       }
     },
     {
@@ -1759,15 +1901,17 @@
       ],
       "confidence": "low",
       "resolution": {
-        "active": false,
-        "scope": "review_lens",
-        "severity": "lens",
+        "active": true,
+        "scope": "p0_suppressor",
+        "severity": "none",
         "blocks_publish": false,
         "layers": [
           "transcreation"
         ],
         "conditional": null,
-        "decision": "Umbrella over TERM-01 to 03. Never raises its own flag; Eko cites the specific TERM rule."
+        "decision": "Umbrella over TERM-01 to 03. Never raises its own flag; Eko cites the specific TERM rule.",
+        "mode": "suppressor",
+        "implemented_layers": []
       }
     },
     {
@@ -1813,10 +1957,15 @@
         "severity": "warning",
         "blocks_publish": false,
         "layers": [
+          "literal",
           "transcreation"
         ],
         "conditional": "needs applicable reference with explicit term-to-rendering mapping",
         "decision": "Active only when an applicable SikhRI-supplied or Eko-published reference explicitly maps a source term to its English rendering: a differing draft rendering -> warning 'differs from reference rendering, add a reason'. A departure must have a recorded reason before publish (CONS-03); the warning remains non-error severity. Absorbs TERM-09.",
+        "mode": "model",
+        "implemented_layers": [
+          "transcreation"
+        ],
         "publish_requires_reason": true
       }
     },
@@ -1856,10 +2005,15 @@
         "severity": "none",
         "blocks_publish": false,
         "layers": [
+          "literal",
           "transcreation"
         ],
         "conditional": null,
-        "decision": "Precedence rule: a reviewer's context reason clears any consistency warning (TERM-08, CONS-01). It never raises a flag itself."
+        "decision": "Precedence rule: a reviewer's context reason clears any consistency warning (TERM-08, CONS-01). It never raises a flag itself.",
+        "mode": "suppressor",
+        "implemented_layers": [
+          "transcreation"
+        ]
       }
     },
     {
@@ -1900,14 +2054,20 @@
       "confidence": "medium",
       "resolution": {
         "active": true,
-        "scope": "p0_by_design",
+        "scope": "p0_process",
         "severity": "none",
         "blocks_publish": false,
         "layers": [
-          "transcreation"
+          "literal",
+          "transcreation",
+          "process"
         ],
         "conditional": null,
-        "decision": "Satisfied by workflow: Eko requires a written reason before publishing a CONS-01 departure and stores that reason as the log."
+        "decision": "Satisfied by workflow: Eko requires a written reason before publishing a CONS-01 departure and stores that reason as the log.",
+        "mode": "workflow",
+        "implemented_layers": [
+          "transcreation"
+        ]
       }
     },
     {
@@ -1939,15 +2099,19 @@
       ],
       "confidence": "low",
       "resolution": {
-        "active": false,
-        "scope": "review_lens",
-        "severity": "lens",
+        "active": true,
+        "scope": "p0_check",
+        "severity": "hint",
         "blocks_publish": false,
         "layers": [
           "publication"
         ],
         "conditional": null,
-        "decision": "Review lens only."
+        "decision": "The model may raise a nonblocking, evidence-backed reviewer hint from human-authored publication notes. It cannot invent citations or write footnotes; uncertainty remains not evaluable.",
+        "mode": "model",
+        "implemented_layers": [
+          "publication"
+        ]
       }
     },
     {
@@ -1978,15 +2142,19 @@
       ],
       "confidence": "low",
       "resolution": {
-        "active": false,
-        "scope": "p1_check",
+        "active": true,
+        "scope": "p0_check",
         "severity": "flag",
-        "blocks_publish": false,
+        "blocks_publish": true,
         "layers": [
           "annotation"
         ],
         "conditional": null,
-        "decision": "Out of the demo: Eko has no annotation or transcription input. Kept as p1."
+        "decision": "The model may raise an evidence-backed finding against the supplied word annotation and BaniDB source. It cannot write or complete annotation text or supply Gurmukhi; uncertain linguistic judgments remain not evaluable.",
+        "mode": "model",
+        "implemented_layers": [
+          "annotation"
+        ]
       }
     },
     {
@@ -2030,15 +2198,19 @@
       ],
       "confidence": "medium",
       "resolution": {
-        "active": false,
-        "scope": "p1_check",
+        "active": true,
+        "scope": "p0_check",
         "severity": "flag",
-        "blocks_publish": false,
+        "blocks_publish": true,
         "layers": [
           "annotation"
         ],
         "conditional": null,
-        "decision": "Out of the demo: Eko has no annotation or transcription input. Kept as p1."
+        "decision": "A word annotation needs one semicolon separating nonempty literal and implied meaning sets. Comma boundaries within literal sets remain not evaluable without structured senses.",
+        "mode": "code",
+        "implemented_layers": [
+          "annotation"
+        ]
       }
     },
     {
@@ -2070,15 +2242,19 @@
       ],
       "confidence": "low",
       "resolution": {
-        "active": false,
-        "scope": "p1_check",
+        "active": true,
+        "scope": "p0_check",
         "severity": "flag",
-        "blocks_publish": false,
+        "blocks_publish": true,
         "layers": [
           "annotation"
         ],
         "conditional": null,
-        "decision": "Out of the demo: Eko has no annotation or transcription input. Kept as p1."
+        "decision": "The model may raise an evidence-backed finding against the supplied word annotation and BaniDB source. It cannot write or complete annotation text or supply Gurmukhi; uncertain linguistic judgments remain not evaluable.",
+        "mode": "model",
+        "implemented_layers": [
+          "annotation"
+        ]
       }
     },
     {
@@ -2127,15 +2303,19 @@
       ],
       "confidence": "high",
       "resolution": {
-        "active": false,
-        "scope": "p1_check",
+        "active": true,
+        "scope": "p0_check",
         "severity": "flag",
-        "blocks_publish": false,
+        "blocks_publish": true,
         "layers": [
           "annotation"
         ],
         "conditional": null,
-        "decision": "Out of the demo: Eko has no annotation or transcription input. Kept as p1."
+        "decision": "The second line of a word annotation must contain one nonempty part-of-speech designation and nonempty grammatical features separated by a semicolon. Feature completeness is not determined by this format check.",
+        "mode": "code",
+        "implemented_layers": [
+          "annotation"
+        ]
       }
     },
     {
@@ -2185,15 +2365,19 @@
       ],
       "confidence": "high",
       "resolution": {
-        "active": false,
-        "scope": "p1_check",
+        "active": true,
+        "scope": "p0_check",
         "severity": "flag",
-        "blocks_publish": false,
+        "blocks_publish": true,
         "layers": [
           "annotation"
         ],
         "conditional": null,
-        "decision": "Out of the demo: Eko has no annotation or transcription input. Kept as p1."
+        "decision": "The word class before the second-line semicolon must match one of the classes listed verbatim in the source rule. The check does not assess whether the grammatical analysis is correct.",
+        "mode": "code",
+        "implemented_layers": [
+          "annotation"
+        ]
       }
     },
     {
@@ -2225,15 +2409,19 @@
       ],
       "confidence": "low",
       "resolution": {
-        "active": false,
-        "scope": "review_lens",
-        "severity": "lens",
+        "active": true,
+        "scope": "p0_check",
+        "severity": "warning",
         "blocks_publish": false,
         "layers": [
           "annotation"
         ],
         "conditional": null,
-        "decision": "Out of the demo: Eko has no annotation or transcription input. Kept as p1."
+        "decision": "The model may raise an evidence-backed finding against the supplied word annotation and BaniDB source. It cannot write or complete annotation text or supply Gurmukhi; uncertain linguistic judgments remain not evaluable.",
+        "mode": "model",
+        "implemented_layers": [
+          "annotation"
+        ]
       }
     },
     {
@@ -2292,15 +2480,17 @@
       ],
       "confidence": "high",
       "resolution": {
-        "active": false,
-        "scope": "p1_check",
+        "active": true,
+        "scope": "p0_check",
         "severity": "flag",
-        "blocks_publish": false,
+        "blocks_publish": true,
         "layers": [
           "annotation"
         ],
         "conditional": null,
-        "decision": "Out of the demo: Eko has no annotation or transcription input. Kept as p1."
+        "decision": "The required Gurmukhi forms are read-only and must come from BaniDB. Because BaniDB does not expose the requested source-language forms, this rule remains not evaluable; do not enter or generate Gurmukhi in annotations.",
+        "mode": "code",
+        "implemented_layers": []
       }
     },
     {
@@ -2354,15 +2544,19 @@
       ],
       "confidence": "medium",
       "resolution": {
-        "active": false,
-        "scope": "p1_check",
+        "active": true,
+        "scope": "p0_check",
         "severity": "flag",
-        "blocks_publish": false,
+        "blocks_publish": true,
         "layers": [
           "annotation"
         ],
         "conditional": null,
-        "decision": "Out of the demo: Eko has no annotation or transcription input. Kept as p1."
+        "decision": "When an annotation supplies a language-form line, it uses `Language: form/form; Other language: form`. The format check does not supply or verify language forms or quoted sources; Gurmukhi remains read-only.",
+        "mode": "code",
+        "implemented_layers": [
+          "annotation"
+        ]
       }
     },
     {
@@ -2393,15 +2587,19 @@
       ],
       "confidence": "low",
       "resolution": {
-        "active": false,
-        "scope": "p1_check",
+        "active": true,
+        "scope": "p0_check",
         "severity": "flag",
-        "blocks_publish": false,
+        "blocks_publish": true,
         "layers": [
           "annotation"
         ],
         "conditional": null,
-        "decision": "Out of the demo: Eko has no annotation or transcription input. Kept as p1."
+        "decision": "The model may raise an evidence-backed finding against the supplied word annotation and BaniDB source. It cannot write or complete annotation text or supply Gurmukhi; uncertain linguistic judgments remain not evaluable.",
+        "mode": "model",
+        "implemented_layers": [
+          "annotation"
+        ]
       }
     },
     {
@@ -2438,15 +2636,19 @@
       ],
       "confidence": "medium",
       "resolution": {
-        "active": false,
-        "scope": "p1_check",
+        "active": true,
+        "scope": "p0_check",
         "severity": "warning",
         "blocks_publish": false,
         "layers": [
           "annotation"
         ],
         "conditional": null,
-        "decision": "Out of the demo: Eko has no annotation or transcription input. Kept as p1."
+        "decision": "The model may raise an evidence-backed finding against the supplied word annotation and BaniDB source. It cannot write or complete annotation text or supply Gurmukhi; uncertain linguistic judgments remain not evaluable.",
+        "mode": "model",
+        "implemented_layers": [
+          "annotation"
+        ]
       }
     },
     {
@@ -2478,16 +2680,18 @@
       ],
       "confidence": "low",
       "resolution": {
-        "active": false,
-        "scope": "out_of_scope",
-        "severity": "none",
+        "active": true,
+        "scope": "p0_process",
+        "severity": "warning",
         "blocks_publish": false,
         "layers": [
           "annotation",
           "process"
         ],
         "conditional": null,
-        "decision": "Out of the demo: Eko has no annotation or transcription input. Kept as p1."
+        "decision": "All-layer expansion: workflow assessment; run only with applicable authored input and sufficient evidence.",
+        "mode": "workflow",
+        "implemented_layers": []
       }
     },
     {
@@ -2518,15 +2722,17 @@
       ],
       "confidence": "low",
       "resolution": {
-        "active": false,
-        "scope": "p1_check",
+        "active": true,
+        "scope": "p0_check",
         "severity": "flag",
-        "blocks_publish": false,
+        "blocks_publish": true,
         "layers": [
           "transcription"
         ],
         "conditional": null,
-        "decision": "Out of the demo: Eko has no annotation or transcription input. Kept as p1."
+        "decision": "All-layer expansion: model assessment; run only with applicable authored input and sufficient evidence.",
+        "mode": "model",
+        "implemented_layers": []
       }
     },
     {
@@ -2567,16 +2773,18 @@
       ],
       "confidence": "medium",
       "resolution": {
-        "active": false,
-        "scope": "p1_check",
+        "active": true,
+        "scope": "p0_check",
         "severity": "flag",
-        "blocks_publish": false,
+        "blocks_publish": true,
         "layers": [
           "transcription",
           "publication"
         ],
         "conditional": null,
-        "decision": "Out of the demo: Eko has no annotation or transcription input. Kept as p1."
+        "decision": "All-layer expansion: code assessment; run only with applicable authored input and sufficient evidence.",
+        "mode": "code",
+        "implemented_layers": []
       }
     },
     {
@@ -2609,15 +2817,17 @@
       ],
       "confidence": "medium",
       "resolution": {
-        "active": false,
-        "scope": "p1_check",
+        "active": true,
+        "scope": "p0_check",
         "severity": "flag",
-        "blocks_publish": false,
+        "blocks_publish": true,
         "layers": [
           "transcription"
         ],
         "conditional": null,
-        "decision": "Out of the demo: Eko has no annotation or transcription input. Kept as p1."
+        "decision": "All-layer expansion: code assessment; run only with applicable authored input and sufficient evidence.",
+        "mode": "code",
+        "implemented_layers": []
       }
     },
     {
@@ -2646,15 +2856,17 @@
       "ambiguities": [],
       "confidence": "high",
       "resolution": {
-        "active": false,
-        "scope": "p1_check",
+        "active": true,
+        "scope": "p0_check",
         "severity": "flag",
-        "blocks_publish": false,
+        "blocks_publish": true,
         "layers": [
           "transcription"
         ],
         "conditional": null,
-        "decision": "Out of the demo: Eko has no annotation or transcription input. Kept as p1."
+        "decision": "All-layer expansion: code assessment; run only with applicable authored input and sufficient evidence.",
+        "mode": "code",
+        "implemented_layers": []
       }
     },
     {
@@ -2687,15 +2899,17 @@
       ],
       "confidence": "low",
       "resolution": {
-        "active": false,
-        "scope": "p1_check",
+        "active": true,
+        "scope": "p0_check",
         "severity": "warning",
         "blocks_publish": false,
         "layers": [
           "transcription"
         ],
         "conditional": null,
-        "decision": "Out of the demo: Eko has no annotation or transcription input. Kept as p1."
+        "decision": "All-layer expansion: model assessment; run only with applicable authored input and sufficient evidence.",
+        "mode": "model",
+        "implemented_layers": []
       }
     },
     {
@@ -2726,15 +2940,17 @@
       ],
       "confidence": "high",
       "resolution": {
-        "active": false,
-        "scope": "p1_check",
+        "active": true,
+        "scope": "p0_check",
         "severity": "flag",
-        "blocks_publish": false,
+        "blocks_publish": true,
         "layers": [
           "transcription"
         ],
         "conditional": null,
-        "decision": "Out of the demo: Eko has no annotation or transcription input. Kept as p1."
+        "decision": "All-layer expansion: code assessment; run only with applicable authored input and sufficient evidence.",
+        "mode": "code",
+        "implemented_layers": []
       }
     },
     {
@@ -2763,15 +2979,17 @@
       "ambiguities": [],
       "confidence": "high",
       "resolution": {
-        "active": false,
-        "scope": "p1_check",
+        "active": true,
+        "scope": "p0_check",
         "severity": "flag",
-        "blocks_publish": false,
+        "blocks_publish": true,
         "layers": [
           "transcription"
         ],
         "conditional": null,
-        "decision": "Out of the demo: Eko has no annotation or transcription input. Kept as p1."
+        "decision": "All-layer expansion: code assessment; run only with applicable authored input and sufficient evidence.",
+        "mode": "code",
+        "implemented_layers": []
       }
     },
     {
@@ -2805,15 +3023,17 @@
       ],
       "confidence": "medium",
       "resolution": {
-        "active": false,
-        "scope": "p1_check",
+        "active": true,
+        "scope": "p0_check",
         "severity": "flag",
-        "blocks_publish": false,
+        "blocks_publish": true,
         "layers": [
           "transcription"
         ],
         "conditional": null,
-        "decision": "Out of the demo: Eko has no annotation or transcription input. Kept as p1."
+        "decision": "All-layer expansion: code assessment; run only with applicable authored input and sufficient evidence.",
+        "mode": "code",
+        "implemented_layers": []
       }
     },
     {
@@ -2846,15 +3066,19 @@
       ],
       "confidence": "medium",
       "resolution": {
-        "active": false,
-        "scope": "p1_check",
+        "active": true,
+        "scope": "p0_check",
         "severity": "flag",
-        "blocks_publish": false,
+        "blocks_publish": true,
         "layers": [
           "transcription"
         ],
         "conditional": null,
-        "decision": "Out of the demo: Eko has no annotation or transcription input. Kept as p1."
+        "decision": "All-layer expansion: code assessment; run only with applicable authored input and sufficient evidence.",
+        "mode": "code",
+        "implemented_layers": [
+          "transcription"
+        ]
       }
     },
     {
@@ -2883,15 +3107,19 @@
       "ambiguities": [],
       "confidence": "high",
       "resolution": {
-        "active": false,
-        "scope": "p1_check",
+        "active": true,
+        "scope": "p0_check",
         "severity": "flag",
-        "blocks_publish": false,
+        "blocks_publish": true,
         "layers": [
           "transcription"
         ],
         "conditional": null,
-        "decision": "Out of the demo: Eko has no annotation or transcription input. Kept as p1."
+        "decision": "All-layer expansion: code assessment; run only with applicable authored input and sufficient evidence.",
+        "mode": "code",
+        "implemented_layers": [
+          "transcription"
+        ]
       }
     },
     {
@@ -2918,15 +3146,17 @@
       "ambiguities": [],
       "confidence": "high",
       "resolution": {
-        "active": false,
-        "scope": "p1_check",
+        "active": true,
+        "scope": "p0_check",
         "severity": "flag",
-        "blocks_publish": false,
+        "blocks_publish": true,
         "layers": [
           "transcription"
         ],
         "conditional": null,
-        "decision": "Out of the demo: Eko has no annotation or transcription input. Kept as p1."
+        "decision": "All-layer expansion: code assessment; run only with applicable authored input and sufficient evidence.",
+        "mode": "code",
+        "implemented_layers": []
       }
     },
     {
@@ -2957,15 +3187,17 @@
       ],
       "confidence": "high",
       "resolution": {
-        "active": false,
-        "scope": "p1_check",
+        "active": true,
+        "scope": "p0_check",
         "severity": "flag",
-        "blocks_publish": false,
+        "blocks_publish": true,
         "layers": [
           "transcription"
         ],
         "conditional": null,
-        "decision": "Out of the demo: Eko has no annotation or transcription input. Kept as p1."
+        "decision": "All-layer expansion: code assessment; run only with applicable authored input and sufficient evidence.",
+        "mode": "code",
+        "implemented_layers": []
       }
     },
     {
@@ -2994,15 +3226,17 @@
       "ambiguities": [],
       "confidence": "high",
       "resolution": {
-        "active": false,
-        "scope": "p1_check",
+        "active": true,
+        "scope": "p0_check",
         "severity": "flag",
-        "blocks_publish": false,
+        "blocks_publish": true,
         "layers": [
           "transcription"
         ],
         "conditional": null,
-        "decision": "Out of the demo: Eko has no annotation or transcription input. Kept as p1."
+        "decision": "All-layer expansion: code assessment; run only with applicable authored input and sufficient evidence.",
+        "mode": "code",
+        "implemented_layers": []
       }
     },
     {
@@ -3032,15 +3266,19 @@
       "ambiguities": [],
       "confidence": "high",
       "resolution": {
-        "active": false,
-        "scope": "p1_check",
+        "active": true,
+        "scope": "p0_check",
         "severity": "flag",
-        "blocks_publish": false,
+        "blocks_publish": true,
         "layers": [
           "transcription"
         ],
         "conditional": null,
-        "decision": "Out of the demo: Eko has no annotation or transcription input. Kept as p1."
+        "decision": "All-layer expansion: code assessment; run only with applicable authored input and sufficient evidence.",
+        "mode": "code",
+        "implemented_layers": [
+          "transcription"
+        ]
       }
     },
     {
@@ -3072,15 +3310,17 @@
       ],
       "confidence": "high",
       "resolution": {
-        "active": false,
-        "scope": "p1_check",
+        "active": true,
+        "scope": "p0_check",
         "severity": "flag",
-        "blocks_publish": false,
+        "blocks_publish": true,
         "layers": [
           "transcription"
         ],
         "conditional": null,
-        "decision": "Out of the demo: Eko has no annotation or transcription input. Kept as p1."
+        "decision": "All-layer expansion: code assessment; run only with applicable authored input and sufficient evidence.",
+        "mode": "code",
+        "implemented_layers": []
       }
     },
     {
@@ -3111,15 +3351,17 @@
       ],
       "confidence": "high",
       "resolution": {
-        "active": false,
-        "scope": "p1_check",
+        "active": true,
+        "scope": "p0_check",
         "severity": "flag",
-        "blocks_publish": false,
+        "blocks_publish": true,
         "layers": [
           "transcription"
         ],
         "conditional": null,
-        "decision": "Out of the demo: Eko has no annotation or transcription input. Kept as p1."
+        "decision": "All-layer expansion: code assessment; run only with applicable authored input and sufficient evidence.",
+        "mode": "code",
+        "implemented_layers": []
       }
     }
   ]

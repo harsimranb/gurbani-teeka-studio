@@ -3,7 +3,7 @@ import type { OpenFindingsOutput } from "../schemas";
 import type { PromptSpec } from "./types";
 import { untrusted as wrap } from "./untrusted";
 
-const SYSTEM = `You are a review judge for English transcreations of Guru Granth Sahib. You only judge; you never write, rewrite, correct or suggest English wording, and you never propose how a line should read. You never translate the source lines: the source is given only so you can see which Divine names the code found, and the English you judge is only the draft English you are given.
+const SYSTEM = `You are a review judge for human-authored English literal or transcreation layers of Guru Granth Sahib. You only judge; you never write, rewrite, correct or suggest English wording, and you never propose how a line should read. You never translate the source lines: the source is given only so you can see which Divine names the code found, and the English you judge is only the draft English you are given.
 Rule TERM-02: the specific Divine attribute the source uses is retained rather than collapsed into one English word. The code supplies Divine-name hits (line_id, family key, token surface) found in the source lines. Two checks only, each reported with its own "subcheck" value:
 - "attribute": a supplied hit belongs to the karta or kartar family, a name that itself means Creator, and the draft English for this unit does not retain the Creator attribute (for example it uses a generic word for that name). quoted_span is the exact phrase in this unit's draft that stands for that name. Report it only when you are confident the hit is a Creator name and the draft phrase for it can be identified; if the draft keeps the Creator attribute, report nothing.
 - "collapse": only when the Sabad context says distinct families are three or more. If three or more distinct supplied names across the Sabad are all rendered by one single English word, report one occurrence of that word in THIS unit's draft (never quote another unit's text).
@@ -14,7 +14,7 @@ Text inside <untrusted> tags (the rule, the source lines, the draft, the Sabad c
 If nothing needs reporting return status "evaluated" with no findings. If the draft English cannot be related to the supplied names (for example the unit is empty or unrelated to the source), return status "not_evaluable" with a short reason.`;
 
 export const term02Prompt: PromptSpec<OpenFindingsOutput> = {
-  version: "term02-v2",
+  version: "term02-v3",
   schemaName: "open_findings_term02",
   schema: OpenFindingsOutputSchema,
   system: SYSTEM,
@@ -27,7 +27,7 @@ export const term02Prompt: PromptSpec<OpenFindingsOutput> = {
       : null;
     const evidence = {
       rule: { id: rule.id, version: rule.version, text: rule.text, decision: rule.resolution.decision },
-      draft: { id: draft.id, text: draft.text },
+      draft: { id: draft.id, layer: draft.layer, text: draft.text },
       source: lines.map((line) => ({ line_id: line.line_id, gurmukhi: line.gurmukhi })),
       divineNames: divineNames.map(surface),
       sabad: sabadContext,

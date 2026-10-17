@@ -31,6 +31,7 @@ Mark a feature complete only when its acceptance paragraph in [`_docs/10-feature
 | **F5 · Rules catalog** | In progress | FE-07 reads stored rulesets through API-06 (D-90); approvals add persistent versions. |
 | **F6 · Proposals and drift** | In progress | FE-08 on SQLite-backed API-07/08 (D-90); verified live 2026-10-17 (M3): real drift replay blocked on published lines, approval without override reason refused, reasoned override made v2, next check applied the free-text rule. API-10 drafted proposals done (D-97). Open: glossary drift until OQ-13. |
 | **F7 · Backtest and evaluation** | In progress; real-data acceptance blocked | EVAL-01/02 done with the provisional OQ-14 policy (D-92); `pnpm eval` writes a labelled `synthetic_test` run that API-09/FE-09 show as such. SikhRI pre-edit review history has not arrived (P-04); OQ-14 needs SikhRI confirmation. |
+| **F8 · All-layer rules** | In progress on `main` | RULE-ALL: 66 tracked; 42 have at least one implemented layer (some partial). Literal, annotation, transcription and publication-note drafts are supported. The other 24 remain pending or evidence-limited; see `_docs/rules/all-rules-matrix.md`. FLOW-01 remains advisory; missing prerequisites are reported not evaluable and do not block review or publication. |
 
 ---
 
@@ -106,6 +107,24 @@ Append-only. Record decisions that add, remove or change planned behavior here *
 | D-97 | API-10: two distinct reviewers overriding one rule draft one pending proposal; it must be revised and submitted (drift) before approval. |
 | D-98 | FE-10/FE-11: additive `browseSabads` and `lookupWord` read routes (21 routes). |
 | D-99 | LLM-06: free-text findings and `not_evaluable` reasons store Eko-written text, never model prose (`freetext-v2`). |
+| D-100 | Harsimran approved expanding from transcreation-only to all six source-rule layers, reinstating PRIN-03/TERM-04/TERM-05, and automating as many evidence-backed checks as practical. Gurmukhi stays BaniDB-only and read-only; ANNO-07 is unevaluable where BaniDB lacks a required form. This supersedes the earlier transcreation-only and removed-rule decisions for the new ruleset while preserving verbatim rule text. |
+| D-101 | RULE-ALL records applicability separately from implementation. The catalog shows all 66, while `implemented_layers` identifies actual checks; pending and partial checks are never passes. Existing stored v1 decisions are retained and changed seed decisions become a new ruleset version. Non-transcreation drafts cannot enter the transcreation reference set. |
+| D-102 | RULE-ALL enforces FLOW-01 before review/publishing: each transcreation line needs its human-written literal and each BaniDB token needs a word-keyed human annotation. Missing inputs block with FLOW-01. |
+| D-103 | Broad GUIDE/SHOULD principles may run through the generic review-only judge as hints or nonblocking warnings; uncertainty remains `not_evaluable`, and model output cannot suggest text. |
+| D-104 | PRIN-02, FLOW-02 and LAYER-04 are enforced by the product layout and check selection: source evidence appears first, work is organized per Sabad, and literal order changes are not flagged. |
+| D-105 | ANNO-08 validates separators only when a human-authored language-form line is supplied; it does not fabricate missing forms or Gurmukhi. |
+| D-106 | LAYER-09 uses the human-authored literal as read-only context and may return an exact-span hint only; it never supplies elaboration wording, and it is unevaluable without a related literal. |
+| D-107 | PRIN-01 and LAYER-01 may emit nonblocking model hints from source and authored text; uncertain semantic judgments remain not_evaluable and the model supplies no translation wording. |
+| D-108 | PRIN-09, FLOW-07 and CONS-04 may receive nonblocking review hints from human-authored publication notes; no model-generated citations or footnotes are allowed. |
+| D-109 | Published reports retain the ruleset version and check results recorded in their publication gate after newer rulesets are added. |
+| D-110 | Without a model judge, only model and hybrid checks are listed as not evaluable; code-only checks retain their actual code-phase result. |
+| D-111 | ANNO-01/03/06/09/10 use review packets; ANNO-08 allows semicolon-separated meaning changes after a language-labelled segment. |
+| D-112 | PRIN-02 and FLOW-02 are reported as workspace-enforced process outcomes; process rules without evidence remain visibly pending. |
+| D-113 | FLOW-01 is advisory and does not block review or publication; missing workflow evidence remains not evaluable, not a pass. |
+| D-114 | BaniDB ingest remains read-only; a local app database is allowed only when its main file and both sidecars are either ignored or explicitly committed. |
+| D-115 | Annotation model checks receive the exact selected BaniDB token and offsets; unresolved word positions are not evaluable. |
+| D-116 | TRAN-14 checks mapped Roman digits against the selected source token or every number on a line-level transcription; standalone and punctuation-wrapped numerals can be entered in the word editor. |
+| D-117 | TRAN-09 and TRAN-10 verify the mechanical Roman marks for source tippi/bindī and visarg; other pronunciation conventions remain unevaluated. |
 | D-78 | FE-01 to FE-09 are built against a stateful, browser-storage mock of the 18 contract routes (`lib/client/mock-*`) with a labelled synthetic checker, plus a dev-only `/api/dev/demo-sabad` route that serves the private BaniDB fixture. FE tasks stay *In progress* until the real API passes their acceptance. P1 items render as labelled placeholders. |
 
 ---
@@ -115,7 +134,7 @@ Append-only. Record decisions that add, remove or change planned behavior here *
 ### Done
 - [x] Problem brief, scope and requirements → `_docs/01`, `_docs/02`
 - [x] Logical and technical architecture → `_docs/03`
-- [x] Ruleset v0.1 structured (66 rules) and resolved (10 active) → `_docs/rules/`
+- [x] Ruleset v0.1 structured (66 source rules); current all-layer resolution tracks 66, with 42 implemented on at least one layer → `_docs/rules/`
 - [x] Reviewer questions document drafted → `_docs/reviewer-questions.md`
 - [x] Data source research → `_docs/05`
 - [x] Workstream design and private-data ignore rules → `_docs/06`, `.gitignore`; fixed-owner enforcement removed by P-13
@@ -234,7 +253,7 @@ Related folders: `lib/server/db/`, `lib/server/ingest/`, `scripts/app/`, `data/b
 - [x] **DATA-01** Drizzle schema + first migration: lines, drafts, findings, check runs, decisions, versioned rules, proposals, drift results and references. Empty-file migration verified on Mac; focused and full tests (37) plus TypeScript pass (2026-10-16)
 - [x] **DATA-02** Repository functions in `lib/server/db/repo.ts` save/load the contract records, including grouped drafts, findings, check phases, decisions, versioned rules, references and source lines. Temporary SQLite round-trip tests and all 40 tests pass (2026-10-16)
 - [x] **DATA-03** BaniDB local export → app lines with ang, raag, writer, Rahao and NFC Gurmukhi; `pnpm ingest` is idempotent. Since P-05 (D-86), ingest loads the full corpus (5,542 Sabads) when the SQLite copy is present, else the demo fixture. All 43 tests and TypeScript pass (2026-10-16) · FR-01 · **Provides S2**
-- [x] **DATA-04** Rules seed reads `_docs/rules/rules.resolved.json` verbatim as version 1; repeat ingest keeps 66 unique IDs and 10 active resolutions. Focused, TypeScript and all 44 tests pass (2026-10-16)
+- [x] **DATA-04** Rules seed reads `_docs/rules/rules.resolved.json` verbatim as the initial version; repeat ingest keeps 66 unique IDs. RULE-ALL adds versioned all-layer resolutions without overwriting older snapshots.
 - [x] **DATA-05** Source-only demo seed (`scripts/app/seed-demo.ts`) per D-75; preserves the private BaniDB lines on repeat and creates no draft or decision. Human-authored draft seeding is deferred to P-09/F1. Focused, TypeScript and all 45 tests pass (2026-10-16)
 - [ ] **DATA-06** SikhRI sample import: raw → `data/sikhri-sample/normalized/references.json` and `corrections.json` (contract schemas); map IDs by normalized Gurmukhi if they differ from BaniDB, quarantine ambiguous repeated-line matches, and load only resolved references into the DB · Needs: P-04 · **Provides S3**
 
@@ -293,6 +312,10 @@ Related folders: `app/(studio)/`, `app/layout.tsx`, `app/page.tsx`, `app/globals
 
 ---
 
+## All-layer expansion
+
+- [ ] **RULE-ALL** Reconcile all 66 rules across literal, transcreation, annotation, transcription, publication and process; implement the maximum evidence-backed checks, preserve old rule versions, and show pending evidence honestly · F8 · In progress on `main`; approved design and plan in `docs/superpowers/`. Current traceability and per-layer coverage: `_docs/rules/all-rules-matrix.md`.
+
 ## Integration · together
 
 - [x] **M1** (hour 3) Save a transcreation → real API → `runChecks('code')` → real findings with highlights
@@ -310,7 +333,7 @@ Related folders: `app/(studio)/`, `app/layout.tsx`, `app/page.tsx`, `app/globals
 - [ ] Propose a rule → drift check → approve with a reason → next check uses the new version
 - [ ] Eval shows catch and false-flag rates with sample size
 - [ ] BaniDB attribution visible
-- [ ] Mockup labels are reconciled with live data: 10 active rules (8 checks + 2 workflow), PRIN-04 active, no hard-coded sample counts or timings
+- [ ] Mockup labels are reconciled with live data: 66 source rules, 25 with implemented coverage so far, PRIN-03/TERM-04/TERM-05 reinstated, no hard-coded sample counts or timings
 
 ### Cut order (decide at M2)
 1. CHK-12 CONS-01 and LLM-09 style, if neither SikhRI-supplied nor Eko-published references provide applicable evidence
@@ -330,7 +353,7 @@ Format: `- from → to · what's needed · task it blocks`. Whoever completes th
 - [ ] API → LLM · On Windows, `lib/engine/llm/adapter.test.ts` fails 3 cases with `EBUSY` because cleanup deletes the SQLite cache file while it is still open; close the cache before `rmSync` (fixed 2026-10-17; needs a Windows rerun). Seven other engine/script tests need the Mac-exported demo fixture and fail on this clone's Sabad 55 fixture · LLM-01, C-05
 - [x] API → DATA · Persistent ID sequences and a transaction around approval (and every other multi-step write) before switching to SQLite · Done (D-90)
 - [x] API · Saving a unit leaves sibling units' Sabad-scoped code findings (TERM-03 first use, TERM-07) unrefreshed until the next code check; the UI re-checks after every save, but API-03 should clear or mark them stale on save · API-02/03 · Done (D-94)
-- [x] API → DATA · `pnpm dev` auto-bootstraps an empty `eko.db` from the demo fixture; on a machine with `data/banidb/banidb.sqlite`, run `pnpm ingest` on a fresh database first (or delete `eko.db`), because full ingest refuses changed lines and a fixture Sabad that differs from the SQLite copy (P-05 recorded one API/SQLite difference) would block it · DATA-03, D-90 · Done (D-93): bootstrap uses the ingest loader. An `eko.db` bootstrapped earlier from the fixture is not rewritten; move it aside if ingest refuses
+- [x] API → DATA · `pnpm dev` auto-bootstraps an empty `eko.db` from the demo fixture; on a machine with `data/banidb/banidb-upload.sqlite`, run `pnpm ingest` on a fresh database first (or delete `eko.db`), because full ingest refuses changed lines and a fixture Sabad that differs from the SQLite copy (P-05 recorded one API/SQLite difference) would block it · DATA-03, D-90 · Done (D-93): bootstrap uses the ingest loader. An `eko.db` bootstrapped earlier from the fixture is not rewritten; move it aside if ingest refuses
 - [x] API · Verify the keyed path live: with `ANTHROPIC_API_KEY` in `.env.local`, run one model check and one drift check through the UI and confirm real findings/assessments persist · API-03/07, LLM-01/10 · Done 2026-10-17 (M1–M3 live)
 - [x] API → DATA · `publications` table and repository methods; `getStore()` now uses SQLite · Done (D-90)
 - [ ] FE → DOCS/Harsimran · Supply the official BaniDB logo for `public/` (footer shows a text badge) · FE-01, FR-21

@@ -41,6 +41,7 @@ export function computeGate(store: Store, draft: Draft, departureReasonFindingId
   const rulesetVersion = currentRuleset(store).version;
   const findings = currentFindings(store, draft, rulesetVersion);
   const blockers: PublishGate["blockers"] = [];
+  if (draft.layer !== "transcreation") blockers.push({ kind: "layer_unavailable", draft_id: draft.id, layer: draft.layer });
   for (const finding of findings) {
     if (finding.rule_id === "CONS-01") {
       if (!departureReasonFindingIds.has(finding.id)) blockers.push({ kind: "departure_reason", finding_id: finding.id, rule_id: "CONS-01" });
@@ -104,7 +105,7 @@ const SIBLING_STALE_MESSAGE = "Out of date: another unit of this Sabad was saved
  * Published siblings are skipped entirely (their results are not re-checked or stored, see `runChecksWith`).
  */
 export function invalidateSabadScopedSiblings(store: Store, saved: Draft, at: string): void {
-  const others = sabadDrafts(store, saved.shabad_id).filter((unit) => unit.id !== saved.id);
+  const others = sabadDrafts(store, saved.shabad_id).filter((unit) => unit.id !== saved.id && unit.layer === saved.layer);
   // Published units are immutable approved work: their findings and runs are never cleared or failed here.
   const siblings = others.filter((unit) => unit.status !== "published");
   const sabad = store.getSabad(saved.shabad_id);
@@ -122,6 +123,24 @@ export function invalidateSabadScopedSiblings(store: Store, saved: Draft, at: st
     clearFindings(store, (finding) => isCodeFinding(finding) === (phase === "code") && ruleIds.includes(finding.rule_id), at, siblingIds);
     for (const unit of siblings) {
       const run = latestRun(store, unit, phase, version);
+      if (run?.status === "succeeded") store.saveCheckRun({ ...run, status: "failed", completed_at: at, error: SIBLING_STALE_MESSAGE });
+    }
+  }
+}
+
+/** A literal edit changes the evidence for transcreation LAYER-08 without changing its own text version. */
+export function invalidateLiteralMirrorDependents(store: Store, saved: Draft, at: string, changedLineIds: Iterable<string> = saved.line_ids): void {
+  if (saved.layer !== "literal") return;
+  const changed = new Set(changedLineIds);
+  const dependents = sabadDrafts(store, saved.shabad_id).filter((unit) => unit.layer === "transcreation"
+    && unit.status !== "published" && unit.line_ids.some((id) => changed.has(id)));
+  if (dependents.length === 0) return;
+  const ids = dependents.map((unit) => unit.id);
+  const rulesetVersion = currentRuleset(store).version;
+  for (const [phase, ruleId] of [["code", "LAYER-08"], ["llm", "LAYER-09"]] as const) {
+    clearFindings(store, (finding) => finding.rule_id === ruleId && isCodeFinding(finding) === (phase === "code"), at, ids);
+    for (const unit of dependents) {
+      const run = latestRun(store, unit, phase, rulesetVersion);
       if (run?.status === "succeeded") store.saveCheckRun({ ...run, status: "failed", completed_at: at, error: SIBLING_STALE_MESSAGE });
     }
   }

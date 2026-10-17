@@ -198,6 +198,7 @@ describe("approveProposal", () => {
     await approve("PR-001", {});
     const second = routes.approveProposal.response.parse(await (await approve("PR-002", { ruleset_version: 2 })).json());
     expect(second.rule).toMatchObject({ id: "PROP-002", version: 3 });
+    expect(second.rule.resolution).toMatchObject({ mode: "model", implemented_layers: ["transcreation"] });
     expect(getStore().getRuleset(3)).toHaveLength(68);
   });
 
@@ -217,6 +218,8 @@ describe("approveProposal", () => {
     const store = resetStore();
     const draft = makeDraft();
     store.saveDraft(draft);
+    store.saveDraft(makeDraft({ id: "literal-flow", layer: "literal", text: "Synthetic literal." }));
+    store.saveDraft(makeDraft({ id: "annotation-flow", layer: "annotation", source_word_start: 0, text: "literal; implied\nnoun; singular" }));
     store.saveFinding(makeFinding({ severity: "warning" }));
     store.saveCheckRun(makeRun({ id: "run-code", phase: "code" }));
     store.saveCheckRun(makeRun({ id: "run-llm", phase: "llm" }));

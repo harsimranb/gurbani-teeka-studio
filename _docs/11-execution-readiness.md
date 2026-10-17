@@ -1,5 +1,7 @@
 # 11 · Execution readiness and decisions
 
+> **Scope update (2026-10-16):** The user approved an all-layer expansion and reinstated PRIN-03, TERM-04 and TERM-05. The kickoff decisions below describe the earlier transcreation-only baseline. For current per-rule coverage and evidence requirements, use [`rules/all-rules-matrix.md`](rules/all-rules-matrix.md) and the active resolved ruleset.
+
 Critical pass on 2026-10-16 over [requirements](02-requirements.md), [architecture](03-architecture.md), [resolved rules](rules/rules.resolved.json), [team workflow](06-team-workflow.md), [mockup map](09-ui-mockups.md), [feature acceptance](10-feature-breakdown.md), and [working log](../WORKING_LOG.md). This is the kickoff gate for the two builders. It records what is settled, what needs a decision, and what can proceed while external data is absent.
 
 ## Current status

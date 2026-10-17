@@ -135,7 +135,7 @@ describe("SQLite store (temp DATABASE_URL)", () => {
     const bytes = JSON.stringify(sabad);
     writeFileSync(join(cwdDir, "lib/contracts/fixtures/sabad.demo.json"), bytes);
     writeFileSync(join(cwdDir, "data/banidb/export-metadata.json"), JSON.stringify({
-      source: "user-provided local BaniDB SQLite copy", source_path: "data/banidb/banidb.sqlite", source_table: "tmp_Verse",
+      source: "user-provided local BaniDB SQLite copy", source_path: "data/banidb/banidb-upload.sqlite", source_table: "tmp_Verse",
       shabad_id: sabad.shabad_id, line_ids: sabad.lines.map((line) => line.line_id), line_count: sabad.lines.length,
       rahao_line_ids: sabad.lines.filter((line) => line.is_rahao).map((line) => line.line_id), normalization: "NFC",
       fixture_sha256: hash ?? createHash("sha256").update(bytes).digest("hex"),
@@ -267,10 +267,10 @@ describe("SQLite store (temp DATABASE_URL)", () => {
   });
 });
 
-// Real private copy, so this runs only where data/banidb/banidb.sqlite exists (skipped in a fresh clone), like the
-// full-corpus ingest test. The cwd is the real repository root: the loader checks that the copy is Git-ignored.
+// Real compact copy, so this runs only where data/banidb/banidb-upload.sqlite exists (skipped if it is not provisioned), like the
+// full-corpus ingest test. The cwd is the real repository root.
 const repoRoot = fileURLToPath(new URL("../../..", import.meta.url));
-const hasLocalCopy = existsSync(join(repoRoot, "data/banidb/banidb.sqlite"));
+const hasLocalCopy = existsSync(join(repoRoot, "data/banidb/banidb-upload.sqlite"));
 
 describe.skipIf(!hasLocalCopy)("empty-database bootstrap with the local BaniDB copy", () => {
   let dbDir: string;

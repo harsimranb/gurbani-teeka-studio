@@ -13,7 +13,7 @@ import { useReports } from "./useReports";
 const clock = () => new Date().toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
 
 /** The editable center column for one Sabad: unit cards in source order plus the save bar. Local edits live here until saved. */
-export function SabadEditor({ sabad, drafts, focusDraftId, refetch }: { sabad: Sabad; drafts: Draft[]; focusDraftId: string | null; refetch: () => void }) {
+export function SabadEditor({ layer, sabad, drafts, focusDraftId, refetch }: { layer: Draft["layer"]; sabad: Sabad; drafts: Draft[]; focusDraftId: string | null; refetch: () => void }) {
   const { name, ready } = useUserName();
   const draftsKey = JSON.stringify(drafts.map((d) => [d.id, d.version, d.text, d.line_ids]));
   const [units, setUnits] = useState<Unit[]>(() => buildUnits(sabad.lines, drafts));
@@ -56,7 +56,7 @@ export function SabadEditor({ sabad, drafts, focusDraftId, refetch }: { sabad: S
     let failure: unknown = null;
     for (const unit of todo) {
       try {
-        const { draft } = await callApi("saveDraft", { draft_id: unit.draftId, expected_version: unit.version, shabad_id: sabad.shabad_id, line_ids: unit.lineIds, text: unit.text, author: name });
+        const { draft } = await callApi("saveDraft", { draft_id: unit.draftId, expected_version: unit.version, shabad_id: sabad.shabad_id, line_ids: unit.lineIds, layer, text: unit.text, author: name });
         saved.push({ key: unit.key, draft });
       } catch (caught) { failure = caught; break; }
     }
@@ -109,6 +109,7 @@ export function SabadEditor({ sabad, drafts, focusDraftId, refetch }: { sabad: S
           <UnitCard
             key={unit.key}
             unit={unit}
+            layer={layer}
             lines={unit.lineIds.flatMap((id) => linesById.get(id) ?? [])}
             lineNumber={lineNumber}
             dirty={isDirty(unit)}
@@ -131,7 +132,7 @@ export function SabadEditor({ sabad, drafts, focusDraftId, refetch }: { sabad: S
         needsName={needsName}
         needsRerun={missingRuns.length > 0 && !saving}
         rerunning={rerunning}
-        markableCount={markable}
+        markableCount={layer === "transcreation" ? markable : 0}
         marking={marking}
         statusLabel={drafts.length > 0 && markable === 0 && !anyDirty ? sabadStatus(drafts).label : null}
         savedMessage={savedMessage}

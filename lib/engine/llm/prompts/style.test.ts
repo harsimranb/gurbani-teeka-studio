@@ -1,6 +1,7 @@
 import { MockLanguageModelV4 } from "ai/test";
 import { describe, expect, it } from "vitest";
 import { CheckInputSchema } from "../../../contracts/domain";
+import { rulesFixture } from "../../../contracts/fixtures";
 import type { Reference } from "../../../contracts/domain";
 import { llmPackets, runLlmPhase } from "../../checks/pipeline";
 import { syntheticInput } from "../../checks/test-helpers";
@@ -19,7 +20,8 @@ const departed: Reference = {
 };
 const DRAFT = "The seeker keeps praising the Beloved.";
 const index = createReferenceIndex({ embedder: null });
-const withRefs = (references: Reference[]) => CheckInputSchema.parse({ ...syntheticInput([DRAFT]), references });
+const focusedRules = rulesFixture.filter((rule) => !["PRIN-01", "PRIN-06", "PRIN-07", "PRIN-08", "LAYER-01", "LAYER-05", "LAYER-09"].includes(rule.id));
+const withRefs = (references: Reference[]) => CheckInputSchema.parse({ ...syntheticInput([DRAFT], { rules: focusedRules }), references });
 const usage = { inputTokens: { total: 1, noCache: 1, cacheRead: undefined, cacheWrite: undefined }, outputTokens: { total: 1, text: 1, reasoning: undefined } };
 const mockModel = (answer: unknown) => new MockLanguageModelV4({
   doGenerate: async () => ({ content: [{ type: "text", text: JSON.stringify(answer) }], finishReason: { unified: "stop", raw: undefined }, usage, warnings: [] }),

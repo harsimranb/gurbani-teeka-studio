@@ -38,7 +38,7 @@ export function runMockChecks(drafts: Draft[], rules: Rule[], rulesetVersion: nu
   for (const draft of drafts) {
     for (const def of defs) {
       const rule = rules.find((r) => r.id === def.ruleId);
-      if (!rule || !isActiveP0(rule)) continue;
+      if (!rule || !isActiveP0(rule) || !rule.resolution.layers.includes(draft.layer)) continue;
       const severity = rule.resolution.severity;
       if (!FINDING_SEVERITIES.has(severity)) continue;
       const pattern = new RegExp(def.pattern.source, def.pattern.flags);
@@ -60,9 +60,11 @@ export function runMockChecks(drafts: Draft[], rules: Rule[], rulesetVersion: nu
     }
   }
   // Every active p0_check rule (including approved proposal rules) that this phase does not actually evaluate.
-  const evaluated = new Set(MOCK_PHASE_RULE_IDS[phase]);
-  const notEvaluable: NotEvaluable[] = rules
-    .filter((rule) => isActiveP0(rule) && !evaluated.has(rule.id))
+  const applicable = rules.filter((rule) => isActiveP0(rule) && drafts.some((draft) => rule.resolution.layers.includes(draft.layer)));
+  const evaluated = new Set(defs.filter((def) => applicable.some((rule) => rule.id === def.ruleId
+    && drafts.some((draft) => rule.resolution.layers.includes(draft.layer)))).map((def) => def.ruleId));
+  const notEvaluable: NotEvaluable[] = applicable
+    .filter((rule) => !evaluated.has(rule.id))
     .map((rule) => ({ ruleId: rule.id, reason: `Mock mode: no real ${phase} check ran for this rule.` }));
   return CheckResultSchema.parse({ findings, notEvaluable });
 }

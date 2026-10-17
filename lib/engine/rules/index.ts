@@ -1,9 +1,10 @@
-import type { Rule } from "../../contracts/domain";
+import type { Draft, Rule } from "../../contracts/domain";
 
 /** Active, approved transcreation rules the engine actually checks (scope `p0_check`). */
-export function checkedRules(rules: Rule[]): Rule[] {
+export function checkedRules(rules: Rule[], layer: Draft["layer"] = "transcreation"): Rule[] {
   return rules.filter((rule) => rule.status === "approved" && rule.resolution.active
-    && rule.resolution.scope === "p0_check" && rule.resolution.layers.includes("transcreation"));
+    && rule.resolution.scope === "p0_check" && rule.resolution.layers.includes(layer)
+    && (rule.resolution.implemented_layers?.includes(layer) ?? layer === "transcreation"));
 }
 
 export interface CompiledPattern { regex: RegExp; action: string; index: number }

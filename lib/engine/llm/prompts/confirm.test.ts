@@ -11,6 +11,7 @@ import { ConfirmationOutputSchema } from "../schemas";
 import { CONFIRM_GUIDANCE_VERSION, confirmPrompt } from "./confirm";
 
 const seeded = (id: string) => rulesFixture.find((rule) => rule.id === id)!;
+const focusedRules = rulesFixture.filter((rule) => !["PRIN-01", "PRIN-06", "PRIN-07", "PRIN-08", "LAYER-01", "LAYER-05", "LAYER-09"].includes(rule.id));
 const untrustedRemoved = (text: string) => text.replace(/<untrusted>[\s\S]*?<\/untrusted>/g, "");
 
 async function packetFor(ruleId: string, text: string): Promise<LlmPacket> {
@@ -39,8 +40,8 @@ function fakeClient(confirmed: string[]) {
 }
 
 describe("LLM-03..05 confirm prompt", () => {
-  it("is version confirm-v2 and its schema has no field for English text", () => {
-    expect(confirmPrompt.version).toBe("confirm-v2");
+  it("is version confirm-v3 and its schema has no field for English text", () => {
+    expect(confirmPrompt.version).toBe("confirm-v3");
     expect(Object.keys(ConfirmationOutputSchema.shape)).toEqual(["decisions"]);
     expect(Object.keys(ConfirmationOutputSchema.shape.decisions.element.shape)).toEqual(["candidate_index", "verdict", "explanation"]);
   });
@@ -49,6 +50,8 @@ describe("LLM-03..05 confirm prompt", () => {
     ["PRIN-04", "This is the only correct translation of the line.", "flag"],
     ["TERM-01", "The gods and lords of the world bow down.", "error"],
     ["TERM-07", "Through the Word the mind is steadied.", "warning"],
+    ["TERM-04", "The scripture is mentioned in this synthetic sentence.", "flag"],
+    ["TERM-05", "The Vedas are mentioned in this synthetic sentence.", "flag"],
     ["LAYER-06", "Thou art the Giver; Thy gifts are endless.", "flag"],
   ];
   it.each(cases)("%s: prompt carries the verbatim rule, the draft and untrusted delimiters, and asks for no English", async (ruleId, text) => {
@@ -82,6 +85,8 @@ describe("LLM-03..05 confirm prompt", () => {
     expect(await text("PRIN-04", "This is the only correct translation of the line.")).toMatch(/single correct translation or reading/);
     expect(await text("TERM-01", "The gods of the world bow down.")).toMatch(/refers to the Divine of the Sabad/);
     expect(await text("TERM-07", "Through the Word the mind is steadied.")).toMatch(/Sabad, Nam, Bani/);
+    expect(await text("TERM-04", "The scripture is mentioned in this synthetic sentence.")).toMatch(/Sikh referent/);
+    expect(await text("TERM-05", "The Vedas are mentioned in this synthetic sentence.")).toMatch(/source line itself names/);
     expect(await text("LAYER-06", "Thou art the Giver.")).toMatch(/archaic usage/);
   });
 
@@ -108,13 +113,13 @@ describe("LLM-03..05 confirm prompt", () => {
       const { client } = fakeClient(all);
       const batch = FindingBatchSchema.parse(await createLlmJudge(client)(packet));
       expect(batch.findings).toHaveLength(packet.candidates.length);
-      for (const finding of batch.findings) expect(finding).toMatchObject({ rule_id: ruleId, severity: rule.severity, layer: "L2", prompt_version: "confirm-v2", model: "synthetic-model" });
+      for (const finding of batch.findings) expect(finding).toMatchObject({ rule_id: ruleId, severity: rule.severity, layer: "L2", prompt_version: "confirm-v3", model: "synthetic-model" });
     });
   });
 
   describe("end to end through runLlmPhase (SYNTHETIC minimal pairs, RULES_NOTES section 10)", () => {
     it("LAYER-06: confirms archaic 'art' and rejects the -est/-eth false positives", async () => {
-      const input = syntheticInput(["Thou art the Giver; Thy gifts are endless.", "The best rest is found in the forest of contentment."]);
+      const input = syntheticInput(["Thou art the Giver; Thy gifts are endless.", "The best rest is found in the forest of contentment."], { rules: focusedRules });
       const { client, requests } = fakeClient(["art"]);
       const result = await runLlmPhase(input, createLlmJudge(client));
       const model = result.findings.filter((finding) => finding.model === "synthetic-model");
@@ -124,7 +129,7 @@ describe("LLM-03..05 confirm prompt", () => {
     });
 
     it("PRIN-04: confirms the single-correct claim and rejects 'a true friend'", async () => {
-      const input = syntheticInput(["This is the only correct translation of the line.", "He was a true friend when it mattered."]);
+      const input = syntheticInput(["This is the only correct translation of the line.", "He was a true friend when it mattered."], { rules: focusedRules });
       const { client } = fakeClient(["the only correct translation"]);
       const result = await runLlmPhase(input, createLlmJudge(client));
       const model = result.findings.filter((finding) => finding.model === "synthetic-model");
@@ -132,7 +137,7 @@ describe("LLM-03..05 confirm prompt", () => {
     });
 
     it("TERM-01 and TERM-07: confirmed tiers produce error and warning findings", async () => {
-      const input = syntheticInput(["The gods of this world bow before the Creator.", "Through the Word the mind is steadied; I keep my word."]);
+      const input = syntheticInput(["The gods of this world bow before the Creator.", "Through the Word the mind is steadied; I keep my word."], { rules: focusedRules });
       const { client } = fakeClient(["gods", "the Word"]);
       const result = await runLlmPhase(input, createLlmJudge(client));
       const model = result.findings.filter((finding) => finding.model === "synthetic-model");

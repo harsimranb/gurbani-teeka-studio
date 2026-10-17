@@ -112,7 +112,7 @@ export function approveProposal(req: ParsedRequest<"approveProposal">): ApiRespo
     id: nextId("rule"), text: proposal.rule_text, level: "SHOULD", layers: ["transcreation"], plan: "free_text_llm",
     severity: "warning", decision: null, version: newVersion, status: "approved", source: "proposal", source_tag: "proposal",
     prefilter: null,
-    resolution: { active: true, scope: "p0_check", severity: "warning", blocks_publish: false, layers: ["transcreation"], conditional: null, decision: null },
+    resolution: { active: true, scope: "p0_check", severity: "warning", blocks_publish: false, layers: ["transcreation"], conditional: null, decision: null, mode: "model", implemented_layers: ["transcreation"] },
     provenance,
   });
   if (current.rules.some((existing) => existing.id === rule.id)) throw new ServiceError("internal_error", "The new rule ID collides with an existing rule.");

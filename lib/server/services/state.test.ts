@@ -45,6 +45,10 @@ describe("runs and ruleset", () => {
 });
 
 describe("computeGate", () => {
+  beforeEach(() => {
+    store.saveDraft(makeDraft({ id: "literal-flow", layer: "literal", text: "Synthetic literal." }));
+    store.saveDraft(makeDraft({ id: "annotation-flow", layer: "annotation", source_word_start: 0, text: "literal; implied\nnoun; singular" }));
+  });
   it("blocks on missing phases", () => {
     const gate = computeGate(store, draft);
     expect(gate.can_publish).toBe(false);

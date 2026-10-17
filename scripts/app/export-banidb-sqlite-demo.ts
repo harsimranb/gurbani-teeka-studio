@@ -13,11 +13,18 @@ import { assertSqliteCoverage, assessSqliteSource } from "../../lib/server/inges
 // The coverage gate lives in lib/server/ingest so the server can use it; re-exported for existing importers.
 export { assertSqliteCoverage, assessSqliteSource };
 
+function assertGitManagedOrIgnored(root: string, path: string) {
+  try { execFileSync("git", ["check-ignore", "-q", "--", path], { cwd: root }); }
+  catch { execFileSync("git", ["ls-files", "--error-unmatch", "--", path], { cwd: root, stdio: "ignore" }); }
+}
+
 type SourceTable = "tmp_Verse" | "Verse";
 
 export function readSqliteSabad(db: Database.Database, shabadId: number, table: SourceTable = "tmp_Verse") {
   if (!Number.isSafeInteger(shabadId) || shabadId < 1) throw new Error("Invalid BaniDB Sabad ID.");
   const mapped = db.prepare("SELECT COUNT(*) AS count FROM Shabad WHERE ShabadID = ?").get(shabadId) as { count: number };
+  const available = db.prepare(`SELECT COUNT(*) AS count FROM Shabad s JOIN ${table} t ON t.ID = s.VerseID WHERE s.ShabadID = ?`).get(shabadId) as { count: number };
+  assertCompleteSabad(mapped.count, available.count);
   const rows = db.prepare(`SELECT t.ID, s.ShabadID, t.SourceID, t.PageNo, t.Gurmukhi, t.GurmukhiUni,
       r.RaagEnglish, w.WriterEnglish
     FROM Shabad s JOIN ${table} t ON t.ID = s.VerseID
@@ -34,14 +41,14 @@ async function main() {
     throw new Error("Usage: export-banidb-sqlite-demo.ts [BaniDB Sabad ID]");
   }
   const root = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
-  const sourcePath = "data/banidb/banidb.sqlite";
+  const sourcePath = "data/banidb/banidb-upload.sqlite";
   const fixturePath = "lib/contracts/fixtures/sabad.demo.json";
   const metadataPath = "data/banidb/export-metadata.json";
   const coveragePath = "data/banidb/sqlite-coverage.json";
   const backupFixturePath = "data/banidb/sabad.api-fallback.json";
   const backupMetadataPath = "data/banidb/export-metadata.api-fallback.json";
-  for (const path of [sourcePath, fixturePath, metadataPath, coveragePath, backupFixturePath, backupMetadataPath]) {
-    execFileSync("git", ["check-ignore", "-q", "--", path], { cwd: root });
+  for (const path of [fixturePath, metadataPath, coveragePath, backupFixturePath, backupMetadataPath]) {
+    assertGitManagedOrIgnored(root, path);
   }
   const db = new Database(resolve(root, sourcePath), { readonly: true, fileMustExist: true });
   let coverage: ReturnType<typeof assessSqliteSource>;

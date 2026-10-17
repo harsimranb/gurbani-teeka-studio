@@ -37,9 +37,18 @@ function CodeChecksCard({ units, ruleList, published }: { units: UnitData[]; rul
   const failed = units.filter((u) => u.codeRun?.status === "failed");
   const pending = units.filter((u) => u.codeRun?.status === "pending");
   const missing = units.filter((u) => !u.codeRun);
-  // A rule counts as having run only if every checked run evaluated it (intersection); units with no succeeded run contribute nothing.
+  // Count only implemented code/hybrid checks on applicable layers, and only where each relevant run completed it.
   const ran = done.length === 0 ? [] : ruleList
-    .filter((r) => r.status === "approved" && r.resolution.active && r.resolution.scope === "p0_check" && done.every((run) => !run.not_evaluable.some((n) => n.ruleId === r.id)))
+    .filter((rule) => {
+      if (rule.status !== "approved" || !rule.resolution.active || rule.resolution.scope !== "p0_check"
+        || !["code", "hybrid"].includes(rule.resolution.mode ?? "")) return false;
+      const applicableUnits = units.filter((unit) => rule.resolution.layers.includes(unit.draft.layer));
+      return applicableUnits.length > 0 && applicableUnits.every((unit) => {
+        const run = done.find((item) => item.draft_id === unit.draft.id);
+        return !!run && rule.resolution.implemented_layers?.includes(unit.draft.layer)
+          && !run.not_evaluable.some((entry) => entry.ruleId === rule.id);
+      });
+    })
     .map((r) => r.id);
   const took = longestSeconds(done);
   const problem = failed.length > 0;
@@ -51,7 +60,7 @@ function CodeChecksCard({ units, ruleList, published }: { units: UnitData[]; rul
       {pending.length ? <div>Running for {names(pending)}</div> : null}
       {missing.length ? <div>Not run for {names(missing)}</div> : null}
       <PublishedNote count={published} />
-      {done.length && ran.length ? <div>Rules that ran{done.length < units.length ? ` on the ${done.length} checked ${done.length === 1 ? "unit" : "units"}` : ""}: <span className="font-mono text-xs">{ran.join(", ")}</span></div> : null}
+      {done.length && ran.length ? <div>Rules covered by code checks: <span className="font-mono text-xs">{ran.join(", ")}</span></div> : null}
     </StatusCard>
   );
 }

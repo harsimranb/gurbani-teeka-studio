@@ -14,7 +14,7 @@ const identityFields = {
 
 const localSchema = z.object({
   source: z.literal(LOCAL_SOURCE),
-  source_path: z.literal("data/banidb/banidb.sqlite"),
+  source_path: z.literal("data/banidb/banidb-upload.sqlite"),
   source_table: z.literal("tmp_Verse"),
   ...identityFields,
 });

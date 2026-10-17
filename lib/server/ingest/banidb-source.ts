@@ -1,4 +1,3 @@
-import { execFileSync } from "node:child_process";
 import { existsSync } from "node:fs";
 import { resolve } from "node:path";
 import Database from "better-sqlite3";
@@ -60,12 +59,11 @@ export function buildSabads(rows: SourceRow[]) {
   return { sabads: planned.map((sabad): Sabad => toDemoSabad(sabad.rows, sabad.shabadId)), ...report };
 }
 
-export const sqlitePathFor = (root: string) => resolve(root, "data/banidb/banidb.sqlite");
+export const sqlitePathFor = (root: string) => resolve(root, "data/banidb/banidb-upload.sqlite");
 export const useFullSqlite = (root: string) => process.env.BANIDB_SOURCE !== "fixture" && existsSync(sqlitePathFor(root));
 
-/** Every G Sabad from the private SQLite copy, after the same coverage gate as the demo exporter. Gurmukhi is read, never edited; English columns are not selected. */
+/** Every G Sabad from the user-provided SQLite copy, after the same coverage gate as the demo exporter. Gurmukhi is read, never edited; English columns are not selected. */
 export function loadSqliteSabads(root: string) {
-  execFileSync("git", ["check-ignore", "-q", "--", "data/banidb/banidb.sqlite"], { cwd: root });
   const db = new Database(sqlitePathFor(root), { readonly: true, fileMustExist: true });
   try {
     assertSqliteCoverage(assessSqliteSource(db));

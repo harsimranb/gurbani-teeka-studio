@@ -15,12 +15,19 @@ export function assertPrivateAppDbPath(root: string, target: string): void {
   }
   const withinRepo = relative(resolve(root), resolve(target));
   if (withinRepo === ".." || withinRepo.startsWith(`..${sep}`) || isAbsolute(withinRepo)) return;
-  // WAL mode also writes <file>-wal and <file>-shm, so all three paths must be git-ignored.
+  // WAL mode also writes <file>-wal and <file>-shm. Permit a local database only when all
+  // three paths are ignored or the user has explicitly committed all three to this repository.
   for (const suffix of ["", "-wal", "-shm"]) {
+    const path = withinRepo + suffix;
     try {
-      execFileSync("git", ["check-ignore", "-q", "--", withinRepo + suffix], { cwd: root, stdio: "ignore" });
+      execFileSync("git", ["check-ignore", "-q", "--", path], { cwd: root, stdio: "ignore" });
+      continue;
     } catch {
-      throw new Error("Refusing to create a trackable app database inside the repository.");
+      try {
+        execFileSync("git", ["ls-files", "--error-unmatch", "--", path], { cwd: root, stdio: "ignore" });
+      } catch {
+        throw new Error("Refusing to create an unignored app database inside the repository unless its main file and WAL sidecars are all committed.");
+      }
     }
   }
 }

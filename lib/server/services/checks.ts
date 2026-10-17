@@ -32,27 +32,35 @@ export const runLlmChecks = (req: CheckRequest): Promise<CheckResponse> => runCh
  */
 export function isSnapshotStale(
   store: AppStore,
-  snapshot: { shabadId: string; rulesetVersion: number; drafts: Draft[]; sabadWide?: boolean },
+  snapshot: { shabadId: string; rulesetVersion: number; drafts: Draft[]; sabadWide?: boolean; relatedLayer?: Draft["layer"]; relatedDrafts?: Draft[] },
 ): boolean {
   if (currentRuleset(store).version !== snapshot.rulesetVersion) return true;
-  const now = store.listDraftsForSabad(snapshot.shabadId);
+  const now = store.listDraftsForSabad(snapshot.shabadId).filter((draft) => draft.layer === snapshot.drafts[0]?.layer);
   // Sabad-wide (default, code phase): Sabad-scoped rules depend on siblings, so any added/removed unit counts.
   // Unit-only (model phase): just the listed units must still exist at the same version.
   if (snapshot.sabadWide !== false && now.length !== snapshot.drafts.length) return true;
   const versions = new Map(now.map((draft) => [draft.id, draft.version]));
-  return snapshot.drafts.some((draft) => versions.get(draft.id) !== draft.version);
+  if (snapshot.drafts.some((draft) => versions.get(draft.id) !== draft.version)) return true;
+  if (snapshot.relatedLayer) {
+    const related = store.listDraftsForSabad(snapshot.shabadId).filter((draft) => draft.layer === snapshot.relatedLayer);
+    if (related.length !== (snapshot.relatedDrafts?.length ?? 0)) return true;
+    const relatedVersions = new Map(related.map((draft) => [draft.id, draft.version]));
+    return (snapshot.relatedDrafts ?? []).some((draft) => relatedVersions.get(draft.id) !== draft.version);
+  }
+  return false;
 }
 
 const NO_JUDGE_REASON = "No model judge is configured yet (LLM-01); this rule was not evaluated by a model.";
 
 /**
  * While no model judge is configured, the engine lists only rules that had a packet. A model phase must never read
- * as a pass, so every active p0_check rule not already listed is reported not evaluable (engine reasons kept).
+ * as a pass, so every active model or hybrid p0_check rule not already listed is reported not evaluable (engine reasons kept).
  */
-function withUnjudgedRules(notEvaluable: CheckResult["notEvaluable"], rules: Rule[]): CheckResult["notEvaluable"] {
+function withUnjudgedRules(notEvaluable: CheckResult["notEvaluable"], rules: Rule[], layer: Draft["layer"]): CheckResult["notEvaluable"] {
   const listed = new Set(notEvaluable.map((entry) => entry.ruleId));
   const extra = rules
-    .filter((rule) => rule.resolution.active && rule.resolution.scope === "p0_check" && !listed.has(rule.id))
+    .filter((rule) => rule.resolution.active && rule.resolution.scope === "p0_check"
+      && ["model", "hybrid"].includes(rule.resolution.mode ?? "") && rule.resolution.layers.includes(layer) && !listed.has(rule.id))
     .map((rule) => ({ ruleId: rule.id, reason: NO_JUDGE_REASON }));
   return [...notEvaluable, ...extra];
 }
@@ -102,7 +110,7 @@ export async function runChecksWith(
     throw new ServiceError("invalid_request", "changed_line_ids must include every source line of the draft's group.");
   }
 
-  const drafts = sabadDrafts(store, draft.shabad_id);
+  const drafts = sabadDrafts(store, draft.shabad_id).filter((unit) => unit.layer === draft.layer);
   // The request itself must not split a group; checked before the code phase widens the changed set below.
   for (const unit of drafts) {
     const covered = unit.line_ids.filter((id) => req.changed_line_ids.includes(id)).length;
@@ -115,8 +123,11 @@ export async function runChecksWith(
   const changedLineIds = [...new Set([...req.changed_line_ids.filter((id) => !publishedLines.has(id)), ...drafts
     .filter((unit) => !isPublished(unit) && !store.listCheckRunsForDraft(unit.id).some((run) => run.phase === phase && run.status === "succeeded" && run.draft_version === unit.version && run.ruleset_version === ruleset.version))
     .flatMap((unit) => unit.line_ids)])];
+  const relatedDrafts = draft.layer === "transcreation"
+    ? sabadDrafts(store, draft.shabad_id).filter((unit) => unit.layer === "literal") : [];
   const parsed = CheckInputSchema.safeParse({
     sabad, draft, sabadDrafts: drafts, changedLineIds,
+    relatedDrafts,
     rules: ruleset.rules, rulesetVersion: ruleset.version, references: store.listReferences(),
   });
   if (!parsed.success) {
@@ -133,7 +144,8 @@ export async function runChecksWith(
   const units = drafts.filter((unit) => unitIds.has(unit.id) && !isPublished(unit));
   // Sabad-scoped rules read siblings, so with any in scope a Sabad change invalidates the result; otherwise only its units.
   const sabadWide = scope.ruleIds.length > 0;
-  const snapshot = { shabadId: draft.shabad_id, rulesetVersion: ruleset.version, drafts: sabadWide ? drafts : units, sabadWide };
+  const snapshot = { shabadId: draft.shabad_id, rulesetVersion: ruleset.version, drafts: sabadWide ? drafts : units, sabadWide,
+    ...(draft.layer === "transcreation" ? { relatedLayer: "literal" as const, relatedDrafts } : {}) };
   const startedAt = nowIso();
   const pending = units.map((unit): CheckRun => ({
     id: nextId("run"), draft_id: unit.id, draft_version: unit.version, ruleset_version: ruleset.version, phase,
@@ -159,7 +171,7 @@ export async function runChecksWith(
     return { affected_drafts: units, check_runs: failed, result: { findings: [], notEvaluable: [] } };
   }
 
-  const notEvaluable = phase === "llm" && !(options.judgeConfigured ?? createLlmClient() !== null) ? withUnjudgedRules(result.notEvaluable, ruleset.rules) : result.notEvaluable;
+  const notEvaluable = phase === "llm" && !(options.judgeConfigured ?? createLlmClient() !== null) ? withUnjudgedRules(result.notEvaluable, ruleset.rules, draft.layer) : result.notEvaluable;
   const engineFindings = result.findings;
 
   let outcome: { saved: Finding[]; affected: Draft[]; runs: CheckRun[] } | null;
@@ -169,7 +181,7 @@ export async function runChecksWith(
       if (isSnapshotStale(tx, snapshot)) { supersede(tx, pending); return null; }
 
       // Re-read the Sabad's units inside the transaction, so every decision below uses the state being written over.
-      const siblings = sabadDrafts(tx, draft.shabad_id);
+      const siblings = sabadDrafts(tx, draft.shabad_id).filter((unit) => unit.layer === draft.layer);
       // Units published meanwhile are immutable too: only unpublished units receive findings, clears and runs.
       const writable = siblings.filter((unit) => !isPublished(unit));
       const writableIds = new Set(writable.map((unit) => unit.id));

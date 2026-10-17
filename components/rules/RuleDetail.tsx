@@ -16,7 +16,7 @@ export function RuleDetail({ rule }: { rule: Rule }) {
         <div className="flex flex-wrap items-center gap-2">
           <h2 className="m-0 font-mono text-[15px] font-semibold text-ink">{rule.id}</h2>
           <RuleSeverity rule={rule} />
-          <Tag tone={resolution.active ? "ok" : "neutral"} className="rounded-md">{resolution.active ? "Active" : "Inactive"}</Tag>
+          <Tag tone={(resolution.implemented_layers?.length ?? 0) > 0 ? "ok" : "neutral"} className="rounded-md">{(resolution.implemented_layers?.length ?? 0) > 0 ? "Implemented on some layers" : "Pending check"}</Tag>
           <span className="font-mono text-[11px] text-muted">{rule.level}</span>
           {rule.status === "retired" ? <Tag tone="warning" className="rounded-md">Retired</Tag> : null}
         </div>
@@ -36,6 +36,7 @@ export function RuleDetail({ rule }: { rule: Rule }) {
         </div>
         <dl className="m-0 flex flex-col gap-1 text-[13px] text-body">
           <div className="flex flex-wrap gap-x-1.5"><dt className="text-muted">Layers:</dt><dd className="m-0 font-mono text-xs leading-5">{resolution.layers.length ? resolution.layers.join(", ") : "none"}</dd></div>
+          <div className="flex flex-wrap gap-x-1.5"><dt className="text-muted">Implemented:</dt><dd className="m-0 font-mono text-xs leading-5">{resolution.implemented_layers?.join(", ") || "pending"}</dd></div>
           <div className="flex flex-wrap gap-x-1.5"><dt className="text-muted">Blocks publishing:</dt><dd className="m-0 font-medium">{resolution.blocks_publish ? "yes" : "no"}</dd></div>
           {resolution.publish_requires_reason !== undefined ? (
             <div className="flex flex-wrap gap-x-1.5"><dt className="text-muted">Publishing needs a recorded reason:</dt><dd className="m-0 font-medium">{resolution.publish_requires_reason ? "yes" : "no"}</dd></div>
