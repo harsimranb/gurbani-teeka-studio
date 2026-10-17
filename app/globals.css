@@ -1,11 +1,71 @@
 @import "tailwindcss";
 
+/* Design tokens from the mockups. Use as bg-canvas, text-ink, border-line, font-serif, and so on. */
+@theme {
+  --color-ink: #18212b;
+  --color-body: #3d4753;
+  --color-muted: #55606e;
+  --color-faint: #8e98a5;
+  --color-line: #dde1e6;
+  --color-line-strong: #c9cfd6;
+  --color-divider: #e6e9ed;
+  --color-canvas: #f4f5f7;
+  --color-subtle: #f7f8fa;
+  --color-card: #ffffff;
+  --color-navy: #1f2a44;
+  --color-accent: #b8640a;
+  --color-accent-bg: #fbebd6;
+  --color-accent-dark: #8f4a06;
+  --color-accent-line: #e9c08c;
+  --color-link: #1d4ed8;
+  --color-link-dark: #2443a3;
+  --color-error: #b42318;
+  --color-error-bg: #fdecea;
+  --color-flag: #8f4a06;
+  --color-flag-bg: #fbebd6;
+  --color-warning: #7a6100;
+  --color-warning-bg: #fbf4d9;
+  --color-hint: #55606e;
+  --color-hint-bg: #edeff2;
+  --color-ok: #2f6b4f;
+  --color-ok-bg: #e6f2eb;
+  --color-info: #1e3a8a;
+  --color-info-bg: #e2e8f8;
+  --color-disabled-text: #6b7482;
+}
+
+/* The font variables are set by next/font in app/layout.tsx. */
+@theme inline {
+  --font-sans: var(--font-plex-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-serif: var(--font-plex-serif), ui-serif, Georgia, serif;
+  --font-mono: var(--font-plex-mono), ui-monospace, SFMono-Regular, Menlo, monospace;
+  --font-gurmukhi: var(--font-noto-gurmukhi), "Raavi", "Mukta Mahee", sans-serif;
+}
+
 :root {
   color-scheme: light;
 }
 
 body {
   margin: 0;
-  background: #f5f6f8;
-  color: #18202d;
+  background: var(--color-canvas);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  font-size: 15px;
+  line-height: 1.5;
+}
+
+/* Layered so Tailwind font utilities on form controls still win. */
+@layer base {
+  textarea,
+  input,
+  select,
+  button {
+    font: inherit;
+  }
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-navy);
+  outline-offset: 2px;
 }

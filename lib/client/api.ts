@@ -1,5 +1,6 @@
 import { ApiErrorSchema, routes, type ApiError, type ApiRequest, type ApiResponse, type RouteName } from "../contracts/api";
-import { mockRequest } from "./mocks";
+import { notifyDataChanged } from "./events";
+import { handleMock } from "./mock-handler";
 
 export class ApiClientError extends Error {
   readonly code: ApiError["error"]["code"];
@@ -13,14 +14,14 @@ export class ApiClientError extends Error {
 }
 export function createApiClient(options: { useMocks?: boolean; fetcher?: typeof fetch } = {}) {
   const useMocks = options.useMocks ?? process.env.NEXT_PUBLIC_USE_MOCKS === "1";
-  const fetcher = options.fetcher ?? fetch;
+  const fetcher = options.fetcher ?? ((input: RequestInfo | URL, init?: RequestInit) => fetch(input, init));
   return {
     async request<Name extends RouteName>(name: Name, rawRequest: ApiRequest<Name>): Promise<ApiResponse<Name>> {
       const route = routes[name];
       const request = route.request.parse(rawRequest);
       let payload: unknown;
       if (useMocks) {
-        payload = mockRequest(name);
+        payload = await handleMock(name, request as ApiRequest<Name>);
       } else {
         const params = request as Record<string, unknown>;
         const path = route.path.replace(/:([a-z_]+)/g, (_, key: string) => encodeURIComponent(String(params[key])));
@@ -33,7 +34,10 @@ export function createApiClient(options: { useMocks?: boolean; fetcher?: typeof 
       }
       const error = ApiErrorSchema.safeParse(payload);
       if (error.success) throw new ApiClientError(error.data);
-      return route.response.parse(payload) as ApiResponse<Name>;
+      const parsed = route.response.parse(payload) as ApiResponse<Name>;
+      // Tell mounted views (useApi) that stored data may have changed.
+      if (route.method !== "GET") notifyDataChanged();
+      return parsed;
     },
   };
 }

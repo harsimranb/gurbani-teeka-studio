@@ -24,13 +24,13 @@ Mark a feature complete only when its acceptance paragraph in [`_docs/10-feature
 | Feature | Status | Evidence / next dependency |
 |---|---|---|
 | **F0 · Foundation, contracts and source data** | Complete for approved Mac/source-only scope | C-01 to C-04, DATA-01 to DATA-05 and API-01 pass. C-05 Mac privacy verified; Windows validation remains open by user direction. Human-authored draft is deferred to P-09/F1. M0 checks, production build and fresh review with fixes pass; P-05 corpus currency/coverage remains open. |
-| **F1 · Workspace** | Not started | Needs F0 contracts, data and API. |
-| **F2 · Checks and report card** | In progress: CHECKS code phase complete | CHK-01 to CHK-11 pass (193 tests; commit `a08a81d` on `main`); CHK-12 cut (D-77). Model findings need LLM-01/03–05; persistence and report card need API-03 and FE-04. TERM-02 and CONS-01 have no transcreation golden cases. |
+| **F1 · Workspace** | In progress | FE-01/FE-03 screens run against the stateful mock (D-78); API-02 and real persistence remain. |
+| **F2 · Checks and report card** | In progress: CHECKS code phase complete | CHK-01 to CHK-11 pass (193 tests; commit `a08a81d` on `main`); CHK-12 cut (D-77). Model findings need LLM-01/03–05; persistence and report card need API-03 and FE-04. TERM-02 and CONS-01 have no transcreation golden cases. FE-04 report card UI runs against the mock (D-78). |
 | **F3 · Reference and style evidence** | Not started | Eko-published references can exercise mechanics; SikhRI sample and term mappings remain pending. |
-| **F4 · Review and publishing** | Not started | Needs current check results and app storage. |
-| **F5 · Rules catalog** | Not started | Needs seeded rules and API. |
-| **F6 · Proposals and drift** | Not started | Needs rules, references and the engine/API contracts. |
-| **F7 · Backtest and evaluation** | Not started; real-data acceptance blocked | SikhRI pre-edit review history has not arrived (P-04). |
+| **F4 · Review and publishing** | In progress | FE-05/FE-06 screens run against the mock (D-78); API-04/05 remain. |
+| **F5 · Rules catalog** | In progress | FE-07 reads the resolved seed through the mock (D-78); API-06 remains. |
+| **F6 · Proposals and drift** | In progress | FE-08 runs against a mock drift result (D-78); LLM-10 and API-07/08 remain. |
+| **F7 · Backtest and evaluation** | In progress; real-data acceptance blocked | FE-09 shows the unavailable state and an opt-in labelled synthetic sample (D-78). SikhRI pre-edit review history has not arrived (P-04). |
 
 ---
 
@@ -85,6 +85,7 @@ Append-only. Record decisions that add, remove or change planned behavior here *
 | D-75 | Harsimran directed F0's demo seed to include source lines only. Defer a human-written English draft to P-09/F1; do not generate one or silently treat synthetic test markers as a demo transcreation. |
 | D-76 | F0 route skeletons validate every request. Safe read endpoints return labelled contract fixtures; stateful and evidence-dependent endpoints return a contract-valid unavailable error until their actual persistence/check behavior is built, avoiding false success claims. |
 | D-77 | CHECKS: real code phase; CHK-11 pipeline with pluggable judge, no adapter (`notEvaluable`); CHK-12 cut, CONS-01 `notEvaluable`; TERM-07 gloss hint included; resolution decisions govern prefilter actions; code-phase scope replaces code findings only. |
+| D-78 | FE-01 to FE-09 are built against a stateful, browser-storage mock of the 18 contract routes (`lib/client/mock-*`) with a labelled synthetic checker, plus a dev-only `/api/dev/demo-sabad` route that serves the private BaniDB fixture. FE tasks stay *In progress* until the real API passes their acceptance. P1 items render as labelled placeholders. |
 
 ---
 
@@ -245,7 +246,7 @@ Related folders: `app/api/`, `lib/server/services/`.
 Related folders: `app/(studio)/`, `app/layout.tsx`, `app/page.tsx`, `app/globals.css`, `components/`, `lib/client/`, `lib/utils.ts`, `public/`.
 
 ### In progress
-- _(none)_
+- [ ] **FE-01 to FE-09** UI built against the stateful mock (D-78); typecheck, tests, build and an end-to-end mock demo pass. Each closes when its real API seam passes acceptance. Still open: the real BaniDB logo (FR-21).
 
 ### Next
 - [ ] **FE-01** Mockup p1 shell: first-visit name prompt stored in the browser and editable in the top bar (FR-20); Workspace/Review/Rules/Evaluation navigation, live ruleset version, BaniDB attribution and real logo in the footer (FR-21)
@@ -299,4 +300,6 @@ Related folders: `app/(studio)/`, `app/layout.tsx`, `app/page.tsx`, `app/globals
 
 Format: `- from → to · what's needed · task it blocks`. Whoever completes the request ticks it when verified.
 
-- _(none)_
+- [ ] FE → API · Agree how a CONS-01 departure clears at publish: the review UI records "Keep, with reason" as an `override` decision and sends `departure_reasons: []`; if API-05 instead requires `departure_reasons`, FE-05 must send them · API-05, FE-05/06
+- [ ] FE → API · Add read routes for a Sabad's published references and each publication's approver, time and publish-time gate (the published view uses the mock-only `mockReferencesForSabad`/`mockPublication` seams) · API-05, FE-06
+- [ ] FE → DOCS/Harsimran · Supply the official BaniDB logo for `public/` (footer shows a text badge) · FE-01, FR-21
