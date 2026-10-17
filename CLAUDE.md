@@ -133,7 +133,7 @@ _docs/                  documentation; rules/ holds the ruleset          DOCS
 
 ## Commands
 
-The scaffold, F0 ingest and LLM-02 bake-off commands run now. The evaluation script remains reserved for EVAL; its target file does not exist yet.
+All commands below run now. `pnpm eval` reports labelled synthetic results until SikhRI's pre-edit review history arrives (P-04).
 
 | Command | Does |
 |---|---|
@@ -142,12 +142,12 @@ The scaffold, F0 ingest and LLM-02 bake-off commands run now. The evaluation scr
 | `node --import tsx scripts/app/seed-demo.ts` | Seed only the BaniDB source lines (same source selection as ingest); no English draft or decision is created (D-75) |
 | `node --import tsx scripts/app/audit-banidb-coverage.ts` | P-05: check the SQLite copy's internal consistency and sample live BaniDB parity → ignored `data/banidb/coverage-audit.json` |
 | `node --import tsx scripts/app/find-demo-sabads.ts` | P-07: list provisional demo Sabads (Kartar/Karta, opens with Ik Onkar) → ignored `data/banidb/demo-sabads.json` |
-| `pnpm dev` | Run the app at http://localhost:3000 against SQLite (`DATABASE_URL` or `eko.db`; an empty database auto-seeds rules and the demo fixture's source, D-90). The footer's dev actions load labelled synthetic drafts or reset app data |
+| `pnpm dev` | Run the app at http://localhost:3000 against SQLite (`DATABASE_URL` or `eko.db`). An empty database auto-seeds rules and source lines through the same loader as `pnpm ingest`: the full corpus from `data/banidb/banidb.sqlite` when present, else the demo fixture (D-90, D-93). The footer's dev actions load labelled synthetic drafts or reset app data |
 | Mock mode (shell examples above) | FE-02 stateful browser mock of every route with labelled synthetic checks (D-78); "Reset demo data" in the footer clears it |
 | `pnpm test` | Run the Vitest suite |
 | `pnpm typecheck` | Generate Next route types, then run `tsc --noEmit` |
 | `pnpm build` | Production build using webpack |
-| `pnpm eval` | Planned EVAL-02: backtest held-back drafts → `data/eval/latest.json` |
+| `pnpm eval` | EVAL-02: replay pre-edit drafts through both check phases → `data/eval/latest.json` (+ `latest.detail.json`); fixture input is labelled `synthetic_test` (D-92) |
 | `node --env-file=.env.local --import tsx scripts/engine/bakeoff.ts` (or `pnpm bakeoff` with `ANTHROPIC_API_KEY` set) | LLM-02: compare Claude models on synthetic minimal pairs → `data/cache/bakeoff/latest.json` (D-83) |
 | `python3 _docs/rules/resolve.py` (macOS), `py -3 _docs/rules/resolve.py` (Windows) | Regenerate `rules.resolved.json` from the seed and decisions |
 

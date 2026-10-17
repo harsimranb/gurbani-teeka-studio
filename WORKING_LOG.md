@@ -24,13 +24,13 @@ Mark a feature complete only when its acceptance paragraph in [`_docs/10-feature
 | Feature | Status | Evidence / next dependency |
 |---|---|---|
 | **F0 · Foundation, contracts and source data** | Complete for approved Mac/source-only scope | C-01 to C-04, DATA-01 to DATA-05 and API-01 pass. C-05 Mac privacy verified; Windows validation remains open by user direction. Human-authored draft is deferred to P-09/F1. M0 checks, production build and fresh review with fixes pass. P-05: SQLite copy internally consistent and fully ingested (5,542 Sabads, D-86); live sample parity 43/44; currency not certified. |
-| **F1 · Workspace** | In progress | FE-01/FE-03 run against the SQLite-backed API (D-90); API-02 passes on this clone. Open: the real BaniDB logo (FR-21) and Windows/Mac acceptance with a human-authored draft. |
-| **F2 · Checks and report card** | In progress: CHECKS code phase complete | CHK-01 to CHK-11 pass (193 tests; commit `a08a81d` on `main`); CHK-12 cut (D-77). Model phase real: LLM-01 to LLM-06 pass (D-79–D-83; 343 tests on `main` at `750f7d9`); persistence and report card need API-03 and FE-04. TERM-02 and CONS-01 have no transcreation golden cases. FE-04 report card UI runs against the mock (D-78). |
+| **F1 · Workspace** | In progress | FE-01/FE-03 run against the SQLite-backed API (D-90); API-02 passes on this clone. P1 FE-10 browse and FE-11 word lookup done (D-98). Open: the real BaniDB logo (FR-21) and Windows/Mac acceptance with a human-authored draft (P-09). |
+| **F2 · Checks and report card** | In progress: CHECKS code phase complete | CHK-01 to CHK-11 pass (193 tests; commit `a08a81d` on `main`); CHK-12 cut (D-77). Model phase real: LLM-01 to LLM-06 pass (D-79–D-83; 343 tests on `main` at `750f7d9`); keyed path verified live on 2026-10-17 (M1/M2, labelled synthetic drafts): code findings, Sonnet findings incl. TERM-02 on Sabad 1568, Gurmukhi guard (D-95). TERM-02 and CONS-01 have no transcreation golden cases. FE-04 report card UI runs against the mock (D-78). |
 | **F3 · Reference and style evidence** | In progress | LLM-07/08/09 pass in the engine (D-81); Eko-published references can exercise mechanics once API-05 publishes; SikhRI sample (DATA-06) and term mappings (CHK-12, cut) remain pending. |
-| **F4 · Review and publishing** | In progress | FE-05/FE-06 run against the SQLite-backed API-04/05 (D-90); published references persist and feed later checks. Keyed (model) path not yet verified live. |
+| **F4 · Review and publishing** | In progress | FE-05/FE-06 on SQLite-backed API-04/05 (D-90); verified live 2026-10-17: blank reasons rejected, override/waive clear, accept keeps the block, publish gate names rules; CONS-01 departure via reasoned override/waive (D-91); published units immutable (D-96). Open: human-authored demo drafts (P-09). |
 | **F5 · Rules catalog** | In progress | FE-07 reads stored rulesets through API-06 (D-90); approvals add persistent versions. |
-| **F6 · Proposals and drift** | In progress | FE-08 on SQLite-backed API-07/08 (D-90); real drift with `ANTHROPIC_API_KEY`, labelled offline replay stub otherwise; LLM-06/10/11 pass in the engine (D-82, D-85). Keyed path not yet verified live. |
-| **F7 · Backtest and evaluation** | In progress; real-data acceptance blocked | FE-09 shows the unavailable state and an opt-in labelled synthetic sample (D-78). SikhRI pre-edit review history has not arrived (P-04). |
+| **F6 · Proposals and drift** | In progress | FE-08 on SQLite-backed API-07/08 (D-90); verified live 2026-10-17 (M3): real drift replay blocked on published lines, approval without override reason refused, reasoned override made v2, next check applied the free-text rule. API-10 drafted proposals done (D-97). Open: glossary drift until OQ-13. |
+| **F7 · Backtest and evaluation** | In progress; real-data acceptance blocked | EVAL-01/02 done with the provisional OQ-14 policy (D-92); `pnpm eval` writes a labelled `synthetic_test` run that API-09/FE-09 show as such. SikhRI pre-edit review history has not arrived (P-04); OQ-14 needs SikhRI confirmation. |
 
 ---
 
@@ -42,13 +42,13 @@ Cross-workstream dependencies. The provider ticks a row when the real implementa
 |---|---|---|---|---|
 | [x] | **S1** `engine.runChecks` (code phase) | CHK-10 → API-03 | M1 | real; use `codePhaseScope`/`isCodeFinding` to replace code findings (D-77) |
 | [x] | **S1** `engine.runChecks` (LLM phase) | CHK-11 → API-03 | M2 | real (D-79); `notEvaluable` without `ANTHROPIC_API_KEY`; use `llmPhaseScope` to replace model findings |
-| [ ] | **S2** `CheckInput` from real data | DATA-03, API-03 → CHECKS | M1 | `fixtures/sabad.demo.json` |
+| [x] | **S2** `CheckInput` from real data | DATA-03, API-03 → CHECKS | M1 | `fixtures/sabad.demo.json` |
 | [ ] | **S3** SikhRI references (normalized JSON) | DATA-06 → LLM-07 | M2 | `fixtures/references.json` |
 | [ ] | **S3** SikhRI corrections (normalized JSON) | DATA-06 → EVAL-02 | M3 | `fixtures/corrections.json` |
 | [x] | **S4** `engine.runDriftCheck` | LLM-10 → API-07 | M3 | real (D-85); `not_evaluable` without a model |
-| [ ] | **S5** `data/eval/latest.json` | EVAL-02 → API-09 | M3 | `fixtures/eval-run.json` |
+| [x] | **S5** `data/eval/latest.json` | EVAL-02 → API-09 | M3 | `fixtures/eval-run.json` |
 | [x] | **S6** `engine.indexReferences` | LLM-07 → API-05 | M2 | real warm-up; checks still use the passed snapshot |
-| [ ] | **S7** Free-text rules checked | LLM-06 ← API-08 | M3 | engine side real (D-82); API-08 must store approved proposals as `source: "proposal"`, active `p0_check` transcreation rules |
+| [x] | **S7** Free-text rules checked | LLM-06 ← API-08 | M3 | engine side real (D-82); API-08 must store approved proposals as `source: "proposal"`, active `p0_check` transcreation rules |
 
 ---
 
@@ -97,6 +97,14 @@ Append-only. Record decisions that add, remove or change planned behavior here *
 | D-88 | Harsimran confirmed P-07 demo Sabads 1356, 1568 and 693; P-09 demo transcreations target these three. |
 | D-89 | API-02 to API-09 run as real services over an in-memory store that implements the SQLite repository interface (shared behaviour tests cover both). The server starts with source lines only (D-75); dev-only `POST /api/dev/seed-synthetic` and `/api/dev/reset` load labelled synthetic drafts or clear state. With `ANTHROPIC_API_KEY` model checks and drift are real; without one, every active rule is listed as not evaluated and drift uses a labelled synthetic replay stub. Additive contract: `listPublications` (19 routes). The UI uses the real API unless `NEXT_PUBLIC_USE_MOCKS=1`. |
 | D-90 | API-02 to API-09 now persist in SQLite (`DATABASE_URL` or `eko.db`): migration 0001 adds `publications` and `sequences`; IDs come from persistent sequences; multi-step writes are transactions; an empty database auto-bootstraps ruleset v1 and the demo fixture's source. The workspace lists the confirmed demo Sabads (D-88) when present (`EKO_DEMO_SABADS` overrides), else every ingested Sabad. Ingest accepts the local-SQLite or the documented API-fallback provenance (D-70). The in-memory repository remains the test double. |
+| D-91 | API-05: a reasoned override or waive of a CONS-01 finding is its departure reason; `departure_reasons` stays optional. |
+| D-92 | EVAL-01/02: provisional OQ-14 policy `oq14-provisional-v1`; fixture runs are labelled `synthetic_test`. |
+| D-93 | DATA-03: an empty database bootstraps through the `pnpm ingest` loader (full corpus when the SQLite copy exists); loader lives in `lib/server/ingest/`. |
+| D-94 | API-02/03: saving clears unpublished siblings' Sabad-scoped findings and marks their runs out of date. |
+| D-95 | LLM-01: model text may contain Gurmukhi only as whole words copied from the packet evidence. |
+| D-96 | API-03/04: published units are context only; never checked, cleared, given new findings or decided on. |
+| D-97 | API-10: two distinct reviewers overriding one rule draft one pending proposal; it must be revised and submitted (drift) before approval. |
+| D-98 | FE-10/FE-11: additive `browseSabads` and `lookupWord` read routes (21 routes). |
 | D-78 | FE-01 to FE-09 are built against a stateful, browser-storage mock of the 18 contract routes (`lib/client/mock-*`) with a labelled synthetic checker, plus a dev-only `/api/dev/demo-sabad` route that serves the private BaniDB fixture. FE tasks stay *In progress* until the real API passes their acceptance. P1 items render as labelled placeholders. |
 
 ---
@@ -209,8 +217,8 @@ Related folders: `lib/engine/llm/`, `lib/engine/retrieval/`, `lib/engine/drift/`
 Related folders: `lib/engine/eval/`, `scripts/engine/eval.ts`, `data/eval/`.
 
 ### Next
-- [ ] **EVAL-01** Metrics: catch rate, false-flag rate, sample size, per rule; tag typo and out-of-scope corrections separately · FR-19
-- [ ] **EVAL-02** Backtest (`pnpm eval`): read corrections JSON and the rules file, run the pipeline, write `data/eval/latest.json` (`EvalRun`) per ruleset version · Needs: CHK-10, CHK-11, S3 (stub: `fixtures/corrections.json`) · **Provides S5**
+- [x] **EVAL-01** Metrics: catch rate, false-flag rate, sample size, per rule; tag typo and out-of-scope corrections separately · FR-19 · Done (2026-10-17, D-92): provisional OQ-14 policy; real rates wait on P-04 and OQ-14 confirmation
+- [x] **EVAL-02** Backtest (`pnpm eval`): read corrections JSON and the rules file, run the pipeline, write `data/eval/latest.json` (`EvalRun`) per ruleset version · Needs: CHK-10, CHK-11, S3 (stub: `fixtures/corrections.json`) · **Provides S5** · Done (2026-10-17, D-92): fixture input labelled `synthetic_test`; deterministic run ID; per-correction trace in `latest.detail.json`
 
 ---
 
@@ -239,7 +247,7 @@ Related folders: `lib/server/db/`, `lib/server/ingest/`, `scripts/app/`, `data/b
 Related folders: `app/api/`, `lib/server/services/`.
 
 ### In progress
-- [x] **API-02 to API-09** All 19 routes run on SQLite (`eko.db`) with persistent IDs, transactions and auto-bootstrap (D-90), wired to the UI; verified end to end including a server restart. Checks and drift use the real engine with `ANTHROPIC_API_KEY`; without it model rules are listed as not evaluated and drift uses a labelled synthetic replay stub. Remaining: verify the keyed model/drift path live once a key is configured
+- [x] **API-02 to API-09** All 19 routes run on SQLite (`eko.db`) with persistent IDs, transactions and auto-bootstrap (D-90), wired to the UI; verified end to end including a server restart. Checks and drift use the real engine with `ANTHROPIC_API_KEY`; without it model rules are listed as not evaluated and drift uses a labelled synthetic replay stub. Keyed model/drift path verified live 2026-10-17 (M1–M3). Follow-ups done: sibling invalidation on save (D-94), CONS-01 departure (D-91), published units immutable (D-96)
 
 ### Next
 - [x] **API-01** All 18 P0 method/path actions have route handlers and contract tests. Safe reads return labelled fixtures; stateful/evidence-dependent actions return validated unavailable errors after request validation (D-76). Focused, TypeScript and all 47 tests pass (2026-10-16)
@@ -253,7 +261,7 @@ Related folders: `app/api/`, `lib/server/services/`.
 - [ ] **API-09** `GET /api/eval` reads `data/eval/latest.json` · FR-19 · Needs: S5 (stub: fixture)
 
 ### P1
-- [ ] **API-10** Proposals drafted from repeated overrides by 2+ people · FR-16b
+- [x] **API-10** Proposals drafted from repeated overrides by 2+ people · FR-16b · Done (2026-10-17, D-97): one pending proposal per rule, evidence and reasons kept, revise-and-submit before approval. Mock mode does not draft proposals
 
 ---
 
@@ -276,8 +284,8 @@ Related folders: `app/(studio)/`, `app/layout.tsx`, `app/page.tsx`, `app/globals
 - [ ] **FE-09** Mockup p8 evaluation: catch rate, false-flag rate, actual sample size and ruleset version, with an unavailable state before real corrections arrive · FR-19 · Fifth to cut
 
 ### P1
-- [ ] **FE-10** Browse the full Guru Granth Sahib by ang, raag, writer · FR-04
-- [ ] **FE-11** Mockup p2 word lookup: occurrences, prior renderings and similar lines, read-only and sourced from available data · FR-05
+- [x] **FE-10** Browse the full Guru Granth Sahib by ang, raag, writer · FR-04 · Done (2026-10-17, D-98): `GET /api/browse`, verified on 5,542 Sabads
+- [x] **FE-11** Mockup p2 word lookup: occurrences, prior renderings and similar lines, read-only and sourced from available data · FR-05 · Done (2026-10-17, D-98): occurrences by stem key and line-level references; similar lines shown unavailable (no sourced method). Limit: the stem prefilter has no row cap (~400 ms for one-letter stems)
 - [ ] **FE-12** Mockup p7 ruleset version-history tab and prefilled change proposal
 - [ ] **FE-13** Mockup p8 Run backtest and Export JSON controls; needs a separately agreed API contract and server execution path
 - [ ] **FE-14** Mockup p8 detailed caught/missed/false-flag examples and per-version comparison beyond the P0 summary
@@ -286,9 +294,9 @@ Related folders: `app/(studio)/`, `app/layout.tsx`, `app/page.tsx`, `app/globals
 
 ## Integration · together
 
-- [ ] **M1** (hour 3) Save a transcreation → real API → `runChecks('code')` → real findings with highlights
-- [ ] **M2** (hour 6) LLM findings; override and waive need a reason; publish blocked by an open must-fix. **Decide cuts here**
-- [ ] **M3** (hour 8) Propose → drift → approve → the next check uses the new rule; eval numbers shown
+- [x] **M1** (hour 3) Save a transcreation → real API → `runChecks('code')` → real findings with highlights
+- [x] **M2** (hour 6) LLM findings; override and waive need a reason; publish blocked by an open must-fix. **Decide cuts here**
+- [ ] **M3** (hour 8) Propose → drift → approve → the next check uses the new rule; eval numbers shown · 2026-10-17: M1, M2 and the M3 rule flow verified live with labelled synthetic drafts and the real key; M3 stays open until real eval numbers exist (P-04, OQ-14)
 - [ ] **INT-01** Fix integration issues
 - [ ] **INT-02** Seed the demo and run it end to end (checklist below)
 - [ ] **INT-03** Record the 5-minute video: the six beats in [`_docs/01-problem-statement.md`](_docs/01-problem-statement.md#what-the-video-must-show)
@@ -316,12 +324,12 @@ Related folders: `app/(studio)/`, `app/layout.tsx`, `app/page.tsx`, `app/globals
 
 Format: `- from → to · what's needed · task it blocks`. Whoever completes the request ticks it when verified.
 
-- [ ] FE → API · Agree how a CONS-01 departure clears at publish: the review UI records "Keep, with reason" as an `override` decision and sends `departure_reasons: []`; if API-05 instead requires `departure_reasons`, FE-05 must send them · API-05, FE-05/06
+- [x] FE → API · Agree how a CONS-01 departure clears at publish: the review UI records "Keep, with reason" as an `override` decision and sends `departure_reasons: []`; if API-05 instead requires `departure_reasons`, FE-05 must send them · API-05, FE-05/06 · Done (D-91): a reasoned override/waive clears it
 - [x] FE → API · Add read routes for a Sabad's published references and each publication's approver, time and publish-time gate · API-05, FE-06 · Done: `listPublications` (D-89)
-- [ ] API → LLM · On Windows, `lib/engine/llm/adapter.test.ts` fails 3 cases with `EBUSY` because cleanup deletes the SQLite cache file while it is still open; close the cache before `rmSync`. Seven other engine/script tests need the Mac-exported demo fixture and fail on this clone's Sabad 55 fixture · LLM-01, C-05
+- [ ] API → LLM · On Windows, `lib/engine/llm/adapter.test.ts` fails 3 cases with `EBUSY` because cleanup deletes the SQLite cache file while it is still open; close the cache before `rmSync` (fixed 2026-10-17; needs a Windows rerun). Seven other engine/script tests need the Mac-exported demo fixture and fail on this clone's Sabad 55 fixture · LLM-01, C-05
 - [x] API → DATA · Persistent ID sequences and a transaction around approval (and every other multi-step write) before switching to SQLite · Done (D-90)
-- [ ] API · Saving a unit leaves sibling units' Sabad-scoped code findings (TERM-03 first use, TERM-07) unrefreshed until the next code check; the UI re-checks after every save, but API-03 should clear or mark them stale on save · API-02/03
-- [ ] API → DATA · `pnpm dev` auto-bootstraps an empty `eko.db` from the demo fixture; on a machine with `data/banidb/banidb.sqlite`, run `pnpm ingest` on a fresh database first (or delete `eko.db`), because full ingest refuses changed lines and a fixture Sabad that differs from the SQLite copy (P-05 recorded one API/SQLite difference) would block it · DATA-03, D-90
-- [ ] API · Verify the keyed path live: with `ANTHROPIC_API_KEY` in `.env.local`, run one model check and one drift check through the UI and confirm real findings/assessments persist · API-03/07, LLM-01/10
+- [x] API · Saving a unit leaves sibling units' Sabad-scoped code findings (TERM-03 first use, TERM-07) unrefreshed until the next code check; the UI re-checks after every save, but API-03 should clear or mark them stale on save · API-02/03 · Done (D-94)
+- [x] API → DATA · `pnpm dev` auto-bootstraps an empty `eko.db` from the demo fixture; on a machine with `data/banidb/banidb.sqlite`, run `pnpm ingest` on a fresh database first (or delete `eko.db`), because full ingest refuses changed lines and a fixture Sabad that differs from the SQLite copy (P-05 recorded one API/SQLite difference) would block it · DATA-03, D-90 · Done (D-93): bootstrap uses the ingest loader. An `eko.db` bootstrapped earlier from the fixture is not rewritten; move it aside if ingest refuses
+- [x] API · Verify the keyed path live: with `ANTHROPIC_API_KEY` in `.env.local`, run one model check and one drift check through the UI and confirm real findings/assessments persist · API-03/07, LLM-01/10 · Done 2026-10-17 (M1–M3 live)
 - [x] API → DATA · `publications` table and repository methods; `getStore()` now uses SQLite · Done (D-90)
 - [ ] FE → DOCS/Harsimran · Supply the official BaniDB logo for `public/` (footer shows a text badge) · FE-01, FR-21
