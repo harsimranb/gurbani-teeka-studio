@@ -115,7 +115,7 @@
 - [x] Follow the Mac setup from a clean app database, apply migration, export and ingest the local SQLite Sabad, seed source lines and rules, then repeat ingest/seed to prove idempotence.
 - [x] Run `pnpm typecheck`, `pnpm test`, and a bounded `pnpm dev` smoke check. Correct stale ignored pnpm workspace metadata so the normal commands run without reinstalling or bypass flags.
 - [x] Verify private paths remain ignored and no route queries BaniDB. Ask a fresh reviewer agent for correctness review, fix substantiated findings, and rerun affected checks.
-- [ ] Mark individual tasks complete only where their acceptance passes. Record the user-directed source-only DATA-05 scope and Windows validation exception. Mark F0/M0 complete only after local export, Mac guardrails, fixtures, storage, ingest, route skeletons, and setup checks pass. Commit and push task-scoped changes without private artifacts.
+- [x] Mark individual tasks complete only where their acceptance passes. Record the user-directed source-only DATA-05 scope and Windows validation exception. Mark F0/M0 complete only after local export, Mac guardrails, fixtures, storage, ingest, route skeletons, and setup checks pass. Commit and push task-scoped changes without private artifacts.
 
 ## External gates and current evidence
 
