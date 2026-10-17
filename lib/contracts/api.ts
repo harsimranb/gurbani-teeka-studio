@@ -3,7 +3,7 @@ import {
   CheckResultSchema, CheckRunSchema, DecisionSchema, DraftSchema, DriftResultSchema,
   EvalRunSchema, ExactSpanSchema, FindingSchema, GroupedLineIdsSchema, IdSchema,
   NonblankSchema, ProposalSchema, PublicationSchema, PublishBlockerSchema, PublishGateSchema,
-  ReferenceSchema, RuleApprovalSchema, RuleSchema, SabadSchema, VersionSchema,
+  ReferenceSchema, ReferenceSourceSchema, RuleApprovalSchema, RuleSchema, SabadSchema, VersionSchema,
 } from "./domain";
 
 const EmptySchema = z.strictObject({});
@@ -35,6 +35,44 @@ export const CheckResponseSchema = z.strictObject({
     if (!draft || finding.state !== "current" || finding.draft_version !== draft.version || finding.ruleset_version !== first.ruleset_version || !ExactSpanSchema.safeParse({ text: draft.text, quoted_span: finding.quoted_span, start: finding.start, end: finding.end }).success) ctx.addIssue({ code: "custom", message: "Check findings must match an affected authored unit and current versions", path: ["result", "findings"] });
   }
 });
+
+// FE-10 browse. Query strings arrive as text, so numbers are coerced. Filters narrow with AND; omitted filters match everything.
+const AngSchema = z.number().int().min(1).max(1430);
+export const SabadStatusSchema = z.enum(["not_started", "draft", "changes_requested", "ready_for_review", "partly_published", "published"]);
+export const BrowseSabadSchema = z.strictObject({
+  shabad_id: IdSchema, ang: AngSchema, last_ang: AngSchema, raag: NonblankSchema, writer: NonblankSchema,
+  line_count: z.number().int().positive(), first_line_gurmukhi: NonblankSchema, status: SabadStatusSchema,
+});
+export const BrowseRequestSchema = z.strictObject({
+  ang: z.coerce.number().pipe(AngSchema).optional(), raag: NonblankSchema.optional(), writer: NonblankSchema.optional(),
+  limit: z.coerce.number().int().min(1).max(100).default(25), offset: z.coerce.number().int().nonnegative().default(0),
+});
+export const BrowseResponseSchema = z.strictObject({
+  total: z.number().int().nonnegative(), limit: z.number().int().positive(), offset: z.number().int().nonnegative(),
+  sabads: z.array(BrowseSabadSchema), raags: z.array(NonblankSchema), writers: z.array(NonblankSchema),
+});
+
+// FE-11 word lookup. Read-only evidence from BaniDB and stored references; no field can carry a suggested rendering.
+export const WordLookupSchema = z.discriminatedUnion("status", [
+  z.strictObject({
+    status: z.literal("available"),
+    word: z.strictObject({ line_id: IdSchema, shabad_id: IdSchema, surface: NonblankSchema, stem_key: NonblankSchema, ending_matra: z.string() }),
+    // Lines of the whole corpus with a word sharing the stem key. `items` is capped; `total` is the full count.
+    occurrences: z.strictObject({
+      total: z.number().int().nonnegative(),
+      items: z.array(z.strictObject({ shabad_id: IdSchema, line_id: IdSchema, ang: AngSchema, surface: NonblankSchema, gurmukhi: NonblankSchema })),
+    }),
+    // References whose covered lines contain the word. `english` is line-level (or grouped-line) text, never aligned to this word.
+    prior_renderings: z.strictObject({
+      total: z.number().int().nonnegative(),
+      items: z.array(z.strictObject({
+        reference_id: IdSchema, source: ReferenceSourceSchema, source_label: NonblankSchema,
+        line_ids: GroupedLineIdsSchema, matched_line_ids: GroupedLineIdsSchema, english: NonblankSchema,
+      })),
+    }),
+  }).refine((lookup) => lookup.occurrences.items.length <= lookup.occurrences.total && lookup.prior_renderings.items.length <= lookup.prior_renderings.total, "A capped list cannot exceed its total"),
+  z.strictObject({ status: z.literal("unavailable"), reason: NonblankSchema }),
+]);
 export const SaveDraftRequestSchema = z.strictObject({
   draft_id: IdSchema.nullable(), expected_version: VersionSchema.nullable(), shabad_id: IdSchema,
   line_ids: GroupedLineIdsSchema, text: z.string(), author: NonblankSchema,
@@ -52,7 +90,7 @@ export const DecisionResponseSchema = z.strictObject({ decision: DecisionSchema,
 });
 export const PublishResponseSchema = z.strictObject({ draft: DraftSchema, reference: ReferenceSchema, gate: PublishGateSchema }).refine((response) => response.draft.status === "published" && response.reference.source === "published" && response.gate.can_publish && response.gate.draft_id === response.draft.id && response.gate.draft_version === response.draft.version, "Published response needs a published reference and a clear current gate");
 
-// P0 inventory only. No generation, P1 browsing/lookup or backtest execution route.
+// P0 inventory plus two P1 read routes (browseSabads, lookupWord). No generation or backtest execution route.
 // listPublications is a read route for published records (reference, approver, time and the gate that allowed it).
 export const routes = {
   listSabads: { method: "GET", path: "/api/sabads", request: EmptySchema, response: z.strictObject({ sabads: z.array(z.strictObject({ shabad_id: IdSchema, ang: z.number().int().min(1).max(1430), raag: NonblankSchema, writer: NonblankSchema })) }) },
@@ -74,6 +112,9 @@ export const routes = {
   submitProposal: { method: "POST", path: "/api/proposals", request: z.strictObject({ rule_text: NonblankSchema, example: NonblankSchema, reason: NonblankSchema, author: NonblankSchema }), response: ProposalResponseSchema },
   approveProposal: { method: "POST", path: "/api/proposals/:proposal_id/approve", request: z.strictObject({ proposal_id: IdSchema, ruleset_version: VersionSchema, actor: NonblankSchema, reason: NonblankSchema, drift_override_reason: NonblankSchema.nullable() }), response: z.strictObject({ rule: RuleSchema, approval: RuleApprovalSchema, ruleset_version: VersionSchema }) },
   getEval: { method: "GET", path: "/api/eval", request: EmptySchema, response: EvalRunSchema },
+  // P1 read routes. browseSabads filters the whole ingested corpus (listSabads keeps the demo list); lookupWord resolves a word by its offset in a source line.
+  browseSabads: { method: "GET", path: "/api/browse", request: BrowseRequestSchema, response: BrowseResponseSchema },
+  lookupWord: { method: "GET", path: "/api/lines/:line_id/words/:start", request: z.strictObject({ line_id: IdSchema, start: z.coerce.number().int().nonnegative() }), response: WordLookupSchema },
 } as const;
 export type RouteName = keyof typeof routes;
 export type ApiRequest<Name extends RouteName> = z.input<(typeof routes)[Name]["request"]>;

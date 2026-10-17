@@ -30,7 +30,7 @@ describe("P0 API contracts", () => {
     expect(ApiErrorSchema.safeParse({ error: { code: "publish_blocked", reason: "Current model phase is missing.", blockers: [{ kind: "check_phase", draft_id: draft.id, phase: "llm", status: "missing" }] } }).success).toBe(true);
   });
   it("lists published records by Sabad as a read route with a contract-valid fixture", () => {
-    expect(Object.keys(routes)).toHaveLength(19);
+    expect(Object.keys(routes)).toHaveLength(21);
     expect(routes.listPublications).toMatchObject({ method: "GET", path: "/api/sabads/:shabad_id/publications" });
     expect(routes.listPublications.request.safeParse({ shabad_id: "s" }).success).toBe(true);
     expect(routes.listPublications.request.safeParse({ shabad_id: " " }).success).toBe(false);
@@ -39,5 +39,31 @@ describe("P0 API contracts", () => {
     const publication = { reference: { id: "PUB-0001", line_ids: ["line-1"], english: draft.text, source: "published", exceptions: [] }, draft_id: draft.id, approver: "Approver", at, gate };
     expect(routes.listPublications.response.safeParse({ publications: [publication] }).success).toBe(true);
     expect(routes.listPublications.response.safeParse({ publications: [{ ...publication, gate: { ...gate, can_publish: false } }] }).success).toBe(false);
+  });
+  it("validates the browse request: optional filters, coerced numbers, bounded paging", () => {
+    expect(routes.browseSabads).toMatchObject({ method: "GET", path: "/api/browse" });
+    expect(routes.browseSabads.request.parse({})).toEqual({ limit: 25, offset: 0 });
+    expect(routes.browseSabads.request.parse({ ang: "12", raag: "R", writer: "W", limit: "50", offset: "25" })).toEqual({ ang: 12, raag: "R", writer: "W", limit: 50, offset: 25 });
+    for (const bad of [{ ang: "0" }, { ang: "1431" }, { ang: "x" }, { raag: " " }, { limit: "0" }, { limit: "101" }, { offset: "-1" }, { extra: "1" }]) {
+      expect(routes.browseSabads.request.safeParse(bad).success, JSON.stringify(bad)).toBe(false);
+    }
+    const sabad = { shabad_id: "s1", ang: 3, last_ang: 4, raag: "R", writer: "W", line_count: 5, first_line_gurmukhi: "SYNTHETIC-SOURCE", status: "draft" };
+    expect(routes.browseSabads.response.safeParse({ total: 1, limit: 25, offset: 0, sabads: [sabad], raags: ["R"], writers: ["W"] }).success).toBe(true);
+    expect(routes.browseSabads.response.safeParse({ total: 1, limit: 25, offset: 0, sabads: [{ ...sabad, status: "approved" }], raags: [], writers: [] }).success).toBe(false);
+  });
+  it("keeps word lookup read-only: strict shapes with no field for suggested wording", () => {
+    expect(routes.lookupWord).toMatchObject({ method: "GET", path: "/api/lines/:line_id/words/:start" });
+    expect(routes.lookupWord.request.parse({ line_id: "l1", start: "4" })).toEqual({ line_id: "l1", start: 4 });
+    expect(routes.lookupWord.request.safeParse({ line_id: "l1", start: "-1" }).success).toBe(false);
+    expect(routes.lookupWord.request.safeParse({ line_id: " ", start: "0" }).success).toBe(false);
+    const lookup = {
+      status: "available", word: { line_id: "l1", shabad_id: "s1", surface: "W1", stem_key: "W", ending_matra: "" },
+      occurrences: { total: 2, items: [{ shabad_id: "s1", line_id: "l1", ang: 1, surface: "W1", gurmukhi: "SYNTHETIC-SOURCE" }] },
+      prior_renderings: { total: 1, items: [{ reference_id: "PUB-0001", source: "published", source_label: "Published in Eko", line_ids: ["l1"], matched_line_ids: ["l1"], english: "SYNTHETIC reference" }] },
+    };
+    expect(routes.lookupWord.response.safeParse(lookup).success).toBe(true);
+    expect(routes.lookupWord.response.safeParse({ ...lookup, suggestion: "SYNTHETIC" }).success).toBe(false);
+    expect(routes.lookupWord.response.safeParse({ ...lookup, occurrences: { ...lookup.occurrences, total: 0 } }).success).toBe(false);
+    expect(routes.lookupWord.response.safeParse(mockResponses.lookupWord).success).toBe(true);
   });
 });

@@ -50,4 +50,6 @@ export const mockResponses: Record<RouteName, unknown> = {
   submitProposal: proposalResponse,
   approveProposal: { error: { code: "unavailable", reason: "Stateless synthetic mock; no rule approval or version increment was performed." } },
   getEval: evalFixture,
+  browseSabads: { total: 0, limit: 25, offset: 0, sabads: [], raags: [], writers: [] },
+  lookupWord: { status: "unavailable", reason: "Load the private BaniDB-exported fixture to look up words; no word evidence is synthesized." },
 };
