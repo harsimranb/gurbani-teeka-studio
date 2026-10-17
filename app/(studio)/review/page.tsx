@@ -8,7 +8,7 @@ export default function ReviewPage() {
     <ReviewGrid
       left={<ReviewQueue />}
       center={
-        <div className="rounded-xl border border-dashed border-line-strong bg-card p-8">
+        <div className="rounded-xl border border-line bg-card p-8">
           <h1 className="m-0 text-[28px] font-semibold tracking-[-0.01em] text-ink">Review</h1>
           <p className="mt-2 mb-0 text-sm text-muted">Select a Sabad to review.</p>
         </div>

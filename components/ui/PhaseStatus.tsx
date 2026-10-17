@@ -29,8 +29,8 @@ export function PhaseStatus({ phase, run, running = false, onRetry, className }:
   if (running || run?.status === "pending") {
     return (
       <span className={base} role="status">
-        <Loader2 className="size-4 animate-spin" aria-hidden="true" />
-        {phase === "llm" ? "Model checks running…" : "Code checks running…"}
+        <Loader2 className="size-4 animate-spin text-accent" aria-hidden="true" />
+        <span className="text-body">{phase === "llm" ? "Model checks running…" : "Code checks running…"}</span>
       </span>
     );
   }

@@ -10,7 +10,7 @@ export function NamePrompt() {
   if (!ready || name) return null;
   const blank = value.trim().length === 0;
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[rgba(20,28,46,0.35)] p-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-canvas p-4">
       <form
         role="dialog"
         aria-modal="true"
@@ -31,7 +31,7 @@ export function NamePrompt() {
             autoComplete="name"
             value={value}
             onChange={(event) => setValue(event.target.value)}
-            className="min-h-12 rounded-lg border-2 border-navy px-3.5 text-[17px] text-ink"
+            className="min-h-12 rounded-lg border-2 border-navy px-3.5 text-[17px] text-ink focus-visible:outline-offset-0"
           />
         </div>
         <button

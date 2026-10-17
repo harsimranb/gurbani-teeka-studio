@@ -1,3 +1,4 @@
+import { DRAFT_STATUS, type Tone } from "@/components/ui";
 import type { ApiResponse } from "@/lib/contracts/api";
 import type { CheckRun, Draft, Finding, Line } from "@/lib/contracts/domain";
 
@@ -102,14 +103,15 @@ export function countBySeverity(findings: Finding[]): Array<{ severity: Severity
   return SEVERITIES.map((severity) => ({ severity, count: findings.filter((f) => f.severity === severity).length })).filter((c) => c.count > 0);
 }
 
-export type SabadStatusLabel = "Not started" | "Draft" | "Ready for review" | "Changes requested" | "Published" | "Partly published";
+export interface SabadStatus { label: string; tone: Tone }
 
-export function sabadStatus(drafts: Draft[]): SabadStatusLabel {
-  if (drafts.length === 0) return "Not started";
+/** Status of a whole Sabad derived from its drafts; per-draft labels and tones come from DRAFT_STATUS. */
+export function sabadStatus(drafts: Draft[]): SabadStatus {
+  if (drafts.length === 0) return { label: "Not started", tone: "neutral" };
   const published = drafts.filter((d) => d.status === "published").length;
-  if (published === drafts.length) return "Published";
-  if (published > 0) return "Partly published";
-  if (drafts.some((d) => d.status === "changes_requested")) return "Changes requested";
-  if (drafts.some((d) => d.status === "draft")) return "Draft";
-  return "Ready for review";
+  if (published === drafts.length) return DRAFT_STATUS.published;
+  if (published > 0) return { label: "Partly published", tone: "info" };
+  if (drafts.some((d) => d.status === "changes_requested")) return DRAFT_STATUS.changes_requested;
+  if (drafts.some((d) => d.status === "draft")) return DRAFT_STATUS.draft;
+  return DRAFT_STATUS.ready_for_review;
 }

@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import type { ApiResponse } from "@/lib/contracts/api";
 import type { CheckRun, Draft, Finding, Line, Rule } from "@/lib/contracts/domain";
+import { numberFindings, orderFindings } from "@/lib/client/finding-order";
 import { callApi, DATA_CHANGED_EVENT, useApi } from "@/lib/client/hooks";
 
 export type ReportData = ApiResponse<"getReport">;
@@ -27,8 +28,6 @@ export interface FindingEntry {
   unit: UnitData;
 }
 
-const SEVERITY_RANK = { error: 0, flag: 1, warning: 2, hint: 3 } as const;
-
 /** A finding is shown as current only if it is current, matches the draft/ruleset version and quotes the draft text exactly. */
 function isCurrent(finding: Finding, report: ReportData): boolean {
   return finding.state === "current"
@@ -38,16 +37,16 @@ function isCurrent(finding: Finding, report: ReportData): boolean {
     && report.draft.text.slice(finding.start, finding.end) === finding.quoted_span;
 }
 
-/** Code (L1) first, then model (L2 / style); error > flag > warning > hint; then unit order and start offset. */
-export function orderFindings(units: UnitData[]): FindingEntry[] {
-  const flat = units.flatMap((unit, unitIndex) => unit.findings.map((finding) => ({ finding, unit, unitIndex })));
-  flat.sort((a, b) =>
-    (a.finding.layer === "L1" ? 0 : 1) - (b.finding.layer === "L1" ? 0 : 1)
-    || SEVERITY_RANK[a.finding.severity] - SEVERITY_RANK[b.finding.severity]
-    || a.unitIndex - b.unitIndex
-    || a.finding.start - b.finding.start
-    || a.finding.id.localeCompare(b.finding.id));
-  return flat.map((entry, i) => ({ number: i + 1, finding: entry.finding, unit: entry.unit }));
+/** Shared order and numbering (`@/lib/client/finding-order`), identical to the review page. */
+export function buildEntries(units: UnitData[]): FindingEntry[] {
+  const drafts = units.map((u) => u.draft);
+  const findings = units.flatMap((u) => u.findings);
+  const numbers = numberFindings(findings, drafts);
+  const unitOf = new Map(units.flatMap((u) => u.findings.map((f) => [f.id, u] as const)));
+  return orderFindings(findings, drafts).flatMap((finding) => {
+    const unit = unitOf.get(finding.id);
+    return unit ? [{ number: numbers.get(finding.id) ?? 0, finding, unit }] : [];
+  });
 }
 
 interface Loaded { key: string; items: Array<{ report: ReportData; gate: GateData }>; error: Error | null }
@@ -121,7 +120,7 @@ export function useReportData(shabadId: string): ReportPageData {
     return () => window.clearInterval(id);
   }, [anyLlmPending]);
 
-  const entries = useMemo(() => orderFindings(units), [units]);
+  const entries = useMemo(() => buildEntries(units), [units]);
   const ruleList = rulesQ.data?.rules ?? [];
   const rules = useMemo(() => new Map(ruleList.map((rule) => [rule.id, rule] as const)), [ruleList]);
 

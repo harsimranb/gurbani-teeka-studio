@@ -73,6 +73,9 @@ function NameChip() {
 
 export function TopBar() {
   const pathname = usePathname();
+  const { name, ready } = useUserName();
+  // Hide the nav links while the first-visit name prompt is up.
+  const showNav = !(ready && !name);
   const queue = useApi("reviewQueue", {});
   const rules = useApi("listRules", {});
   const reviewCount = queue.data ? new Set(queue.data.drafts.map((draft) => draft.shabad_id)).size : 0;
@@ -83,7 +86,7 @@ export function TopBar() {
           <LogoMark />
           <span className="text-[21px] font-semibold tracking-tight">Eko</span>
         </Link>
-        <nav aria-label="Main" className="flex flex-wrap gap-0.5">
+        <nav aria-label="Main" className={cn("flex flex-wrap gap-0.5", !showNav && "invisible")} aria-hidden={!showNav}>
           {NAV.map((item) => {
             const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
             return (

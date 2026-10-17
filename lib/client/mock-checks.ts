@@ -59,9 +59,10 @@ export function runMockChecks(drafts: Draft[], rules: Rule[], rulesetVersion: nu
       }
     }
   }
-  const evaluated = new Set([...MOCK_PHASE_RULE_IDS.code, ...MOCK_PHASE_RULE_IDS.llm]);
+  // Every active p0_check rule (including approved proposal rules) that this phase does not actually evaluate.
+  const evaluated = new Set(MOCK_PHASE_RULE_IDS[phase]);
   const notEvaluable: NotEvaluable[] = rules
-    .filter((rule) => isActiveP0(rule) && !evaluated.has(rule.id) && (rule.source !== "proposal" || phase === "llm"))
+    .filter((rule) => isActiveP0(rule) && !evaluated.has(rule.id))
     .map((rule) => ({ ruleId: rule.id, reason: `Mock mode: no real ${phase} check ran for this rule.` }));
   return CheckResultSchema.parse({ findings, notEvaluable });
 }

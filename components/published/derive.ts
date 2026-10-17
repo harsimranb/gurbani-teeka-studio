@@ -45,12 +45,14 @@ export interface GateSummary {
   warnings: number;
 }
 
-/** Everything is counted from the gate responses; a CONS-01 departure with a recorded reference exception counts as having its reason. */
+/** Counted from the gate recorded at publish time (never the current gate). A CONS-01 departure with a recorded reference exception counts as having its reason. */
 export function summarizeGate(units: UnitData[], references: Reference[]): GateSummary {
   const summary: GateSummary = { errors: 0, flags: 0, incompletePhases: 0, departuresWithoutReason: 0, warnings: 0 };
   for (const unit of units) {
+    const gate = unit.publication?.gate;
+    if (!gate) continue;
     let departures = 0;
-    for (const blocker of unit.gate.blockers) {
+    for (const blocker of gate.blockers) {
       if (blocker.kind === "finding") { if (blocker.severity === "error") summary.errors += 1; else summary.flags += 1; }
       else if (blocker.kind === "check_phase") summary.incompletePhases += 1;
       else departures += 1;
@@ -58,7 +60,7 @@ export function summarizeGate(units: UnitData[], references: Reference[]): GateS
     const reference = references.find((r) => r.id === unit.publication?.reference_id);
     const recorded = reference?.exceptions.filter((e) => e.rule_id === "CONS-01" && e.action === "context_reason").length ?? 0;
     summary.departuresWithoutReason += Math.max(0, departures - recorded);
-    summary.warnings += unit.gate.warning_ids.length;
+    summary.warnings += gate.warning_ids.length;
   }
   return summary;
 }
@@ -86,4 +88,9 @@ export function collectDecisions(units: UnitData[], references: Reference[]): De
     }
   }
   return lines.sort((a, b) => a.at.localeCompare(b.at));
+}
+
+/** True when a published unit's CURRENT gate has blockers (for example after a new ruleset version cleared its results). */
+export function currentStateDiffers(units: UnitData[]): boolean {
+  return units.some((u) => u.gate.blockers.length > 0);
 }

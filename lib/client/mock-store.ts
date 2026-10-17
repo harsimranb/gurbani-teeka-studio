@@ -1,7 +1,7 @@
 import { rulesFixture } from "../contracts/fixtures";
 import {
   SabadSchema,
-  type CheckRun, type Decision, type Draft, type DriftResult, type Finding, type Proposal, type Reference, type Rule, type Sabad,
+  type CheckRun, type Decision, type Draft, type DriftResult, type Finding, type Proposal, type PublishGate, type Reference, type Rule, type Sabad,
 } from "../contracts/domain";
 import { notifyDataChanged } from "./events";
 
@@ -14,7 +14,11 @@ export const MOCK_STORE_KEY = "eko.mock.v1";
 export const MOCK_EVAL_KEY = "eko.mock.eval";
 export type MockEvalMode = "unavailable" | "synthetic";
 
-export interface MockRefMeta { shabad_id: string; draft_id: string; approver: string; at: string }
+export interface MockRefMeta {
+  shabad_id: string; draft_id: string; approver: string; at: string;
+  /** Gate computed just before publishing (the one that allowed it). Absent in stores saved by older builds. */
+  gate?: PublishGate;
+}
 export interface MockCounters { draft: number; run: number; decision: number; reference: number; proposal: number; drift: number; rule: number }
 export interface MockState {
   v: 1;
@@ -145,11 +149,15 @@ export function mockReferencesForSabad(shabadId: string): Reference[] {
   return s.references.filter((ref) => s.refMeta[ref.id]?.shabad_id === shabadId);
 }
 /** MOCK ONLY seam: who published a draft, and when. Needs a real API route later. */
-export function mockPublication(draftId: string): { reference_id: string; approver: string; at: string } | null {
+export function mockPublication(draftId: string): { reference_id: string; approver: string; at: string; gate: PublishGate } | null {
   const s = getState();
   for (let i = s.references.length - 1; i >= 0; i--) {
     const meta = s.refMeta[s.references[i].id];
-    if (meta && meta.draft_id === draftId) return { reference_id: s.references[i].id, approver: meta.approver, at: meta.at };
+    if (meta && meta.draft_id === draftId) {
+      const draft = s.drafts.find((d) => d.id === draftId);
+      const gate: PublishGate = meta.gate ?? { draft_id: draftId, draft_version: draft?.version ?? 1, ruleset_version: s.rulesetVersion, can_publish: true, blockers: [], warning_ids: [] };
+      return { reference_id: s.references[i].id, approver: meta.approver, at: meta.at, gate };
+    }
   }
   return null;
 }

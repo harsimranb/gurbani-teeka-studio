@@ -30,6 +30,8 @@ export function RulesCatalog() {
   const filter: FilterKey = picked ?? "active";
 
   const counts = useMemo(() => countsByFilter(rules), [rules]);
+  const seedCount = rules.filter((rule) => rule.source === "sikhri_seed").length;
+  const addedCount = rules.length - seedCount;
   const visible = useMemo(() => {
     const scopes = FILTERS.find((item) => item.key === filter)?.scopes ?? [];
     return rules.filter((rule) => scopes.includes(rule.resolution.scope));
@@ -62,7 +64,7 @@ export function RulesCatalog() {
         <div className="min-w-0 flex-[1_1_560px]">
           <h1 className="m-0 text-[28px] font-semibold tracking-tight text-ink">Ruleset {rulesetLabel(data.ruleset_version)}</h1>
           <p className="mt-0.5 mb-0 max-w-[820px] text-sm text-muted">
-            {rules.length} rules from SikhRI&apos;s published Approach and Methodology, verbatim, with the team&apos;s decision beside each. Eko checks the English transcreation only, so {counts.active} rules are active today.
+            {seedCount} rules from SikhRI&apos;s published Approach and Methodology{addedCount > 0 ? ` plus ${addedCount} added by approved proposals` : ""}, verbatim, with the team&apos;s decision beside each. Eko checks the English transcreation only, so {counts.active} rules are active today.
           </p>
         </div>
         <Link href="/rules/proposals" className={cn(buttonStyles({ variant: "primary" }), "min-h-11 px-[18px] no-underline")}>Propose a rule</Link>

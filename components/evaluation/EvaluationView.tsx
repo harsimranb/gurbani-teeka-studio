@@ -20,19 +20,20 @@ function Header({ version }: { version: number | null }) {
           Replays held-back pre-edit drafts through the same engine and rules, then compares Eko&apos;s findings with the corrections reviewers actually made. It reads history only and never writes to live drafts, decisions or rules.
         </p>
       </div>
-      <div className="flex flex-wrap items-end gap-2.5">
-        <div className="flex flex-col gap-1">
-          <label htmlFor="eval-ruleset" className="flex items-center gap-2 text-xs text-muted">Ruleset version <P1Tag>P1</P1Tag></label>
-          <select id="eval-ruleset" disabled className="min-h-10 rounded-lg border border-line bg-hint-bg px-2.5 font-mono text-[13px] text-disabled-text disabled:cursor-not-allowed">
-            <option>{version === null ? "Unavailable" : rulesetLabel(version)}</option>
-          </select>
+      <div className="flex flex-col items-end gap-2">
+        <div className="flex flex-wrap items-end justify-end gap-2.5">
+          <div className="flex flex-col gap-1">
+            <label htmlFor="eval-ruleset" className="flex items-center gap-2 text-xs text-muted">Ruleset version <P1Tag>P1</P1Tag></label>
+            <select id="eval-ruleset" disabled className="min-h-10 rounded-lg border border-line bg-hint-bg px-2.5 font-mono text-[13px] text-disabled-text disabled:cursor-not-allowed">
+              <option>{version === null ? "Unavailable" : rulesetLabel(version)}</option>
+            </select>
+          </div>
+          <Button disabled>Export JSON</Button>
+          <Button variant="primary" disabled>Run backtest</Button>
         </div>
-        <Button disabled>Export JSON</Button>
-        <Button variant="primary" disabled>Run backtest</Button>
-        <div className="flex flex-col items-start gap-0.5 self-end pb-0.5">
-          <P1Tag>P1 · FE-13</P1Tag>
-          <span className="font-mono text-[11px] text-muted">P0 run: pnpm eval</span>
-        </div>
+        <p className="m-0 text-right text-xs text-muted">
+          Run and export are P1 (FE-13). P0 run: <code className="font-mono">pnpm eval</code>
+        </p>
       </div>
     </div>
   );
@@ -68,9 +69,9 @@ export function EvaluationView() {
       <div className="flex flex-col gap-5">
         <Header version={run.ruleset_version} />
         <div className={STRIP}>
-          <span className="font-mono text-xs text-ink">No backtest available · ruleset {rulesetLabel(run.ruleset_version)}</span>
+          <span className="font-mono text-xs text-ink">ruleset {rulesetLabel(run.ruleset_version)} · no backtest run yet</span>
         </div>
-        <Unavailable title="No backtest available" reason={run.reason} />
+        <Unavailable title="Backtest unavailable" reason={run.reason} />
         <UnavailableMetricCards />
         <Card className="text-sm text-muted">
           The by-version and by-rule tables appear once a backtest has run. Nothing is estimated in its place.

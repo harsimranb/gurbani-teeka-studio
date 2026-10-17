@@ -5,6 +5,7 @@ import type { MouseEvent } from "react";
 import type { Rule } from "@/lib/contracts/domain";
 import { Tag } from "@/components/ui";
 import { cn } from "@/lib/utils";
+import { planLabel } from "./derive";
 import { RuleSeverity } from "./RuleSeverity";
 import { VerbatimText } from "./VerbatimText";
 
@@ -42,7 +43,7 @@ export function RuleTable({ rules, selectedId, onSelect }: { rules: Rule[]; sele
                     replace
                     scroll={false}
                     aria-current={selected ? "true" : undefined}
-                    className="text-link underline-offset-2 hover:text-link-dark hover:underline"
+                    className={cn("text-[13px] font-semibold underline-offset-2 hover:underline", selected ? "text-link" : "text-ink")}
                   >
                     {rule.id}
                   </Link>
@@ -53,7 +54,8 @@ export function RuleTable({ rules, selectedId, onSelect }: { rules: Rule[]; sele
                 </td>
                 <td className="px-3 py-3 align-top font-mono text-xs">{rule.level}</td>
                 <td className="px-3 py-3 align-top text-body">
-                  <span className="font-mono text-xs">{rule.plan}</span>
+                  <div>{planLabel(rule.plan)}</div>
+                  <div className="font-mono text-[11px] text-muted">{rule.plan}</div>
                   {rule.resolution.conditional ? <div className="mt-0.5 text-[13px] text-muted">{rule.resolution.conditional}</div> : null}
                 </td>
                 <td className="px-4 py-3 align-top"><RuleSeverity rule={rule} /></td>

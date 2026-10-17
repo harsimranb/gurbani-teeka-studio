@@ -70,3 +70,16 @@ export function formatWhen(iso: string): string {
   const date = new Date(iso);
   return Number.isNaN(date.getTime()) ? iso : DATE_TIME.format(date);
 }
+
+/** Plain labels for the check methods in the catalog (descriptions of the method, not rule text). Unknown slugs fall back to the slug. */
+const PLAN_LABEL: Record<string, string> = {
+  manual: "Reviewer judgment, no automatic check",
+  glossary: "Code: glossary and term match",
+  prefilter_llm: "Code prefilter, then model confirms",
+  style_llm: "Model compares against references",
+  grammar_conditioned: "Needs Gurmukhi grammar features",
+  generic_judge: "Model judges the approved free-text rule",
+};
+export function planLabel(plan: string): string {
+  return PLAN_LABEL[plan] ?? plan;
+}

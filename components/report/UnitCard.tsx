@@ -21,7 +21,7 @@ export function UnitCard({ unit, entries }: { unit: UnitData; entries: FindingEn
       <div className="flex flex-col gap-2 px-[18px] py-3.5">
         {unit.lines.map(({ line, number }) => (
           <div key={line.line_id} className="flex flex-col">
-            {grouped ? <Mono className="text-[11px]">Line {number}</Mono> : null}
+            {grouped ? <span className="text-xs text-muted">Line {number}</span> : null}
             <GurmukhiText text={line.gurmukhi} as="p" className="m-0 text-[20px] leading-[1.6]" />
           </div>
         ))}

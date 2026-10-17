@@ -90,7 +90,8 @@ export function SabadEditor({ sabad, drafts, focusDraftId, refetch }: { sabad: S
 
   const missingRuns = drafts.filter((d) => {
     const report = reports[d.id];
-    return report && report.draft.version === d.version && (!runOf(report, "code") || !runOf(report, "llm"));
+    const busy = inflight[d.id]?.code || inflight[d.id]?.llm || report?.check_runs.some((run) => run.status === "pending");
+    return !busy && report && report.draft.version === d.version && (!runOf(report, "code") || !runOf(report, "llm"));
   });
   async function rerun() {
     setRerunning(true);
@@ -128,11 +129,11 @@ export function SabadEditor({ sabad, drafts, focusDraftId, refetch }: { sabad: S
         saving={saving}
         hasDrafts={drafts.length > 0}
         needsName={needsName}
-        needsRerun={missingRuns.length > 0}
+        needsRerun={missingRuns.length > 0 && !saving}
         rerunning={rerunning}
         markableCount={markable}
         marking={marking}
-        statusLabel={drafts.length > 0 && markable === 0 && !anyDirty ? sabadStatus(drafts) : null}
+        statusLabel={drafts.length > 0 && markable === 0 && !anyDirty ? sabadStatus(drafts).label : null}
         savedMessage={savedMessage}
         error={error}
         onSave={() => void save()}

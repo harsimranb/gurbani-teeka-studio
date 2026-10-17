@@ -1,7 +1,8 @@
-import type { Reference } from "@/lib/contracts/domain";
+import type { PublishGate, Reference } from "@/lib/contracts/domain";
 import { mockPublication, mockReferencesForSabad } from "@/lib/client/mock-store";
 
-export interface Publication { reference_id: string; approver: string; at: string }
+/** `gate` is the gate computed at publish time. */
+export interface Publication { reference_id: string; approver: string; at: string; gate: PublishGate }
 
 /**
  * TODO(API): there is no API route for "who published this draft, and when" or for the

@@ -17,7 +17,7 @@ function OutcomePill({ assessment }: { assessment: Assessment }) {
   return <span className={cn(base, "border-ok text-ok")}>Pass</span>;
 }
 
-const CHIP = "rounded-md bg-info-bg/50 px-2 py-0.5 font-mono text-xs text-ink";
+const CHIP = "rounded-md bg-info-bg px-2 py-0.5 font-mono text-xs text-link-dark";
 
 function Evidence({ evidence }: { evidence: Extract<Assessment, { status: "evaluated" }>["evidence"] }) {
   const [all, setAll] = useState(false);
@@ -30,7 +30,7 @@ function Evidence({ evidence }: { evidence: Extract<Assessment, { status: "evalu
         <div className="flex flex-wrap items-center gap-1.5">
           {shown.map((id) => <span key={id} className={CHIP}>{id}</span>)}
           {hidden > 0 ? (
-            <button type="button" onClick={() => setAll(true)} className={cn(CHIP, "text-link hover:text-link-dark")}>+{hidden} more</button>
+            <button type="button" onClick={() => setAll(true)} className={cn(CHIP, "hover:underline")}>+{hidden} more</button>
           ) : null}
           {all && ids.length > 3 ? (
             <button type="button" onClick={() => setAll(false)} className="text-xs text-link hover:text-link-dark">Show fewer</button>
@@ -91,7 +91,9 @@ function P1Row({ label }: { label: string }) {
 export function DriftSummaryPill({ results }: { results: DriftResult[] | null }) {
   const base = "inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-semibold";
   if (!results || results.length === 0) return <span className={cn(base, "bg-hint-bg text-muted")}>Not checked</span>;
-  const n = blockingResults(results).length;
+  const blocks = blockingResults(results);
+  const n = blocks.length;
+  if (n > 0 && blocks.every((r) => r.override)) return <span className={cn(base, "bg-info-bg text-info")}><Check className="size-3.5" aria-hidden="true" />Block overridden</span>;
   if (n > 0) return <span className={cn(base, "bg-error-bg text-error")}><Ban className="size-3.5" aria-hidden="true" />Blocked by {n} {n === 1 ? "check" : "checks"}</span>;
   return <span className={cn(base, "bg-ok-bg text-ok")}><Check className="size-3.5" aria-hidden="true" />No blocking checks</span>;
 }

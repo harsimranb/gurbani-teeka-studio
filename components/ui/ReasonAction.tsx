@@ -21,16 +21,18 @@ export interface ReasonActionProps {
   /** Error from the last attempt, shown as an alert. */
   error?: string | null;
   className?: string;
+  /** Optional note after the label, rendered as " (hint)" in normal weight. */
+  hint?: string;
 }
 
 /** Written reason plus action buttons. Every button stays disabled until the reason is nonblank. */
-export function ReasonAction({ label, placeholder, actions, busy = false, error, className }: ReasonActionProps) {
+export function ReasonAction({ label, placeholder, actions, busy = false, error, className, hint }: ReasonActionProps) {
   const [reason, setReason] = useState("");
   const id = useId();
   const empty = reason.trim().length === 0;
   return (
     <div className={cn("flex flex-col gap-2", className)}>
-      <label htmlFor={`${id}-reason`} className="text-sm font-semibold text-ink">{label}</label>
+      <label htmlFor={`${id}-reason`} className="text-sm font-semibold text-ink">{label}{hint ? <span className="font-normal text-muted"> ({hint})</span> : null}</label>
       <textarea
         id={`${id}-reason`}
         value={reason}

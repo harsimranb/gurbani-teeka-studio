@@ -55,11 +55,14 @@ body {
   line-height: 1.5;
 }
 
-textarea,
-input,
-select,
-button {
-  font: inherit;
+/* Layered so Tailwind font utilities on form controls still win. */
+@layer base {
+  textarea,
+  input,
+  select,
+  button {
+    font: inherit;
+  }
 }
 
 :focus-visible {

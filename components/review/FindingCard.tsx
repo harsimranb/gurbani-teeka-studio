@@ -49,6 +49,8 @@ export interface FindingCardProps {
   draft: Draft;
   rulesetVersion: number;
   shabadId: string;
+  /** "Line 2" or "Lines 2–3": where the quoted span comes from. */
+  where: string;
   /** All recorded decisions on this finding. */
   decisions: Decision[];
   name: string;
@@ -68,7 +70,7 @@ export function HintRow({ finding, index }: { finding: Finding; index: number })
 }
 
 /** An open error, flag or warning with its decision controls. */
-export function FindingCard({ finding, index, rule, draft, rulesetVersion, shabadId, decisions, name, refresh }: FindingCardProps) {
+export function FindingCard({ finding, index, rule, draft, rulesetVersion, shabadId, where, decisions, name, refresh }: FindingCardProps) {
   const [choice, setChoice] = useState<Option | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -102,14 +104,17 @@ export function FindingCard({ finding, index, rule, draft, rulesetVersion, shaba
       <div className="flex flex-wrap items-center gap-2">
         <SeverityBadge severity={finding.severity} index={index} />
         <RuleId id={finding.rule_id} link className="text-[13px] font-semibold" />
-        <span className="font-mono text-[11px] text-muted">{LAYER_TAG[finding.layer]}</span>
+        <span className="rounded-md bg-hint-bg px-2 py-px text-xs text-body">{LAYER_TAG[finding.layer]}</span>
         <span className={cn("ml-auto text-xs", cons01 || blocks ? "text-error" : "text-muted")}>
           {cons01 ? "Blocks publishing until a reason is recorded" : blocks ? "Blocks publishing" : "Doesn't block"}
         </span>
       </div>
       <RuleText rule={rule} />
+      <div className="text-[13px] text-body">
+        Quoted from {where.toLowerCase()}:{" "}
+        <QuoteChip severity={finding.severity}>{finding.quoted_span}</QuoteChip>
+      </div>
       <p className="m-0 text-sm text-body">
-        <QuoteChip severity={finding.severity}>{finding.quoted_span}</QuoteChip>{" "}
         {finding.explanation}
         {finding.reference_ids.length > 0 ? <> Cites <span className="font-mono text-xs">{finding.reference_ids.join(", ")}</span>.</> : null}
       </p>
@@ -140,7 +145,8 @@ export function FindingCard({ finding, index, rule, draft, rulesetVersion, shaba
           <div className="flex flex-col gap-2">
             <ReasonAction
               key={choice.key}
-              label="Reason (required · shown to every later reviewer)"
+              label="Reason"
+              hint="required · shown to every later reviewer"
               actions={[{ label: choice.confirm, variant: "primary", onClick: (reason) => submit(choice, reason) }]}
               busy={busy}
               error={error}

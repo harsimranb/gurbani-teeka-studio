@@ -12,4 +12,5 @@ export { ReasonAction, type ReasonActionItem, type ReasonActionProps } from "./R
 export { RuleId } from "./RuleId";
 export { SEVERITY_LABEL, SeverityBadge, type Severity } from "./SeverityBadge";
 export { StatusPill, Tag, type Tone } from "./StatusPill";
+export { DRAFT_STATUS, type DraftStatus } from "./status";
 export { Unavailable } from "./Unavailable";

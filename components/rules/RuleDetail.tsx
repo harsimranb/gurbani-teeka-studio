@@ -1,6 +1,6 @@
 import type { Rule } from "@/lib/contracts/domain";
 import { Button, Tag } from "@/components/ui";
-import { SCOPE_LABEL, formatWhen } from "./derive";
+import { SCOPE_LABEL, formatWhen, planLabel } from "./derive";
 import { RuleSeverity } from "./RuleSeverity";
 import { VerbatimText } from "./VerbatimText";
 
@@ -32,7 +32,7 @@ export function RuleDetail({ rule }: { rule: Rule }) {
       <section className="flex flex-col gap-1.5 rounded-[10px] bg-subtle px-3.5 py-3">
         <div className="flex items-center justify-between gap-2">
           <h3 className={H3}>Check plan</h3>
-          <span className="font-mono text-[11px] text-flag">{rule.plan}</span>
+          <span className="text-right text-[13px] font-medium text-ink">{planLabel(rule.plan)} <span className="font-mono text-[11px] font-normal text-muted">{rule.plan}</span></span>
         </div>
         <dl className="m-0 flex flex-col gap-1 text-[13px] text-body">
           <div className="flex flex-wrap gap-x-1.5"><dt className="text-muted">Layers:</dt><dd className="m-0 font-mono text-xs leading-5">{resolution.layers.length ? resolution.layers.join(", ") : "none"}</dd></div>

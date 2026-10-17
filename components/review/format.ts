@@ -16,15 +16,6 @@ export function formatTime(iso: string): string {
   return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: false });
 }
 
-const LAYER_RANK: Record<Finding["layer"], number> = { L1: 0, L2: 1, style: 1 };
-const SEVERITY_RANK: Record<Severity, number> = { error: 0, flag: 1, warning: 2, hint: 3 };
-
-/** Code (L1) first, then model (L2/style); within each error > flag > warning > hint; then by start offset. */
-export function orderFindings(findings: Finding[]): Finding[] {
-  return [...findings].sort((a, b) =>
-    LAYER_RANK[a.layer] - LAYER_RANK[b.layer] || SEVERITY_RANK[a.severity] - SEVERITY_RANK[b.severity] || a.start - b.start || a.end - b.end);
-}
-
 export const LAYER_TAG: Record<Finding["layer"], string> = { L1: "L1 · code", L2: "L2 · model", style: "style · reference set" };
 
 /** 1-based positions of a unit's lines inside the Sabad, ascending. */
@@ -52,10 +43,6 @@ export function plural(count: number, one: string, many: string): string { retur
 export const SEVERITY_NOUN: Record<Severity, [string, string]> = { error: ["error", "errors"], flag: ["flag", "flags"], warning: ["warning", "warnings"], hint: ["hint", "hints"] };
 
 export const ACTION_PAST: Record<Decision["action"], string> = { accept: "Accepted · sent back to writer", override: "Overridden", waive: "Waived" };
-
-export const DRAFT_STATUS_LABEL: Record<Draft["status"], string> = {
-  draft: "Draft, not marked ready", ready_for_review: "Ready for review", changes_requested: "Changes requested", published: "Published",
-};
 
 export function hasPendingRun(units: Unit[]): boolean {
   return units.some((unit) => unit.report.check_runs.some((run) => run.status === "pending"));

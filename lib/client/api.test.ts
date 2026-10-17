@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { ApiClientError, createApiClient } from "./api";
-import { __setMockDelaysForTests, __setMockSabadForTests, resetMockStore, setMockEvalMode } from "./mock-handler";
+import { __setMockDelaysForTests, __setMockSabadForTests, mockPublication, resetMockStore, setMockEvalMode } from "./mock-handler";
 import { runMockChecks } from "./mock-checks";
 import { rulesFixture } from "../contracts/fixtures";
 import type { Sabad } from "../contracts/domain";
@@ -48,6 +48,17 @@ describe("typed client boundary", () => {
     setMockEvalMode("synthetic");
     const run = await client.request("getEval", {});
     expect(run.status === "available" && run.data_label).toBe("synthetic_test");
+    if (run.status !== "available") return;
+    expect(run.at).toBe("2026-10-16T12:00:00.000Z");
+    expect(run.catch_rate.denominator).toBe(run.n_corrections);
+    const perRule = run.per_rule;
+    const sum = (pick: (r: (typeof perRule)[number]) => number) => perRule.reduce((t, r) => t + pick(r), 0);
+    expect(sum((r) => r.catch_rate.numerator)).toBe(run.catch_rate.numerator);
+    expect(sum((r) => r.false_flag_rate.denominator)).toBe(run.n_findings);
+    for (const r of perRule) {
+      expect(r.catch_rate.numerator).toBeLessThanOrEqual(r.catch_rate.denominator);
+      expect(r.false_flag_rate.numerator).toBeLessThanOrEqual(r.false_flag_rate.denominator);
+    }
   });
 });
 
@@ -57,8 +68,13 @@ describe("synthetic checker", () => {
     const result = runMockChecks([draft], rulesFixture, 1, "code");
     expect(result.findings.map((f) => f.rule_id).sort()).toEqual(["LAYER-06", "LAYER-07", "TERM-01"]);
     for (const f of result.findings) expect(draft.text.slice(f.start, f.end)).toBe(f.quoted_span);
-    expect(result.notEvaluable.length).toBeGreaterThan(0);
     expect(result.notEvaluable.every((n) => n.reason.startsWith("Mock mode: no real code check ran"))).toBe(true);
+    const ids = (r: typeof result) => r.notEvaluable.map((n) => n.ruleId);
+    expect(ids(result)).toContain("TERM-07");
+    for (const evaluated of ["TERM-01", "LAYER-07", "LAYER-06"]) expect(ids(result)).not.toContain(evaluated);
+    const llm = runMockChecks([draft], rulesFixture, 1, "llm");
+    expect(ids(llm)).not.toContain("TERM-07");
+    for (const other of ["TERM-01", "LAYER-07", "LAYER-06"]) expect(ids(llm)).toContain(other);
   });
 });
 
@@ -102,6 +118,13 @@ describe("stateful mock workflow", () => {
     expect(published.reference.id).toBe("PUB-0001");
     expect(published.reference.english).toBe(text);
     expect(published.reference.exceptions.map((e) => e.action)).toEqual(["override", "override"]);
+    const publication = mockPublication(draft.id);
+    expect(publication).toMatchObject({ reference_id: "PUB-0001", approver: "Approver" });
+    expect(publication?.gate).toEqual(published.gate);
+    // Editing a published (or ready) draft puts it back to draft status.
+    const edited = await client.request("saveDraft", { draft_id: draft.id, expected_version: 1, shabad_id: "TEST-SABAD", line_ids: ["TEST-L1"], text: "Edited text.", author: "Tester" });
+    expect(edited.draft.status).toBe("draft");
+    expect(edited.draft.version).toBe(2);
 
     const proposed = await client.request("submitProposal", { rule_text: "Test rule text.", example: "Test example", reason: "Test reason", author: "Proposer" });
     expect(proposed.proposal.id).toBe("PR-001");

@@ -1,16 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { Card, CardHeader, GurmukhiText, StatusPill, type Tone } from "@/components/ui";
+import { Card, CardHeader, GurmukhiText, StatusPill } from "@/components/ui";
 import { useApi } from "@/lib/client/hooks";
 import { cn } from "@/lib/utils";
-import { sabadStatus, type SabadStatusLabel } from "./model";
+import { sabadStatus } from "./model";
 
 interface SabadSummary { shabad_id: string; ang: number; raag: string; writer: string }
 
-const STATUS_TONE: Record<SabadStatusLabel, Tone> = {
-  "Not started": "neutral", Draft: "neutral", "Ready for review": "info", "Changes requested": "warning", Published: "ok", "Partly published": "info",
-};
 
 function DisabledSelect({ id, label, option }: { id: string; label: string; option: string }) {
   return (
@@ -36,7 +33,7 @@ function SabadListItem({ sabad, selected }: { sabad: SabadSummary; selected: boo
     >
       <span className="flex items-center justify-between gap-2 text-sm">
         <span className={selected ? "font-semibold" : "font-medium"}>Sabad {sabad.shabad_id}</span>
-        {status ? <StatusPill tone={STATUS_TONE[status]} className={cn(selected && status === "Draft" && "bg-white")}>{status}</StatusPill> : null}
+        {status ? <StatusPill tone={status.tone} className={cn(selected && status.tone === "neutral" && "bg-white")}>{status.label}</StatusPill> : null}
       </span>
       {first ? <GurmukhiText text={first.gurmukhi} className="truncate text-[15px] leading-6 text-body" /> : null}
       <span className="text-xs text-muted">Ang {sabad.ang} · {sabad.writer}</span>

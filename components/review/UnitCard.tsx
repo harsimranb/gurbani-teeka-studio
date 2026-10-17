@@ -1,10 +1,10 @@
 "use client";
 
-import { GurmukhiText, HighlightedText, RuleId, SeverityBadge, StatusPill } from "@/components/ui";
+import { DRAFT_STATUS, GurmukhiText, HighlightedText, RuleId, SeverityBadge, StatusPill } from "@/components/ui";
 import type { Decision, Finding, Rule, Sabad } from "@/lib/contracts/domain";
 import { Check } from "lucide-react";
 import { FindingCard, HintRow } from "./FindingCard";
-import { DRAFT_STATUS_LABEL, formatTime, linePositions, orderFindings, positionsLabel, unique, type Unit } from "./format";
+import { formatTime, linePositions, positionsLabel, unique, type Unit } from "./format";
 
 const SEVERITY_ORDER = ["error", "flag", "warning", "hint"] as const;
 
@@ -64,19 +64,22 @@ export interface UnitCardProps {
   sabad: Sabad;
   rules: Rule[];
   rulesetVersion: number;
+  /** Sabad-wide finding numbers (id to 1..n), shared with the report card. */
+  numbers: Map<string, number>;
   name: string;
   refresh: () => void;
 }
 
 /** One authored unit: its lines and draft with highlights, cleared history, then open findings. */
-export function UnitCard({ unit, sabad, rules, rulesetVersion, name, refresh }: UnitCardProps) {
+export function UnitCard({ unit, sabad, rules, rulesetVersion, numbers, name, refresh }: UnitCardProps) {
   const { draft, report } = unit;
   const positions = linePositions(sabad, draft.line_ids);
   const lines = positions.map((n) => sabad.lines[n - 1]);
   const grouped = lines.length > 1;
-  const ordered = orderFindings(report.findings);
+  const where = positionsLabel(positions);
   const bothSucceeded = (["code", "llm"] as const).every((phase) => report.check_runs.some((run) => run.phase === phase && run.status === "succeeded"));
-  const findingNumber = new Map(ordered.map((f, i) => [f.id, i + 1]));
+  const ordered = [...report.findings].sort((a, b) => (numbers.get(a.id) ?? 0) - (numbers.get(b.id) ?? 0));
+  const findingNumber = numbers;
 
   const decisionsFor = (findingId: string) => report.decisions.filter((d) => d.finding_id === findingId);
   const decidedClears = report.decisions.filter((d) => d.action !== "accept");
@@ -94,14 +97,14 @@ export function UnitCard({ unit, sabad, rules, rulesetVersion, name, refresh }: 
             {positionsLabel(positions, true)}{grouped ? " · one transcreation" : ""}
           </span>
           <span className="flex items-center gap-2">
-            {draft.status !== "ready_for_review" ? <StatusPill tone="neutral">{DRAFT_STATUS_LABEL[draft.status]}</StatusPill> : null}
+            {draft.status !== "ready_for_review" ? <StatusPill tone={DRAFT_STATUS[draft.status].tone}>{DRAFT_STATUS[draft.status].label}</StatusPill> : null}
             <span className="font-mono">{lines.map((l) => l.line_id).join(" · ")}</span>
           </span>
         </div>
         {lines.map((line, i) => (
           <div key={line.line_id}>
-            {grouped ? <span className="font-mono text-[11px] text-muted">Line {positions[i]}</span> : null}
-            <GurmukhiText text={line.gurmukhi} size="lg" />
+            {grouped ? <span className="text-xs text-muted">Line {positions[i]}</span> : null}
+            <GurmukhiText text={line.gurmukhi} size="lg" className="text-[22px] leading-[1.6]" />
           </div>
         ))}
         <HighlightedText
@@ -109,6 +112,11 @@ export function UnitCard({ unit, sabad, rules, rulesetVersion, name, refresh }: 
           spans={ordered.map((f) => ({ start: f.start, end: f.end, tone: f.severity, label: findingNumber.get(f.id) }))}
           className="text-[17px] leading-[1.9]"
         />
+        {ordered.length === 0 && decided.length === 0 ? (
+          <p className="m-0 text-xs text-muted">
+            {bothSucceeded ? "No open findings for this unit." : "No current findings, but the checks for this version are not all complete."}
+          </p>
+        ) : null}
       </div>
 
       {rechecked.length > 0 ? <RecheckRows findings={rechecked} version={draft.version} rulesetVersion={rulesetVersion} /> : null}
@@ -126,17 +134,13 @@ export function UnitCard({ unit, sabad, rules, rulesetVersion, name, refresh }: 
             draft={draft}
             rulesetVersion={report.ruleset_version}
             shabadId={sabad.shabad_id}
+            where={where}
             decisions={decisionsFor(finding.id)}
             name={name}
             refresh={refresh}
           />
         );
       })}
-      {ordered.length === 0 ? (
-        <p className="m-0 px-1 text-[13px] text-muted">
-          {bothSucceeded ? "No open findings for this unit." : "No current findings, but the checks for this version are not all complete."}
-        </p>
-      ) : null}
     </>
   );
 }

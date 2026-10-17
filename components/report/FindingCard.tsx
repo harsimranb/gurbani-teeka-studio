@@ -18,8 +18,8 @@ function RuleText({ rule }: { rule: Rule | undefined }) {
   const [open, setOpen] = useState(false);
   if (!rule) return null;
   return (
-    <div className="text-sm text-ink">
-      <p className={cn("m-0 font-medium", !open && "line-clamp-2")}>{rule.text}</p>
+    <div className="text-ink">
+      <p className={cn("m-0 text-[15px] font-semibold", !open && "line-clamp-2")}>{rule.text}</p>
       {rule.text.length > 120 ? (
         <button type="button" onClick={() => setOpen((v) => !v)} aria-expanded={open} className="mt-0.5 cursor-pointer border-0 bg-transparent p-0 text-xs font-medium text-link underline underline-offset-2 hover:text-link-dark">
           {open ? "Hide full rule" : "Show full rule"}
@@ -65,19 +65,20 @@ function ReferenceLinks({ ids }: { ids: string[] }) {
   );
 }
 
-function statusLabel(finding: Finding, needsDeparture: boolean): { text: string; blocks: boolean } {
+function statusLabel(finding: Finding, needsDeparture: boolean, published: boolean): { text: string; blocks: boolean } {
+  if (published) return { text: "Published unit · re-check result", blocks: false };
   if (finding.severity === "error" || finding.severity === "flag") return { text: "Blocks publishing", blocks: true };
   if (needsDeparture) return { text: "Needs a departure reason to publish", blocks: true };
   if (finding.severity === "warning") return { text: "Needs a reason to dismiss", blocks: false };
   return { text: "No action needed", blocks: false };
 }
 
-export function FindingCard({ entry, shabadId, rule, decisions, needsDeparture, cached }: {
-  entry: FindingEntry; shabadId: string; rule: Rule | undefined; decisions: Decision[]; needsDeparture: boolean; cached: boolean;
+export function FindingCard({ entry, shabadId, rule, decisions, needsDeparture, published, cached }: {
+  entry: FindingEntry; shabadId: string; rule: Rule | undefined; decisions: Decision[]; needsDeparture: boolean; published: boolean; cached: boolean;
 }) {
   const { finding, unit, number } = entry;
   const where = unitLineLabel(unit).toLowerCase();
-  const status = statusLabel(finding, needsDeparture);
+  const status = statusLabel(finding, needsDeparture, published);
   const isHint = finding.severity === "hint";
   const isCons = finding.rule_id === "CONS-01";
   const focusHref = `/workspace?sabad=${encodeURIComponent(shabadId)}&focus=${encodeURIComponent(unit.draft.id)}`;

@@ -98,16 +98,20 @@ function PendingDecision({ proposal, results, rulesetVersion, name, onRevise, on
   return (
     <Card className="flex flex-col gap-3 px-5 py-[18px]">
       <h2 className="m-0 text-base font-semibold text-ink">Decide</h2>
-      <div className="flex flex-col gap-1.5">
-        <label htmlFor={`${id}-reason`} className="text-sm font-semibold text-ink">Reason to approve <span className="font-normal text-muted">(required · saved with the rule)</span></label>
-        <textarea id={`${id}-reason`} rows={2} value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Why should this become a rule?" className={AREA} />
-      </div>
-      {blocked ? (
+      <div className={blocked ? "flex flex-col gap-3 rounded-lg border border-line bg-subtle p-3.5" : "flex flex-col gap-3"}>
+        {blocked ? <p className="m-0 text-[13px] font-semibold text-body">Both reasons are recorded with the new ruleset version</p> : null}
         <div className="flex flex-col gap-1.5">
-          <label htmlFor={`${id}-override`} className="text-sm font-semibold text-ink">Reason to override the block <span className="font-normal text-muted">(required · stays on the rule&apos;s record)</span></label>
-          <textarea id={`${id}-override`} rows={2} value={overrideReason} onChange={(e) => setOverrideReason(e.target.value)} placeholder="Why should this rule change already-approved work?" className={AREA} />
+          <label htmlFor={`${id}-reason`} className="text-sm font-semibold text-ink">Reason to approve <span className="font-normal text-muted">(required · saved with the rule)</span></label>
+          <textarea id={`${id}-reason`} rows={2} value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Why should this become a rule?" className={AREA} />
         </div>
-      ) : null}
+        {blocked ? (
+          <div className="flex flex-col gap-1.5">
+            <label htmlFor={`${id}-override`} className="text-sm font-semibold text-ink">Reason to override the block <span className="font-normal text-muted">(required · stays on the rule&apos;s record)</span></label>
+            <textarea id={`${id}-override`} rows={2} value={overrideReason} onChange={(e) => setOverrideReason(e.target.value)} placeholder="Why should this rule change already-approved work?" className={AREA} />
+          </div>
+        ) : null}
+      </div>
+
       <div className="flex flex-wrap items-center gap-2.5">
         <Button className="min-h-11 px-4" onClick={onRevise}>Revise proposal</Button>
         <Button variant="primary" className="min-h-11 px-4" disabled={disabled} aria-describedby={disabled ? helpId : undefined} onClick={() => void approve()}>

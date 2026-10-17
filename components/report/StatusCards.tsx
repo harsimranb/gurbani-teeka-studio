@@ -33,8 +33,10 @@ function CodeChecksCard({ units, ruleList }: { units: UnitData[]; ruleList: Rule
   const failed = units.filter((u) => u.codeRun?.status === "failed");
   const pending = units.filter((u) => u.codeRun?.status === "pending");
   const missing = units.filter((u) => !u.codeRun);
-  const notEvaluable = new Set(done.flatMap((r) => r.not_evaluable.map((n) => n.ruleId)));
-  const ran = ruleList.filter((r) => r.status === "approved" && r.resolution.active && r.resolution.scope === "p0_check" && !notEvaluable.has(r.id)).map((r) => r.id);
+  // A rule counts as having run only if every checked run evaluated it (intersection); units with no succeeded run contribute nothing.
+  const ran = done.length === 0 ? [] : ruleList
+    .filter((r) => r.status === "approved" && r.resolution.active && r.resolution.scope === "p0_check" && done.every((run) => !run.not_evaluable.some((n) => n.ruleId === r.id)))
+    .map((r) => r.id);
   const took = longestSeconds(done);
   const problem = failed.length > 0;
   const icon = problem ? <TriangleAlert className="size-3.5" aria-hidden="true" /> : pending.length ? <Loader2 className="size-3.5 animate-spin" aria-hidden="true" /> : missing.length ? <CircleDashed className="size-3.5" aria-hidden="true" /> : <Check className="size-3.5" strokeWidth={3} aria-hidden="true" />;
@@ -44,7 +46,7 @@ function CodeChecksCard({ units, ruleList }: { units: UnitData[]; ruleList: Rule
       {failed.length ? <div className="text-error">Failed for {names(failed)}</div> : null}
       {pending.length ? <div>Running for {names(pending)}</div> : null}
       {missing.length ? <div>Not run for {names(missing)}</div> : null}
-      {done.length && ran.length ? <div>Rules that ran: <span className="font-mono text-xs">{ran.join(", ")}</span></div> : null}
+      {done.length && ran.length ? <div>Rules that ran{done.length < units.length ? ` on the ${done.length} checked ${done.length === 1 ? "unit" : "units"}` : ""}: <span className="font-mono text-xs">{ran.join(", ")}</span></div> : null}
     </StatusCard>
   );
 }

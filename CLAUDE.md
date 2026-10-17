@@ -141,7 +141,7 @@ The scaffold and F0 ingest commands run now. Evaluation and bake-off scripts rem
 | `pnpm ingest` | Read the ignored, provenance-checked local BaniDB demo export into `eko.db` and seed the 66 resolved rules; repeatable without duplicates |
 | `node --import tsx scripts/app/seed-demo.ts` | Seed only the BaniDB demo source lines; no English draft or decision is created (D-75) |
 | `pnpm dev` | Run the app at http://localhost:3000 |
-| Mock mode (shell examples above) | C-02 client uses stateless fixtures; the full FE-02 workflow is pending |
+| Mock mode (shell examples above) | FE-02 stateful browser mock of every route with labelled synthetic checks (D-77); "Reset demo data" in the footer clears it |
 | `pnpm test` | Run the Vitest suite |
 | `pnpm typecheck` | Generate Next route types, then run `tsc --noEmit` |
 | `pnpm build` | Production build using webpack |

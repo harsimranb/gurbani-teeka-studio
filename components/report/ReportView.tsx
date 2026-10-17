@@ -13,7 +13,8 @@ import { UnitCard } from "./UnitCard";
 const SEVERITIES: Severity[] = ["error", "flag", "warning", "hint"];
 
 function BlockerBanner({ units }: { units: UnitData[] }) {
-  const blockers = units.flatMap((u) => u.gate.blockers.map((b) => ({ b, unit: u })));
+  // Already-published units are not publish blockers; their re-check results are shown on their own cards.
+  const blockers = units.filter((u) => u.draft.status !== "published").flatMap((u) => u.gate.blockers.map((b) => ({ b, unit: u })));
   const findingRules = [...new Set(blockers.flatMap(({ b }) => (b.kind === "finding" ? [b.rule_id] : [])))];
   const phaseParts = blockers.flatMap(({ b, unit }) => {
     if (b.kind !== "check_phase") return [];
@@ -63,6 +64,7 @@ function Findings({ data }: { data: ReportPageData }) {
           rule={rules.get(entry.finding.rule_id)}
           decisions={decisions}
           needsDeparture={departureIds.has(entry.finding.id)}
+          published={entry.unit.draft.status === "published"}
           cached={(entry.finding.layer === "L1" ? entry.unit.codeRun : entry.unit.llmRun)?.cached ?? false}
         />
       ))}

@@ -2,7 +2,7 @@ import { Fragment } from "react";
 import { cn } from "@/lib/utils";
 
 // Escapes only: this file never contains Gurmukhi characters itself.
-const GURMUKHI_RUN = /([਀-੿]+(?:[  ‌‍]+[਀-੿]+)*)/;
+const GURMUKHI_RUN = /([\u0A00-\u0A7F]+(?:[ \u00A0\u200C\u200D]+[\u0A00-\u0A7F]+)*)/;
 
 /**
  * Renders API-supplied rule text exactly as received. Gurmukhi runs found inside it are only tagged

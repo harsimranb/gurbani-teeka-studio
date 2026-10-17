@@ -2,16 +2,14 @@
 
 import { Check } from "lucide-react";
 import Link from "next/link";
-import { Banner, Card, StatusPill, Unavailable, buttonStyles } from "@/components/ui";
+import { Banner, Card, DRAFT_STATUS, StatusPill, Unavailable, buttonStyles } from "@/components/ui";
 import { rulesetLabel, type Reference } from "@/lib/contracts/domain";
 import { useApi } from "@/lib/client/hooks";
 import { cn } from "@/lib/utils";
 import { GateColumn } from "./GateColumn";
 import { ReferenceSetCard } from "./ReferenceSetCard";
-import { collectDecisions, firstPosition, formatTime, lineRangeLabel, linePositions, summarizeGate, type UnitData } from "./derive";
+import { collectDecisions, currentStateDiffers, firstPosition, formatTime, lineRangeLabel, linePositions, summarizeGate, type UnitData } from "./derive";
 import { usePublishedData } from "./usePublishedData";
-
-const STATUS_LABEL = { draft: "Draft", ready_for_review: "Ready for review", changes_requested: "Changes requested", published: "Published" } as const;
 
 function Loading({ children }: { children: string }) {
   return <p role="status" className="m-0 text-sm text-muted">{children}</p>;
@@ -46,7 +44,7 @@ export function PublishedView({ shabadId }: { shabadId: string }) {
               {units.map((u) => (
                 <li key={u.draft.id} className="flex flex-wrap items-center gap-2 text-sm">
                   <span className="font-medium text-ink">{lineRangeLabel(linePositions(sabad, u.draft.line_ids))}</span>
-                  <StatusPill tone={u.draft.status === "changes_requested" ? "warning" : "neutral"}>{STATUS_LABEL[u.draft.status]}</StatusPill>
+                  <StatusPill tone={DRAFT_STATUS[u.draft.status].tone}>{DRAFT_STATUS[u.draft.status].label}</StatusPill>
                 </li>
               ))}
             </ul>
@@ -67,6 +65,8 @@ export function PublishedView({ shabadId }: { shabadId: string }) {
   const approvers = [...new Set(publications.map((p) => p.approver))].join(", ");
   const latestAt = publications.map((p) => p.at).sort().at(-1);
   const rulesetVersion = rulesRes.data?.ruleset_version ?? null;
+  const differs = currentStateDiffers(published);
+  const currentRuleset = rulesRes.data?.ruleset_version ?? Math.max(...published.map((u) => u.gate.ruleset_version));
   const blocking = gate.errors + gate.flags;
   const blockNote = blocking === 0 ? "no open errors or flags" : `${gate.errors} open error${gate.errors === 1 ? "" : "s"}, ${gate.flags} open flag${gate.flags === 1 ? "" : "s"}`;
 
@@ -86,10 +86,16 @@ export function PublishedView({ shabadId }: { shabadId: string }) {
       {unpublished.length > 0 ? (
         <Banner tone="warning">
           <b>Not published yet:</b>{" "}
-          {unpublished.map((u) => `${lineRangeLabel(linePositions(sabad, u.draft.line_ids))} (${STATUS_LABEL[u.draft.status].toLowerCase()})`).join(", ")}.{" "}
+          {unpublished.map((u) => `${lineRangeLabel(linePositions(sabad, u.draft.line_ids))} (${DRAFT_STATUS[u.draft.status].label.toLowerCase()})`).join(", ")}.{" "}
           Only the published units are shown below.{" "}
           <Link href={reviewHref} className="font-medium text-link underline underline-offset-2 hover:text-link-dark">Open the review</Link>
         </Banner>
+      ) : null}
+      {differs ? (
+        <p role="status" className="m-0 rounded-lg border border-line bg-subtle px-4 py-2.5 text-[13px] text-body">
+          Since publishing, ruleset {rulesetLabel(currentRuleset)} has new results; re-check from the{" "}
+          <Link href={`/workspace?sabad=${encodeURIComponent(shabadId)}`} className="font-medium text-link underline underline-offset-2 hover:text-link-dark">workspace</Link>.
+        </p>
       ) : null}
       {error ? <Banner tone="error">{error.message}</Banner> : null}
 

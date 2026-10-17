@@ -43,10 +43,12 @@ export function HighlightedText({ text, spans, className }: { text: string; span
     const labels = covering.filter((s) => s.end === b && s.label !== undefined).sort((x, y) => x.order - y.order);
     pieces.push(
       <Fragment key={a}>
-        <mark data-tone={tone} className={cn("px-0.5 text-ink", MARK[tone])}>{slice}</mark>
-        {labels.map((s) => (
-          <sup key={s.order} className={cn("ml-0.5 font-mono text-[10px] font-semibold", SUP[s.tone])}>{s.label}</sup>
-        ))}
+        <mark data-tone={tone} className={cn("px-0.5 text-ink", MARK[tone])}>
+          {slice}
+          {labels.map((s) => (
+            <sup key={s.order} className={cn("ml-0.5 font-mono text-[10px] font-semibold", SUP[s.tone])}>{s.label}</sup>
+          ))}
+        </mark>
       </Fragment>,
     );
   }

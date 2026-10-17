@@ -144,12 +144,20 @@ function syntheticEval(): ApiResponse<"getEval"> {
   const s = getState();
   const rules = currentRules().filter((rule) => rule.resolution.active && rule.resolution.scope === "p0_check");
   const metric = (numerator: number, denominator: number) => ({ numerator, denominator, rate: denominator === 0 ? null : numerator / denominator });
+  // Fixed, self-consistent sample: per-rule parts are an even split of the overall totals.
+  const N_CORRECTIONS = 24, CAUGHT = 15, N_FINDINGS = 31, FALSE_FLAGS = 4;
+  const split = (total: number, parts: number, i: number) => Math.floor(total / parts) + (i < total % parts ? 1 : 0);
+  const k = rules.length;
   return {
-    status: "available", id: "mock-eval-1", ruleset_version: s.rulesetVersion, at: nowIso(), data_label: "synthetic_test",
+    status: "available", id: "mock-eval-1", ruleset_version: s.rulesetVersion, at: "2026-10-16T12:00:00.000Z", data_label: "synthetic_test",
     policy: { id: "mock", description: "Synthetic UI sample only. Not measured on real reviewer corrections." },
-    n_corrections: 24, n_findings: 31, excluded: { typos: 2, out_of_scope: 3, unmatched: 1 },
-    catch_rate: metric(15, 20), false_flag_rate: metric(4, 31),
-    per_rule: rules.map((rule, i) => ({ rule_id: rule.id, catch_rate: metric((i * 2 + 1) % 5 + 1, 6 + (i % 3)), false_flag_rate: metric(i % 3, 4 + (i % 4)) })),
+    n_corrections: N_CORRECTIONS, n_findings: N_FINDINGS, excluded: { typos: 2, out_of_scope: 3, unmatched: 1 },
+    catch_rate: metric(CAUGHT, N_CORRECTIONS), false_flag_rate: metric(FALSE_FLAGS, N_FINDINGS),
+    per_rule: rules.map((rule, i) => ({
+      rule_id: rule.id,
+      catch_rate: metric(split(CAUGHT, k, i), split(N_CORRECTIONS, k, i)),
+      false_flag_rate: metric(split(FALSE_FLAGS, k, i), split(N_FINDINGS, k, i)),
+    })),
   };
 }
 
@@ -199,7 +207,7 @@ const handlers: { [N in RouteName]: Handler<N> } = {
     if (!sameList(req.line_ids, existing.line_ids) && s.drafts.some((d) => d.id !== existing.id && d.line_ids.some((id) => req.line_ids.includes(id)))) {
       return err("invalid_request", "Those source lines are already covered by another draft.");
     }
-    const updated: Draft = { ...existing, text: req.text, line_ids: req.line_ids, author: req.author, version: existing.version + 1, updated_at: nowIso(), status: existing.status === "published" ? "draft" : existing.status };
+    const updated: Draft = { ...existing, text: req.text, line_ids: req.line_ids, author: req.author, version: existing.version + 1, updated_at: nowIso(), status: "draft" };
     s.drafts = s.drafts.map((d) => (d.id === existing.id ? updated : d));
     clearFindings((f) => f.draft_id === existing.id);
     s.runs = s.runs.filter((r) => !(r.draft_id === existing.id && r.draft_version !== updated.version));
@@ -279,7 +287,7 @@ const handlers: { [N in RouteName]: Handler<N> } = {
     }
     const reference: Reference = { id: nextId("reference"), line_ids: draft.line_ids, english: draft.text, source: "published", exceptions };
     s.references.push(reference);
-    s.refMeta[reference.id] = { shabad_id: draft.shabad_id, draft_id: draft.id, approver: req.actor, at };
+    s.refMeta[reference.id] = { shabad_id: draft.shabad_id, draft_id: draft.id, approver: req.actor, at, gate };
     return { draft: published, reference, gate: computeGate(published, resolved) };
   },
   async getReference(req) {

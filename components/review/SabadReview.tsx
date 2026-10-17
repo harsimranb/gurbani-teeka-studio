@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useRef } from "react";
 import { Banner, Unavailable, buttonStyles } from "@/components/ui";
+import { numberFindings } from "@/lib/client/finding-order";
 import { useUserName } from "@/lib/client/hooks";
 import { DecisionLog } from "./DecisionLog";
 import { PublishCard } from "./PublishCard";
@@ -51,6 +52,8 @@ export function SabadReview({ shabadId }: { shabadId: string }) {
     const { sabad, units, rules, rulesetVersion } = data;
     const version = units.length > 0 ? Math.max(...units.map((u) => u.draft.version)) : null;
     const authors = unique(units.map((u) => u.draft.author)).join(", ");
+    // Same input as the report card: ALL current findings of all drafts, drafts in source order.
+    const numbers = numberFindings(units.flatMap((u) => u.report.findings), units.map((u) => u.draft));
     center = (
       <>
         <div>
@@ -67,7 +70,7 @@ export function SabadReview({ shabadId }: { shabadId: string }) {
             <Link href={`/workspace?sabad=${encodeURIComponent(sabad.shabad_id)}`} className={buttonStyles({ variant: "secondary" })}>Open the workspace</Link>
           </div>
         ) : units.map((unit) => (
-          <UnitCard key={unit.draft.id} unit={unit} sabad={sabad} rules={rules} rulesetVersion={rulesetVersion} name={name} refresh={refresh} />
+          <UnitCard key={unit.draft.id} unit={unit} sabad={sabad} rules={rules} rulesetVersion={rulesetVersion} numbers={numbers} name={name} refresh={refresh} />
         ))}
         <PublishCard sabad={sabad} units={units} name={name} refresh={refresh} />
       </>
