@@ -137,6 +137,15 @@ describe("scoreBacktest (provisional OQ-14 policy)", () => {
 });
 
 describe("scoreBacktest edge cases", () => {
+  it("does not count a finding on a correction labelled unmatched as a false flag", () => {
+    const pre = "plain synthetic sentence here";
+    const start = pre.indexOf("sentence");
+    const c = correction("u", pre, "plain synthetic phrase here", "unmatched", [{ start, end: start + "sentence".length }]);
+    const score = scoreBacktest([evaluated(c, [finding("f1", "PRIN-04", pre, "sentence")])], { ruleIds: ["PRIN-04"] });
+    expect(score.items[0].findings[0].class).toBe("excluded");
+    expect(score.false_flag).toMatchObject({ numerator: 0, denominator: 0 });
+  });
+
   it("never reports 0% for rules that could not be evaluated: they are named and left out of per_rule", () => {
     const text = "plain synthetic sentence here";
     const c = correction("a", text, "plain synthetic phrase here");

@@ -104,7 +104,8 @@ export function scoreBacktest(items: BacktestItem[], options: { ruleIds?: string
         const hit = units.filter((unit) => unit.span && overlaps(finding, unit.span));
         for (const unit of hit.filter((entry) => entry.kind === "in_scope")) unit.caught_by.push({ finding_id: finding.id, rule_id: finding.rule_id });
         const matched = hit.some((unit) => unit.kind === "in_scope");
-        const excluded = hit.some((unit) => unit.kind === "typo" || unit.kind === "out_of_scope");
+        // OQ-14 (D-92): typo, out-of-scope and unmatched corrections are reported apart, so a finding on one is not a false flag.
+        const excluded = hit.some((unit) => unit.kind === "typo" || unit.kind === "out_of_scope" || unit.kind === "unmatched");
         findings.push({
           id: finding.id, rule_id: finding.rule_id, quoted_span: finding.quoted_span, start: finding.start, end: finding.end,
           class: matched ? "matched" : excluded ? "excluded" : "false_flag", unit_ids: hit.map((unit) => unit.id),
