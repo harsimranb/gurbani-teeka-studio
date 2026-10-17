@@ -1,0 +1,11 @@
+{
+  "data_label": "synthetic_test",
+  "records": [{
+    "id": "synthetic-finding-1", "draft_id": "synthetic-draft-1", "draft_version": 1,
+    "ruleset_version": 1, "rule_id": "LAYER-07", "rule_version": 1, "layer": "L1", "severity": "error",
+    "quoted_span": "(", "start": 9, "end": 10,
+    "explanation": "Synthetic test evidence: an opening parenthesis occurs in the documented LAYER-07 test case.",
+    "reference_ids": [], "model": "synthetic-fixture-stub", "prompt_version": "synthetic-fixture-v1",
+    "state": "current", "cleared_at": null
+  }]
+}

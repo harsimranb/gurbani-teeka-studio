@@ -1,6 +1,7 @@
+import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { ApiErrorSchema, routes, type RouteName } from "./api";
-import { CheckResultSchema, DraftSchema, DriftResultSchema, EvalRunSchema, findingMatchesInput } from "./domain";
+import { CheckResultSchema, DraftSchema, DriftResultSchema, EvalRunSchema, FindingSchema, ReferenceSchema, ReviewCorrectionSchema, findingMatchesInput } from "./domain";
 import { checkResultFixture, draftFixture, driftFixtures, evalFixture, mockResponses, rulesFixture } from "./fixtures";
 
 describe("minimal C-02 fixtures", () => {
@@ -25,6 +26,33 @@ describe("minimal C-02 fixtures", () => {
   });
   it("labels unknown drift and eval evidence unavailable", () => {
     expect(driftFixtures.every((result) => DriftResultSchema.safeParse(result).success && result.assessment.status === "not_evaluable")).toBe(true);
+    expect(EvalRunSchema.parse(evalFixture).status).toBe("unavailable");
+  });
+});
+
+describe("C-04 labelled synthetic fixtures", () => {
+  const load = (name: string) => JSON.parse(readFileSync(new URL(`./fixtures/${name}.json`, import.meta.url), "utf8"));
+
+  it("has a finding from the documented synthetic LAYER-07 case with an exact draft span", () => {
+    const payload = load("findings");
+    expect(payload.data_label).toBe("synthetic_test");
+    const findings = payload.records.map((value: unknown) => FindingSchema.parse(value));
+    expect(findings).toHaveLength(1);
+    expect(findings[0].rule_id).toBe("LAYER-07");
+    expect(draftFixture.text.slice(findings[0].start, findings[0].end)).toBe(findings[0].quoted_span);
+    expect(findings[0].quoted_span).toBe("(");
+    expect(checkResultFixture.findings).toEqual(findings);
+  });
+
+  it("labels synthetic reference and correction markers without claiming SikhRI evidence", () => {
+    const references = load("references");
+    const corrections = load("corrections");
+    expect(references.data_label).toBe("synthetic_test");
+    expect(corrections.data_label).toBe("synthetic_test");
+    expect(references.records.map((value: unknown) => ReferenceSchema.parse(value))).toHaveLength(1);
+    expect(corrections.records.map((value: unknown) => ReviewCorrectionSchema.parse(value))).toHaveLength(1);
+    expect(references.records[0].id).toMatch(/^synthetic-/);
+    expect(corrections.records[0].id).toMatch(/^synthetic-/);
     expect(EvalRunSchema.parse(evalFixture).status).toBe("unavailable");
   });
 });

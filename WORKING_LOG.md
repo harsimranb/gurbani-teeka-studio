@@ -23,7 +23,7 @@ Mark a feature complete only when its acceptance paragraph in [`_docs/10-feature
 
 | Feature | Status | Evidence / next dependency |
 |---|---|---|
-| **F0 · Foundation, contracts and source data** | In progress | C-01/C-02 complete; C-03 service and private API fallback delivered, local export blocked by partial source. C-05 per-clone privacy checks, C-04 fixtures and DATA/API foundation remain. |
+| **F0 · Foundation, contracts and source data** | In progress | C-01/C-02/C-04 complete; C-03 local SQLite source assessment in progress. C-05 Mac privacy checks and DATA/API foundation remain; Windows validation deferred by Harsimran. |
 | **F1 · Workspace** | Not started | Needs F0 contracts, data and API. |
 | **F2 · Checks and report card** | Not started | Needs C-02 contracts and C-03 BaniDB fixture. |
 | **F3 · Reference and style evidence** | Not started | Eko-published references can exercise mechanics; SikhRI sample and term mappings remain pending. |
@@ -124,7 +124,7 @@ Private-data ignore patterns are committed. Verify them before source exports in
   - Complete (2026-10-16): 18 P0 route contracts, current Sabad authored-unit snapshot, source-labelled evidence, minimal labelled fixtures and explicit synthetic engine/client stubs. Fresh subagent correctness review completed; substantiated issues fixed. Integrated typecheck and all 34 tests pass (29 C-02, five C-03). C-04's broader scenarios remain separate; no real checks or backtest are claimed.
 - [ ] **C-03** BaniDB up (`data/banidb/docker-compose.yml`); export the demo Sabads to a local, git-ignored `lib/contracts/fixtures/sabad.demo.json`. **Critical path.** Fallback after 30 min: export from the BaniDB API once. Never hand-type Gurmukhi or commit the export without permission
   - Partial delivery (2026-10-16): healthy pinned local database, strict exporters and complete private API-fallback Sabad 55 (15 lines, NFC) delivered and independently reviewed. The dev seed is missing verses, and its three complete one-line Sabads lack writer metadata, so local-export acceptance remains blocked. Reproduction and evidence: `_docs/c03-banidb.md`. Private source, provenance and credentials remain ignored.
-- [ ] **C-04** Fixtures: `check-result.json` and `findings.json` (spans from the SYNTHETIC cases), `references.json` and `corrections.json` (labelled test data), `eval-run.json`. All validate against `domain.ts`
+- [x] **C-04** Fixtures: `check-result.json` and `findings.json` use the synthetic LAYER-07 exact span; labelled `references.json` and `corrections.json` validate against `domain.ts`; `eval-run.json` remains explicitly unavailable. Focused fixture tests, TypeScript and all 36 tests pass (2026-10-16)
 - [ ] **C-05** Verify private-data ignores in each macOS/Windows clone: source exports, credentials, caches, eval output and local databases stay uncommitted. Fixed-owner enforcement and identity setup were removed by D-71; cross-platform clone verification remains pending
 - [ ] **M0** checkpoint: `pnpm dev` and `pnpm test` pass; contracts v1 on `main`
 

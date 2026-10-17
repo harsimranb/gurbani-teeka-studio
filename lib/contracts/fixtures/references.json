@@ -1,0 +1,10 @@
+{
+  "data_label": "synthetic_test",
+  "records": [{
+    "id": "synthetic-reference-1",
+    "line_ids": ["synthetic-line-1"],
+    "english": "SYNTHETIC REFERENCE MARKER; NOT A TRANSCREATION",
+    "source": "published",
+    "exceptions": []
+  }]
+}

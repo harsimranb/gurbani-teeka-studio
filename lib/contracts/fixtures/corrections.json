@@ -1,0 +1,13 @@
+{
+  "data_label": "synthetic_test",
+  "records": [{
+    "id": "synthetic-correction-1",
+    "line_ids": ["synthetic-line-1"],
+    "pre_edit": "SYNTHETIC BEFORE MARKER",
+    "post_edit": "SYNTHETIC AFTER MARKER",
+    "reviewer": "Synthetic test reviewer",
+    "source_id": "synthetic-source-1",
+    "label": "unclassified",
+    "changed_spans": []
+  }]
+}
