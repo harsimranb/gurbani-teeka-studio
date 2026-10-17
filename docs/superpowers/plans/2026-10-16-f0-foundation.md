@@ -112,9 +112,9 @@
 
 **Files:** Update `WORKING_LOG.md`, `README.md`, and relevant setup docs with measured results and remaining gates.
 
-- [ ] Follow the Mac setup from a clean app database, apply migration, export and ingest the local SQLite Sabad, seed source lines and rules, then repeat ingest/seed to prove idempotence.
-- [ ] Run `pnpm typecheck`, `pnpm test`, and a bounded `pnpm dev` smoke check. Repair the current pnpm runtime wrapper issue before accepting these checks; do not treat the failed baseline attempt as a test result.
-- [ ] Verify private paths remain ignored and no route queries BaniDB. Ask a fresh reviewer agent for correctness review, fix substantiated findings, and rerun affected checks.
+- [x] Follow the Mac setup from a clean app database, apply migration, export and ingest the local SQLite Sabad, seed source lines and rules, then repeat ingest/seed to prove idempotence.
+- [x] Run `pnpm typecheck`, `pnpm test`, and a bounded `pnpm dev` smoke check. Correct stale ignored pnpm workspace metadata so the normal commands run without reinstalling or bypass flags.
+- [x] Verify private paths remain ignored and no route queries BaniDB. Ask a fresh reviewer agent for correctness review, fix substantiated findings, and rerun affected checks.
 - [ ] Mark individual tasks complete only where their acceptance passes. Record the user-directed source-only DATA-05 scope and Windows validation exception. Mark F0/M0 complete only after local export, Mac guardrails, fixtures, storage, ingest, route skeletons, and setup checks pass. Commit and push task-scoped changes without private artifacts.
 
 ## External gates and current evidence
@@ -122,4 +122,4 @@
 - The user supplied an ignored 756 MB BaniDB SQLite copy. Its `Verse` table matches the partial Docker image (20,134 G-source rows; 39,977 missing mapped verses). `tmp_Verse` has 60,403 G-source rows, IDs 1–60,403, zero missing Unicode, all 60,111 checked G-Sabad mappings present, and source Unicode equal on all 20,134 overlapping `Verse` rows. A complete metadata-valid compact Sabad is available for a local export. The staging table's provenance/currentness is not independently verified.
 - Published [BaniDB terms](https://www.banidb.com/tos/) include data-use, refresh, attribution, and contribution conditions that need clarification before redistribution. No BaniDB data or export will be committed.
 - The user requested source lines only for the demo seed. The original authored-draft part of DATA-05 moves to a later human-input task; the assistant cannot write or suggest a transcreation under `CLAUDE.md` hard rule 1.
-- The first baseline `pnpm typecheck` and `pnpm test` attempts stopped before running because this environment's pnpm wrapper attempted a non-interactive dependency reinstall. Direct project binaries passed 34 Vitest tests, Next route-type generation, and `tsc --noEmit`. Docker status was inaccessible through the sandbox socket. Resolve these execution-environment checks during implementation.
+- The first baseline `pnpm` attempts stopped before running because the ignored `node_modules/.pnpm-workspace-state-v1.json` still named an older worktree. Correcting that local path restored normal `pnpm typecheck` and `pnpm test` without modifying the lockfile or dependencies. The sandbox also denied Docker status and an initial local listener; the approved local-port smoke check succeeded. The completed F0 suite has 49 tests.

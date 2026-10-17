@@ -133,12 +133,13 @@ _docs/                  documentation; rules/ holds the ruleset          DOCS
 
 ## Commands
 
-The scaffold commands run now. Scripts for ingest, evaluation and bake-off are reserved for their later workstreams; their target files do not exist yet.
+The scaffold and F0 ingest commands run now. Evaluation and bake-off scripts remain reserved for their later workstreams; their target files do not exist yet.
 
 | Command | Does |
 |---|---|
 | `docker compose --env-file data/banidb/.env -f data/banidb/docker-compose.yml up -d --wait` | Start local MariaDB; first create credentials using `_docs/c03-banidb.md` |
-| `pnpm ingest` | Planned DATA-03: read BaniDB → `eko.db` and seed rules |
+| `pnpm ingest` | Read the ignored, provenance-checked local BaniDB demo export into `eko.db` and seed the 66 resolved rules; repeatable without duplicates |
+| `node --import tsx scripts/app/seed-demo.ts` | Seed only the BaniDB demo source lines; no English draft or decision is created (D-75) |
 | `pnpm dev` | Run the app at http://localhost:3000 |
 | Mock mode (shell examples above) | C-02 client uses stateless fixtures; the full FE-02 workflow is pending |
 | `pnpm test` | Run the Vitest suite |

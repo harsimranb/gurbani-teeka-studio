@@ -15,7 +15,7 @@ Built by Team BJ13 for Sarbat Build Day, problem statement [sikhri-1](https://sa
 | UI mockups | Eight supplied screens mapped to P0/P1 tasks: [`_docs/09-ui-mockups.md`](_docs/09-ui-mockups.md) |
 | Feature plan | Task breakdown and acceptance criteria: [`_docs/10-feature-breakdown.md`](_docs/10-feature-breakdown.md) |
 | Kickoff readiness | Decisions and external inputs before workstream split: [`_docs/11-execution-readiness.md`](_docs/11-execution-readiness.md) |
-| Code | C-01/C-02/C-04 contracts and fixtures, DATA-01/02/03 storage and ingest, and C-03 private local SQLite export complete on Mac; F0 rules/seed/routes remain: [`WORKING_LOG.md`](WORKING_LOG.md) |
+| Code | F0 foundation complete for the approved Mac, source-only scope: contracts, private local BaniDB export, storage, seed, and 18 validated route skeletons. Windows validation and the human demo draft remain open: [`WORKING_LOG.md`](WORKING_LOG.md) |
 
 ## Start here
 
@@ -65,7 +65,7 @@ pnpm test
 pnpm build
 ```
 
-C-02 supplies review-only schemas, 18 P0 API contracts, and explicitly synthetic engine/client stubs. Real review workflows arrive in later tasks. For the private local BaniDB SQLite demo export and source-only ingest, follow [C-03 setup](_docs/c03-banidb.md). The pinned Docker development image remains partial; the earlier API fallback is retained privately.
+C-02 supplies review-only schemas and explicitly synthetic engine/client stubs. F0 adds 18 route skeletons; stateful actions report unavailable until their real workflow tasks. For the private local BaniDB SQLite demo export and source-only ingest, follow [C-03 setup](_docs/c03-banidb.md). The pinned Docker development image remains partial; the earlier API fallback is retained privately. A human-written English demo draft is still needed for F1.
 
 Development runs on macOS and Windows. Install dependencies independently on each machine; do not share `node_modules`, `.next`, Docker volumes or credentials. Anyone can work on any task or folder; person identity and ownership hooks are no longer required. See [`CLAUDE.md`](CLAUDE.md#development-on-macos-and-windows) for shell-specific mock mode and shared setup guidance.
 

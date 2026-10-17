@@ -23,7 +23,7 @@ Mark a feature complete only when its acceptance paragraph in [`_docs/10-feature
 
 | Feature | Status | Evidence / next dependency |
 |---|---|---|
-| **F0 · Foundation, contracts and source data** | In progress | C-01 to C-04, DATA-01 to DATA-05 and API-01 complete for the approved Mac/source-only scope; C-05 Mac privacy checked, Windows deferred. Final M0 setup and review gate remain. |
+| **F0 · Foundation, contracts and source data** | Complete for approved Mac/source-only scope | C-01 to C-04, DATA-01 to DATA-05 and API-01 pass. C-05 Mac privacy verified; Windows validation remains open by user direction. Human-authored draft is deferred to P-09/F1. M0 checks, production build and fresh review with fixes pass; P-05 corpus currency/coverage remains open. |
 | **F1 · Workspace** | Not started | Needs F0 contracts, data and API. |
 | **F2 · Checks and report card** | Not started | Needs C-02 contracts and C-03 BaniDB fixture. |
 | **F3 · Reference and style evidence** | Not started | Eko-published references can exercise mechanics; SikhRI sample and term mappings remain pending. |
@@ -128,7 +128,7 @@ Private-data ignore patterns are committed. Verify them before source exports in
 - [x] **C-03** BaniDB local source and private demo export. The Docker development seed remains partial, but the user-supplied SQLite copy has all 60,111 checked G-Sabad mappings in `tmp_Verse`; all 20,134 shared Unicode rows agree with `Verse`. A complete five-line Sabad 1356 with source IDs, metadata, NFC and Rahao is exported locally. The prior API fallback and provenance remain private and ignored. Coverage is not a full-corpus textual audit or currentness claim; P-05 remains open. Evidence: `_docs/c03-banidb.md` (2026-10-16)
 - [x] **C-04** Fixtures: `check-result.json` and `findings.json` use the synthetic LAYER-07 exact span; labelled `references.json` and `corrections.json` validate against `domain.ts`; `eval-run.json` remains explicitly unavailable. Focused fixture tests, TypeScript and all 36 tests pass (2026-10-16)
 - [ ] **C-05** Verify private-data ignores in each macOS/Windows clone: source exports, credentials, caches, eval output and local databases stay uncommitted. Mac verified on 2026-10-16: all documented paths and nested examples ignored; only `docker-compose.yml` tracked under `data/banidb/`. Windows validation explicitly deferred by Harsimran.
-- [ ] **M0** checkpoint: `pnpm dev` and `pnpm test` pass; contracts v1 on `main`
+- [x] **M0 (Mac/source-only)** checkpoint: local SQLite export and clean app database setup repeated with five lines, one Rahao, 66 rules, zero drafts/decisions; `pnpm dev` answered local page/API requests, `pnpm typecheck`, `pnpm test` (49 tests), and `pnpm build` pass; C-02 contracts v1 are on `main`. Windows validation remains open (2026-10-16).
 
 ---
 

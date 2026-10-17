@@ -16,6 +16,8 @@ node --import tsx scripts/app/seed-demo.ts
 
 `seed-demo.ts` deliberately seeds the source Sabad only. It adds no English draft or review decision; a human-authored demo draft is a later P-09/F1 input (D-75).
 
+Both ingest scripts verify the canonical fixture's SHA-256, Sabad/line IDs, Rahao IDs, and `tmp_Verse` provenance against the ignored export metadata before writing. A custom `DATABASE_URL` inside the repository is accepted only if Git ignores that path; the BaniDB source directory is never an app-database target. Outside-repository database paths are allowed for temporary tests.
+
 ## Earlier Docker-image assessment on 2026-10-16
 
 Docker Desktop 29.6.1 runs the official `khalisfoundation/banidb-dev` image using its upstream database name, `khajana_dev_khajana`. Compose pins the observed digest `sha256:a4198a3c66f6bdfa3dedf77e53f5f90923205f5630353e5cafe757e52c02ef0f`. The image is amd64, built 2020-06-04; Apple Silicon uses Docker's amd64 emulation. Its 642 MB initialization SQL imports into a Docker-managed named volume, `eko-banidb_mysql-data`. Only `127.0.0.1:3307` is exposed by default.
