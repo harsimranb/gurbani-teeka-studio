@@ -1,6 +1,7 @@
 import type { Decision, Draft, Finding, Publication, Reference } from "../../contracts/domain";
 import { indexReferences as engineIndexReferences } from "../../engine";
 import { getStore, nextId, nowIso } from "./context";
+import { draftProposalFromOverrides } from "./overrides";
 import { ServiceError, type ParsedRequest } from "./http";
 import { allDrafts, computeGate, currentFindings, currentRuleset } from "./state";
 
@@ -53,6 +54,8 @@ export function decide(req: ParsedRequest<"decide">): { decision: Decision; find
     } else {
       result = { ...finding, state: "cleared", cleared_at: at };
       tx.saveFinding(result);
+      // FR-16b: two distinct reviewers overriding one rule draft one proposal, in the same transaction.
+      if (req.action === "override") draftProposalFromOverrides(tx, finding.rule_id);
     }
   });
   return { decision, finding: result };

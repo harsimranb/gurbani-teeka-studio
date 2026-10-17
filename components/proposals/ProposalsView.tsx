@@ -2,7 +2,7 @@
 
 import { useCallback, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Banner, P1Placeholder } from "@/components/ui";
+import { Banner } from "@/components/ui";
 import { ApiClientError } from "@/lib/client/api";
 import { callApi, useApi, useUserName } from "@/lib/client/hooks";
 import { DecideCard } from "./DecideCard";
@@ -80,9 +80,6 @@ export function ProposalsView() {
         ) : (
           <EarlierProposals proposals={proposals.data?.proposals ?? []} selectedId={selectedId} />
         )}
-        <P1Placeholder title="Drafted from repeated overrides">
-          When two or more people override the same rule, Eko drafts a proposal with those overrides as evidence. It goes through the same drift check.
-        </P1Placeholder>
       </section>
 
       <section aria-label="Drift check" className="flex min-w-0 flex-[999_1_560px] flex-col gap-3.5">

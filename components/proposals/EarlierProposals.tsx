@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Card, StatusPill, type Tone } from "@/components/ui";
+import { Card, StatusPill, Tag, type Tone } from "@/components/ui";
 import type { Proposal } from "@/lib/contracts/domain";
 import { cn } from "@/lib/utils";
 import { firstLine, formatTime, STATUS_LABEL } from "./format";
@@ -30,6 +30,7 @@ export function EarlierProposals({ proposals, selectedId }: { proposals: Proposa
                   <span className="flex flex-wrap items-center gap-2">
                     <span className="font-mono text-xs font-medium text-ink">{p.id}</span>
                     <StatusPill tone={TONE[p.status]}>{STATUS_LABEL[p.status]}</StatusPill>
+                    {p.source === "overrides" ? <Tag tone="info">Drafted from overrides</Tag> : null}
                     <span className="ml-auto text-xs text-muted">{p.author} · {formatTime(p.at)}</span>
                   </span>
                   <span className="truncate text-[13px] text-body">{firstLine(p.rule_text)}</span>

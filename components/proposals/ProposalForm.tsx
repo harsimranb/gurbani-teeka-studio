@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, type FormEvent } from "react";
 import { Loader2 } from "lucide-react";
-import { Button, Card } from "@/components/ui";
+import { Banner, Button, Card } from "@/components/ui";
 import type { Proposal } from "@/lib/contracts/domain";
 import { formatTime } from "./format";
 
@@ -39,6 +39,18 @@ export function ProposalForm({ draft, onChange, onSubmit, busy, error, canAct, s
           <h1 className="m-0 text-[22px] font-semibold text-ink">Propose a rule</h1>
           <span className="font-mono text-xs text-muted">{selected.id} · {selected.author} · {formatTime(selected.at)}</span>
         </div>
+        {selected.source === "overrides" ? (
+          <Banner tone="info">
+            <p className="m-0 font-semibold text-ink">Drafted from reviewer overrides</p>
+            <p className="mt-1 mb-0">
+              Eko drafted this because two or more people overrode the same rule. It is not approved and carries no suggested wording; approving it needs a written reason.
+            </p>
+            <p className="mt-2 mb-0 font-semibold text-ink">Evidence</p>
+            <ul aria-label="Evidence" className="m-0 mt-1 list-none p-0 font-mono text-xs">
+              {selected.evidence_ids.map((id) => <li key={id}>{id}</li>)}
+            </ul>
+          </Banner>
+        ) : null}
         <ReadOnlyField label="Rule, in your own words" text={selected.rule_text} />
         <ReadOnlyField label="Example" text={selected.example} />
         <ReadOnlyField label="Reason" text={selected.reason} />
