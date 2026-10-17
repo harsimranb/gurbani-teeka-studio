@@ -114,6 +114,50 @@ const cases: Array<[string, (repo: Repository) => void]> = [
     expect(() => repo.saveSabad({ ...sabad, lines: sabad.lines.map((line) => (line.line_id === "102" ? { ...line, gurmukhi: "TEST-CHANGED" } : line)) })).toThrow("changed");
     expect(repo.getSabad("9001")).toEqual(sabad);
   }],
+  ["orders source lines by numeric line ID and Sabads by numeric Sabad ID", (repo) => {
+    const lineOf = (shabad: string, id: string, ang: number, text: string) => ({ line_id: id, shabad_id: shabad, ang, raag: `RAAG-${shabad}`, writer: `WRITER-${ang}`, is_rahao: false, gurmukhi: text });
+    expect(repo.hasSourceLines()).toBe(false);
+    expect(repo.listSabads()).toEqual([]);
+    expect(repo.getSabadSummary("10")).toBeUndefined();
+    // Saved out of numeric order; "9" < "10" numerically but not as strings.
+    repo.saveSabad({ shabad_id: "100", lines: [lineOf("100", "12", 5, "TEST-A"), lineOf("100", "9", 4, "TEST-B"), lineOf("100", "10", 6, "TEST-C")] });
+    repo.saveSabad({ shabad_id: "20", lines: [lineOf("20", "30", 9, "TEST-D")] });
+    repo.saveSabad({ shabad_id: "3", lines: [lineOf("3", "2", 1, "TEST-E"), lineOf("3", "1", 2, "TEST-F")] });
+    expect(repo.hasSourceLines()).toBe(true);
+    expect(repo.getSabad("100")?.lines.map((l) => l.line_id)).toEqual(["9", "10", "12"]);
+    expect(repo.getSabad("3")?.lines.map((l) => l.line_id)).toEqual(["1", "2"]);
+    expect(repo.listSabads().map((s) => s.shabad_id)).toEqual(["3", "20", "100"]);
+    // Summary comes from the first line by numeric ID, not the first saved or the first by string order.
+    expect(repo.getSabadSummary("100")).toEqual({ shabad_id: "100", ang: 4, raag: "RAAG-100", writer: "WRITER-4" });
+    expect(repo.getSabadSummary("3")).toEqual({ shabad_id: "3", ang: 2, raag: "RAAG-3", writer: "WRITER-2" });
+    expect(repo.listSabads()).toEqual([
+      { shabad_id: "3", ang: 2, raag: "RAAG-3", writer: "WRITER-2" },
+      { shabad_id: "20", ang: 9, raag: "RAAG-20", writer: "WRITER-9" },
+      { shabad_id: "100", ang: 4, raag: "RAAG-100", writer: "WRITER-4" },
+    ]);
+    expect(repo.getSabadSummary("missing")).toBeUndefined();
+    // Non-numeric IDs: string order for Sabads (after numeric 0), first-save order for their lines.
+    repo.saveSabad({ shabad_id: "B-SAB", lines: ["B-L2", "B-L1", "B-L10"].map((id, i) => lineOf("B-SAB", id, 20 + i, "TEST-G")) });
+    repo.saveSabad({ shabad_id: "A-SAB", lines: [lineOf("A-SAB", "A-L1", 30, "TEST-H")] });
+    expect(repo.listSabads().map((s) => s.shabad_id)).toEqual(["A-SAB", "B-SAB", "3", "20", "100"]);
+    expect(repo.getSabad("B-SAB")?.lines.map((l) => l.line_id)).toEqual(["B-L2", "B-L1", "B-L10"]);
+    expect(repo.getSabadSummary("B-SAB")?.ang).toBe(20);
+  }],
+  ["savePublication infers the Sabad from the draft, else from the first source line", (repo) => {
+    const gate = (draftId: string) => ({ draft_id: draftId, draft_version: 1, ruleset_version: 1, can_publish: true, blockers: [], warning_ids: [] });
+    const publication = (id: string, draftId: string, lineId: string): Publication => ({
+      reference: { ...reference, id, line_ids: [lineId] }, draft_id: draftId, approver: "Approver", at: TEST_AT, gate: gate(draftId),
+    });
+    repo.saveSabad(sabad);
+    repo.saveDraft(makeDraft({ id: "draft-x", shabad_id: "DRAFT-SABAD" }));
+    repo.savePublication(publication("PUB-0001", "draft-x", "101"));          // draft wins over the line's Sabad
+    repo.savePublication(publication("PUB-0002", "gone", "102"));             // no draft: first covered line's Sabad
+    repo.savePublication(publication("PUB-0003", "draft-x", "101"), "EXPLICIT"); // explicit wins over both
+    expect(repo.listPublicationsForSabad("DRAFT-SABAD").map((p) => p.reference.id)).toEqual(["PUB-0001"]);
+    expect(repo.listPublicationsForSabad("9001").map((p) => p.reference.id)).toEqual(["PUB-0002"]);
+    expect(repo.listPublicationsForSabad("EXPLICIT").map((p) => p.reference.id)).toEqual(["PUB-0003"]);
+    expect(() => repo.savePublication(publication("PUB-0004", "gone", "404"))).toThrow("unknown");
+  }],
   ["saveSabads loads several Sabads all-or-nothing", (repo) => {
     const one = (id: string, text: string): Sabad => ({ shabad_id: id, lines: [{ line_id: `${id}01`, shabad_id: id, ang: 1, raag: "TEST-RAAG", writer: "TEST-WRITER", is_rahao: false, gurmukhi: text }] });
     repo.saveSabads([one("1", "TEST-ONE"), one("2", "TEST-TWO")]);

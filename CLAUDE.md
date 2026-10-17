@@ -99,7 +99,7 @@ Full detail and the dependency map: [`_docs/06-team-workflow.md`](_docs/06-team-
 | If you need… | And it isn't ready, use… |
 |---|---|
 | The engine model phase or drift (`runChecks(…, 'llm')`, `runDriftCheck`) | Both are real (D-79–D-85). Without `ANTHROPIC_API_KEY` (or `createEngine({ client: null })`) model checks report `notEvaluable` and drift reports `not_evaluable`, never a pass |
-| The API, from the UI | The real routes run on an in-memory store (D-89); for UI-only work, `lib/client` browser mock mode: `NEXT_PUBLIC_USE_MOCKS=1` |
+| The API, from the UI | The real routes persist in SQLite (`eko.db`, D-90); for UI-only work, `lib/client` browser mock mode: `NEXT_PUBLIC_USE_MOCKS=1` |
 | A Sabad with Gurmukhi | Local, git-ignored `lib/contracts/fixtures/sabad.demo.json` exported from BaniDB; provision it privately in each clone |
 | SikhRI references or corrections | `fixtures/references.json`, `fixtures/corrections.json` (test data, labelled) |
 | Eval results | `fixtures/eval-run.json` |
@@ -142,7 +142,7 @@ The scaffold, F0 ingest and LLM-02 bake-off commands run now. The evaluation scr
 | `node --import tsx scripts/app/seed-demo.ts` | Seed only the BaniDB source lines (same source selection as ingest); no English draft or decision is created (D-75) |
 | `node --import tsx scripts/app/audit-banidb-coverage.ts` | P-05: check the SQLite copy's internal consistency and sample live BaniDB parity → ignored `data/banidb/coverage-audit.json` |
 | `node --import tsx scripts/app/find-demo-sabads.ts` | P-07: list provisional demo Sabads (Kartar/Karta, opens with Ik Onkar) → ignored `data/banidb/demo-sabads.json` |
-| `pnpm dev` | Run the app at http://localhost:3000 against the stubbed API (in-memory store, D-89; the footer's dev actions load synthetic drafts or reset) |
+| `pnpm dev` | Run the app at http://localhost:3000 against SQLite (`DATABASE_URL` or `eko.db`; an empty database auto-seeds rules and the demo fixture's source, D-90). The footer's dev actions load labelled synthetic drafts or reset app data |
 | Mock mode (shell examples above) | FE-02 stateful browser mock of every route with labelled synthetic checks (D-78); "Reset demo data" in the footer clears it |
 | `pnpm test` | Run the Vitest suite |
 | `pnpm typecheck` | Generate Next route types, then run `tsc --noEmit` |

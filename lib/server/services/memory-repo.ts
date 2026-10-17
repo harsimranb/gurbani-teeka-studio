@@ -4,7 +4,7 @@ import {
   type CheckRun, type Decision, type Draft, type DriftResult, type Finding, type Line,
   type Proposal, type Publication, type Reference, type Rule, type Sabad,
 } from "../../contracts/domain";
-import { assertSyncTransactionResult, type Repository } from "../db/repo";
+import { assertSyncTransactionResult, castInteger, compareShabadIds, type Repository, type SabadSummary } from "../db/repo";
 
 /** The store type the services use: just the repository (it owns publications, sequences and transactions). */
 export type AppStore = Repository;
@@ -51,6 +51,8 @@ export function createMemoryRepository(): Repository {
   const readOne = <T>(payload: string | undefined, schema: { parse(value: unknown): T }): T | undefined =>
     payload === undefined ? undefined : schema.parse(decode(payload));
   const readLine = (id: string): Line => LineSchema.parse(decode(lineRows.get(id) as string));
+  // Numeric line ID order; the sort is stable, so ties keep first-save order (SQLite: rowid).
+  const sortedLines = (ids: string[]): Line[] => ids.map(readLine).sort((a, b) => castInteger(a.line_id) - castInteger(b.line_id));
   const checkRunKey = (run: CheckRun) => `${run.draft_id}\u0000${run.draft_version}\u0000${run.ruleset_version}\u0000${run.phase}`;
 
   // Checks first, then writes, so a refused Sabad leaves nothing behind.
@@ -80,13 +82,20 @@ export function createMemoryRepository(): Repository {
     getSabad(shabadId: string): Sabad | undefined {
       const ids = sabadLineIds.get(shabadId);
       if (!ids?.length) return undefined;
-      return SabadSchema.parse({ shabad_id: shabadId, lines: ids.map(readLine) });
+      return SabadSchema.parse({ shabad_id: shabadId, lines: sortedLines(ids) });
     },
-    listSabads(): { shabad_id: string; ang: number; raag: string; writer: string }[] {
-      return [...sabadLineIds.entries()].filter(([, ids]) => ids.length).map(([shabadId, ids]) => {
-        const first = readLine(ids[0]);
-        return { shabad_id: shabadId, ang: first.ang, raag: first.raag, writer: first.writer };
-      });
+    listSabads(): SabadSummary[] {
+      return [...sabadLineIds.keys()].filter((shabadId) => sabadLineIds.get(shabadId)?.length).sort(compareShabadIds)
+        .map((shabadId) => repo.getSabadSummary(shabadId) as SabadSummary);
+    },
+    getSabadSummary(shabadId: string): SabadSummary | undefined {
+      const ids = sabadLineIds.get(shabadId);
+      if (!ids?.length) return undefined;
+      const first = sortedLines(ids)[0];
+      return { shabad_id: shabadId, ang: first.ang, raag: first.raag, writer: first.writer };
+    },
+    hasSourceLines(): boolean {
+      return lineRows.size > 0;
     },
     saveDraft(raw: Draft): void {
       const draft = DraftSchema.parse(raw);

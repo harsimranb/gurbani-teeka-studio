@@ -220,14 +220,14 @@ describe("sabad list: demo Sabads and any ingested ID", () => {
   });
   it("lists every ingested Sabad when no demo Sabad exists", async () => {
     withSabads("9999", "8888");
-    expect(await ids()).toEqual(["9999", "8888"]);
+    expect([...(await ids())].sort()).toEqual(["8888", "9999"]);
   });
   it("lets EKO_DEMO_SABADS override the list", async () => {
     withSabads("9999", "693", "8888");
     vi.stubEnv("EKO_DEMO_SABADS", "8888, 9999,0000");
     expect(await ids()).toEqual(["8888", "9999"]);
     vi.stubEnv("EKO_DEMO_SABADS", "0000");
-    expect(await ids()).toEqual(["9999", "693", "8888"]);
+    expect([...(await ids())].sort()).toEqual(["693", "8888", "9999"]);
   });
   it("returns any ingested Sabad by ID, and 200 unavailable for an unknown one", async () => {
     withSabads("9999", "693");

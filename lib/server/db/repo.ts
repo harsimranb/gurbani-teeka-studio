@@ -17,6 +17,19 @@ type Tx = Parameters<Parameters<AppDb["transaction"]>[0]>[0];
 /** The database itself or an open transaction/savepoint; both expose the same query and `transaction` API. */
 type Exec = AppDb | Tx;
 
+export type SabadSummary = { shabad_id: string; ang: number; raag: string; writer: string };
+
+/** SQLite `CAST(text AS INTEGER)` (leading integer prefix, else 0); the memory double uses it to order like SQLite. */
+export function castInteger(value: string): number {
+  const match = /^\s*[+-]?\d+/.exec(value);
+  return match ? Number(match[0]) : 0;
+}
+
+/** Order of Sabads in `listSabads`: numeric ID, then string compare. Shared with the memory double. */
+export function compareShabadIds(a: string, b: string): number {
+  return castInteger(a) - castInteger(b) || (a < b ? -1 : a > b ? 1 : 0);
+}
+
 /**
  * App-owned storage. The SQLite implementation (`createRepository`) and the in-memory test double
  * (`createMemoryRepository`) both implement this interface with the same semantics.
@@ -25,8 +38,18 @@ export interface Repository {
   saveSabad(raw: Sabad): void;
   /** All-or-nothing bulk load; each Sabad keeps the same refuse-silent-replacement checks as saveSabad. */
   saveSabads(raws: Sabad[]): void;
+  /** Source lines ordered by numeric line ID (SQLite `CAST(id AS INTEGER)`; ties, e.g. non-numeric IDs, keep first-save order). */
   getSabad(shabadId: string): Sabad | undefined;
-  listSabads(): { shabad_id: string; ang: number; raag: string; writer: string }[];
+  /**
+   * One summary per Sabad, taken from its first line (lowest numeric line ID, ties in first-save order), without
+   * reading Gurmukhi. Ordered by numeric `shabad_id`, then by string compare (non-numeric IDs cast to 0 and so
+   * sort first, alphabetically). Compared by UTF-16 order in memory and bytewise in SQLite: identical for ASCII IDs.
+   */
+  listSabads(): SabadSummary[];
+  /** Summary of one Sabad's first line (same rule as `listSabads`), or undefined if it has no source lines. Indexed. */
+  getSabadSummary(shabadId: string): SabadSummary | undefined;
+  /** True when at least one source line is stored. */
+  hasSourceLines(): boolean;
   saveDraft(raw: Draft): void;
   getDraft(id: string): Draft | undefined;
   /** Every draft, in insertion order (order of first save; re-saving an ID keeps its place). */
@@ -124,22 +147,33 @@ function buildRepository(db: Exec): Repository {
       db.transaction((tx) => { for (const sabad of sabads) saveSabadIn(tx, sabad); });
     },
     getSabad(shabadId: string): Sabad | undefined {
-      const stored = db.select().from(lines).where(eq(lines.shabadId, shabadId)).all();
+      const stored = db.select().from(lines).where(eq(lines.shabadId, shabadId))
+        .orderBy(sql`CAST(${lines.id} AS INTEGER)`, sql`rowid`).all();
       if (!stored.length) return undefined;
       const sourceLines = stored.map((row) => LineSchema.parse({
         line_id: row.id, shabad_id: row.shabadId, ang: row.ang, raag: row.raag,
         writer: row.writer, is_rahao: row.isRahao, gurmukhi: row.gurmukhi,
-      })).sort((a, b) => Number(a.line_id) - Number(b.line_id));
+      }));
       return SabadSchema.parse({ shabad_id: shabadId, lines: sourceLines });
     },
-    listSabads(): { shabad_id: string; ang: number; raag: string; writer: string }[] {
-      const groups = new Map<string, { shabad_id: string; ang: number; raag: string; writer: string }>();
-      for (const line of db.select().from(lines).all()) {
-        if (!groups.has(line.shabadId)) groups.set(line.shabadId, {
-          shabad_id: line.shabadId, ang: line.ang, raag: line.raag, writer: line.writer,
-        });
-      }
-      return [...groups.values()];
+    listSabads(): SabadSummary[] {
+      // Only the summary columns are read (no Gurmukhi): one pass, first line per Sabad by numeric line ID.
+      const rows = db.all<SabadSummary>(sql`
+        SELECT shabad_id, ang, raag, writer FROM (
+          SELECT shabad_id, ang, raag, writer,
+            ROW_NUMBER() OVER (PARTITION BY shabad_id ORDER BY CAST(id AS INTEGER), rowid) AS rn
+          FROM lines
+        ) WHERE rn = 1
+        ORDER BY CAST(shabad_id AS INTEGER), shabad_id`);
+      return rows.map(({ shabad_id, ang, raag, writer }) => ({ shabad_id, ang, raag, writer }));
+    },
+    getSabadSummary(shabadId: string): SabadSummary | undefined {
+      const row = db.select({ ang: lines.ang, raag: lines.raag, writer: lines.writer }).from(lines)
+        .where(eq(lines.shabadId, shabadId)).orderBy(sql`CAST(${lines.id} AS INTEGER)`, sql`rowid`).limit(1).get();
+      return row ? { shabad_id: shabadId, ang: row.ang, raag: row.raag, writer: row.writer } : undefined;
+    },
+    hasSourceLines(): boolean {
+      return db.select({ id: lines.id }).from(lines).limit(1).get() !== undefined;
     },
     saveDraft(raw: Draft): void {
       const draft = DraftSchema.parse(raw);

@@ -4,7 +4,7 @@ import { rulesFixture } from "../../contracts/fixtures";
 import { assertPrivateAppDbPath, migrateAppDb, openAppDb } from "../db/client";
 import { createRepository } from "../db/repo";
 import { ingestDemoSabad } from "../ingest/banidb";
-import { seedResolvedRules } from "../ingest/rules";
+import { buildResolvedRules, seedResolvedRules } from "../ingest/rules";
 import { createMemoryRepository, type AppStore } from "./memory-repo";
 
 /**
@@ -43,6 +43,12 @@ function ingestFailureReason(error: unknown): string {
     : "The demo source fixture failed its provenance check.";
 }
 
+/** True when stored v1 no longer matches what the resolved-rules file would seed (IDs and verbatim texts). Never overwrites. */
+function rulesetDiffers(store: AppStore): boolean {
+  const key = (rules: Array<{ id: string; text: string }>) => JSON.stringify(rules.map((rule) => [rule.id, rule.text]).sort(([x], [y]) => (x < y ? -1 : x > y ? 1 : 0)));
+  return key(store.getRuleset(1)) !== key(buildResolvedRules());
+}
+
 function buildMemory(): Holder {
   const store = createMemoryRepository();
   store.saveRuleset(1, rulesFixture);
@@ -64,8 +70,11 @@ function buildSqlite(): Holder {
     migrateAppDb(db);
     const store = createRepository(db);
     if (store.getLatestRulesetVersion() === undefined) seedResolvedRules(store);
+    else if (rulesetDiffers(store)) {
+      console.warn("Stored ruleset v1 differs from rules.resolved.json; delete eko.db (or run against a fresh DATABASE_URL) to reseed.");
+    }
     let source: SourceStatus = { available: true };
-    if (store.listSabads().length === 0) {
+    if (!store.hasSourceLines()) {
       try {
         ingestDemoSabad(store, path.join(root, DEMO_SABAD_PATH), path.join(root, DEMO_METADATA_PATH));
       } catch (error) {
@@ -95,7 +104,7 @@ export function getStore(): AppStore { return holder().store; }
 /** Available iff at least one Sabad is stored (so a later `pnpm ingest` is picked up without a restart). */
 export function getSourceStatus(): SourceStatus {
   const current = holder();
-  if (!current.source.available && current.store.listSabads().length > 0) current.source = { available: true };
+  if (!current.source.available && current.store.hasSourceLines()) current.source = { available: true };
   return current.source;
 }
 
@@ -115,7 +124,7 @@ export function __setStoreForTests(store: AppStore | null): void {
   if (store === null) return;
   globals[HOLDER_KEY] = {
     store,
-    source: store.listSabads().length ? { available: true } : { available: false, reason: "No source Sabad is loaded." },
+    source: store.hasSourceLines() ? { available: true } : { available: false, reason: "No source Sabad is loaded." },
   };
 }
 
@@ -153,10 +162,9 @@ export function nextId(kind: IdKind, store: AppStore = getStore()): string {
 export function demoSabadSummaries(store: AppStore = getStore()): ReturnType<AppStore["listSabads"]> {
   const configured = (process.env.EKO_DEMO_SABADS ?? "").split(",").map((id) => id.trim()).filter(Boolean);
   const wanted = configured.length ? configured : DEFAULT_DEMO_SABADS;
-  const all = store.listSabads();
-  const byId = new Map(all.map((summary) => [summary.shabad_id, summary]));
-  const demo = [...new Set(wanted)].flatMap((id) => byId.get(id) ?? []);
-  return demo.length ? demo : all;
+  // Indexed lookups in demo order; the whole-corpus listing is only the fallback.
+  const demo = [...new Set(wanted)].flatMap((id) => store.getSabadSummary(id) ?? []);
+  return demo.length ? demo : store.listSabads();
 }
 
 /**

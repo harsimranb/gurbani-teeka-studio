@@ -1,4 +1,6 @@
-import { resolve } from "node:path";
+import { execFileSync } from "node:child_process";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { join, resolve } from "node:path";
 import { tmpdir } from "node:os";
 import { describe, expect, it } from "vitest";
 
@@ -17,5 +19,19 @@ describe("app database privacy boundary", () => {
     expect(resolveMigrationsFolder()).toBe(resolve(process.cwd(), "lib/server/db/migrations"));
     expect(resolveMigrationsFolder(resolve(process.cwd(), "lib/server/db/migrations"))).toContain("migrations");
     expect(() => resolveMigrationsFolder(resolve(tmpdir(), "eko-no-such-migrations"))).toThrow("expected");
+  });
+
+  it("also requires the WAL and SHM sibling files to be git-ignored", async () => {
+    const { assertPrivateAppDbPath } = await import("./client");
+    const root = mkdtempSync(join(tmpdir(), "eko-guard-"));
+    try {
+      execFileSync("git", ["init", "-q"], { cwd: root });
+      writeFileSync(join(root, ".gitignore"), ["app.seed", "both.db", "both.db-wal", "both.db-shm", "wal-only.db", "wal-only.db-wal", ""].join("\n"));
+      expect(() => assertPrivateAppDbPath(root, join(root, "app.seed"))).toThrow("trackable");
+      expect(() => assertPrivateAppDbPath(root, join(root, "wal-only.db"))).toThrow("trackable");
+      expect(() => assertPrivateAppDbPath(root, join(root, "both.db"))).not.toThrow();
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
   });
 });

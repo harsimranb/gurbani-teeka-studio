@@ -15,10 +15,13 @@ export function assertPrivateAppDbPath(root: string, target: string): void {
   }
   const withinRepo = relative(resolve(root), resolve(target));
   if (withinRepo === ".." || withinRepo.startsWith(`..${sep}`) || isAbsolute(withinRepo)) return;
-  try {
-    execFileSync("git", ["check-ignore", "-q", "--", withinRepo], { cwd: root, stdio: "ignore" });
-  } catch {
-    throw new Error("Refusing to create a trackable app database inside the repository.");
+  // WAL mode also writes <file>-wal and <file>-shm, so all three paths must be git-ignored.
+  for (const suffix of ["", "-wal", "-shm"]) {
+    try {
+      execFileSync("git", ["check-ignore", "-q", "--", withinRepo + suffix], { cwd: root, stdio: "ignore" });
+    } catch {
+      throw new Error("Refusing to create a trackable app database inside the repository.");
+    }
   }
 }
 

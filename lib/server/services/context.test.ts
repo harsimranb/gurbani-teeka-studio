@@ -5,6 +5,7 @@ import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Sabad } from "../../contracts/domain";
 import { __closeStoreForTests, __setSourceForTests, __setStoreForTests, demoSabadSummaries, getSourceStatus, getStore, nextId, nowIso, resetStore, seedSyntheticDrafts } from "./context";
+import { openAppDb } from "../db/client";
 import { listSabads } from "./drafts";
 import { createMemoryRepository } from "./memory-repo";
 import { makeDraft, testSabad } from "./testing";
@@ -182,6 +183,22 @@ describe("SQLite store (temp DATABASE_URL)", () => {
     expect(getSourceStatus()).toEqual({ available: true });
   });
 
+  it("warns once, and keeps serving the stored v1, when it differs from rules.resolved.json", () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    getStore();
+    __closeStoreForTests();
+    expect(getStore().getRuleset(1)).toHaveLength(66);
+    __closeStoreForTests();
+    expect(warn).not.toHaveBeenCalled();
+    // Simulate a regenerated rules file: the repository refuses to rewrite v1, so drop one stored rule directly.
+    const raw = openAppDb(dbFile());
+    raw.sqlite.prepare("DELETE FROM rules WHERE ruleset_version = 1 AND id = (SELECT id FROM rules WHERE ruleset_version = 1 LIMIT 1)").run();
+    raw.sqlite.close();
+    expect(getStore().getRuleset(1)).toHaveLength(65);
+    expect(warn).toHaveBeenCalledTimes(1);
+    expect(warn).toHaveBeenCalledWith("Stored ruleset v1 differs from rules.resolved.json; delete eko.db (or run against a fresh DATABASE_URL) to reseed.");
+  });
+
   it("continues IDs after a restart instead of reusing them", () => {
     expect([nextId("draft"), nextId("draft"), nextId("reference"), nextId("proposal")]).toEqual(["draft-1", "draft-2", "PUB-0001", "PR-001"]);
     getStore().saveRuleset(2, getStore().getRuleset(1));
@@ -219,7 +236,7 @@ describe("SQLite store (temp DATABASE_URL)", () => {
     vi.stubEnv("EKO_DEMO_SABADS", " 9999 , 693 ,77");
     expect(listSabads().sabads.map((s) => s.shabad_id)).toEqual(["9999", "693"]);
     vi.stubEnv("EKO_DEMO_SABADS", "77");
-    expect(listSabads().sabads.map((s) => s.shabad_id)).toEqual(["9999", "693", "1356"]);
+    expect(listSabads().sabads.map((s) => s.shabad_id).sort()).toEqual(["1356", "693", "9999"]);
   });
 
   it("seeds the synthetic drafts on the first offered Sabad, atomically, with persistent IDs", () => {

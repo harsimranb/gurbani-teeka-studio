@@ -24,12 +24,12 @@ Mark a feature complete only when its acceptance paragraph in [`_docs/10-feature
 | Feature | Status | Evidence / next dependency |
 |---|---|---|
 | **F0 · Foundation, contracts and source data** | Complete for approved Mac/source-only scope | C-01 to C-04, DATA-01 to DATA-05 and API-01 pass. C-05 Mac privacy verified; Windows validation remains open by user direction. Human-authored draft is deferred to P-09/F1. M0 checks, production build and fresh review with fixes pass. P-05: SQLite copy internally consistent and fully ingested (5,542 Sabads, D-86); live sample parity 43/44; currency not certified. |
-| **F1 · Workspace** | In progress | FE-01/FE-03 screens run against the stateful mock (D-78); API-02 and real persistence remain. |
+| **F1 · Workspace** | In progress | FE-01/FE-03 run against the SQLite-backed API (D-90); API-02 passes on this clone. Open: the real BaniDB logo (FR-21) and Windows/Mac acceptance with a human-authored draft. |
 | **F2 · Checks and report card** | In progress: CHECKS code phase complete | CHK-01 to CHK-11 pass (193 tests; commit `a08a81d` on `main`); CHK-12 cut (D-77). Model phase real: LLM-01 to LLM-06 pass (D-79–D-83; 343 tests on `main` at `750f7d9`); persistence and report card need API-03 and FE-04. TERM-02 and CONS-01 have no transcreation golden cases. FE-04 report card UI runs against the mock (D-78). |
 | **F3 · Reference and style evidence** | In progress | LLM-07/08/09 pass in the engine (D-81); Eko-published references can exercise mechanics once API-05 publishes; SikhRI sample (DATA-06) and term mappings (CHK-12, cut) remain pending. |
-| **F4 · Review and publishing** | In progress | FE-05/FE-06 screens run against the mock (D-78); API-04/05 remain. |
-| **F5 · Rules catalog** | In progress | FE-07 reads the resolved seed through the mock (D-78); API-06 remains. |
-| **F6 · Proposals and drift** | In progress | FE-08 runs against a mock drift result (D-78); LLM-06/10/11 pass in the engine (D-82, D-85); API-07/08 remain. |
+| **F4 · Review and publishing** | In progress | FE-05/FE-06 run against the SQLite-backed API-04/05 (D-90); published references persist and feed later checks. Keyed (model) path not yet verified live. |
+| **F5 · Rules catalog** | In progress | FE-07 reads stored rulesets through API-06 (D-90); approvals add persistent versions. |
+| **F6 · Proposals and drift** | In progress | FE-08 on SQLite-backed API-07/08 (D-90); real drift with `ANTHROPIC_API_KEY`, labelled offline replay stub otherwise; LLM-06/10/11 pass in the engine (D-82, D-85). Keyed path not yet verified live. |
 | **F7 · Backtest and evaluation** | In progress; real-data acceptance blocked | FE-09 shows the unavailable state and an opt-in labelled synthetic sample (D-78). SikhRI pre-edit review history has not arrived (P-04). |
 
 ---
@@ -96,6 +96,7 @@ Append-only. Record decisions that add, remove or change planned behavior here *
 | D-87 | P-07 provisional demo Sabads 1356, 1568, 693 pending Harsimran's confirmation; P-02/P-03 blocked (no reviewer answers or style guide); fold-in map in `_docs/rules/reviewer-answers-map.md`. |
 | D-88 | Harsimran confirmed P-07 demo Sabads 1356, 1568 and 693; P-09 demo transcreations target these three. |
 | D-89 | API-02 to API-09 run as real services over an in-memory store that implements the SQLite repository interface (shared behaviour tests cover both). The server starts with source lines only (D-75); dev-only `POST /api/dev/seed-synthetic` and `/api/dev/reset` load labelled synthetic drafts or clear state. With `ANTHROPIC_API_KEY` model checks and drift are real; without one, every active rule is listed as not evaluated and drift uses a labelled synthetic replay stub. Additive contract: `listPublications` (19 routes). The UI uses the real API unless `NEXT_PUBLIC_USE_MOCKS=1`. |
+| D-90 | API-02 to API-09 now persist in SQLite (`DATABASE_URL` or `eko.db`): migration 0001 adds `publications` and `sequences`; IDs come from persistent sequences; multi-step writes are transactions; an empty database auto-bootstraps ruleset v1 and the demo fixture's source. The workspace lists the confirmed demo Sabads (D-88) when present (`EKO_DEMO_SABADS` overrides), else every ingested Sabad. Ingest accepts the local-SQLite or the documented API-fallback provenance (D-70). The in-memory repository remains the test double. |
 | D-78 | FE-01 to FE-09 are built against a stateful, browser-storage mock of the 18 contract routes (`lib/client/mock-*`) with a labelled synthetic checker, plus a dev-only `/api/dev/demo-sabad` route that serves the private BaniDB fixture. FE tasks stay *In progress* until the real API passes their acceptance. P1 items render as labelled placeholders. |
 
 ---
@@ -238,7 +239,7 @@ Related folders: `lib/server/db/`, `lib/server/ingest/`, `scripts/app/`, `data/b
 Related folders: `app/api/`, `lib/server/services/`.
 
 ### In progress
-- [ ] **API-02 to API-09** Services behind all 19 routes on the in-memory, repository-shaped store (D-89), wired to the UI end to end. Checks and drift call the real engine when `ANTHROPIC_API_KEY` is set; without it, model rules are listed as not evaluated and drift uses a labelled synthetic replay stub; eval reads `data/eval/latest.json`. Remaining for closure: switch `getStore()` to the SQLite repository (needs a `publications` table) and verify the keyed path end to end
+- [x] **API-02 to API-09** All 19 routes run on SQLite (`eko.db`) with persistent IDs, transactions and auto-bootstrap (D-90), wired to the UI; verified end to end including a server restart. Checks and drift use the real engine with `ANTHROPIC_API_KEY`; without it model rules are listed as not evaluated and drift uses a labelled synthetic replay stub. Remaining: verify the keyed model/drift path live once a key is configured
 
 ### Next
 - [x] **API-01** All 18 P0 method/path actions have route handlers and contract tests. Safe reads return labelled fixtures; stateful/evidence-dependent actions return validated unavailable errors after request validation (D-76). Focused, TypeScript and all 47 tests pass (2026-10-16)
@@ -318,7 +319,9 @@ Format: `- from → to · what's needed · task it blocks`. Whoever completes th
 - [ ] FE → API · Agree how a CONS-01 departure clears at publish: the review UI records "Keep, with reason" as an `override` decision and sends `departure_reasons: []`; if API-05 instead requires `departure_reasons`, FE-05 must send them · API-05, FE-05/06
 - [x] FE → API · Add read routes for a Sabad's published references and each publication's approver, time and publish-time gate · API-05, FE-06 · Done: `listPublications` (D-89)
 - [ ] API → LLM · On Windows, `lib/engine/llm/adapter.test.ts` fails 3 cases with `EBUSY` because cleanup deletes the SQLite cache file while it is still open; close the cache before `rmSync`. Seven other engine/script tests need the Mac-exported demo fixture and fail on this clone's Sabad 55 fixture · LLM-01, C-05
-- [ ] API → DATA · Before switching `getStore()` to SQLite: derive `nextId` counters from stored rows (in-memory counters would reuse IDs after a restart and overwrite rows) and wrap `approveProposal`'s writes in one transaction · API-08, DATA-02
+- [x] API → DATA · Persistent ID sequences and a transaction around approval (and every other multi-step write) before switching to SQLite · Done (D-90)
 - [ ] API · Saving a unit leaves sibling units' Sabad-scoped code findings (TERM-03 first use, TERM-07) unrefreshed until the next code check; the UI re-checks after every save, but API-03 should clear or mark them stale on save · API-02/03
-- [ ] API → DATA · Add a `publications` table and repository methods matching `savePublication`/`listPublicationsForSabad`, so `getStore()` can switch from the in-memory store to SQLite · API-05, DATA-01/02
+- [ ] API → DATA · `pnpm dev` auto-bootstraps an empty `eko.db` from the demo fixture; on a machine with `data/banidb/banidb.sqlite`, run `pnpm ingest` on a fresh database first (or delete `eko.db`), because full ingest refuses changed lines and a fixture Sabad that differs from the SQLite copy (P-05 recorded one API/SQLite difference) would block it · DATA-03, D-90
+- [ ] API · Verify the keyed path live: with `ANTHROPIC_API_KEY` in `.env.local`, run one model check and one drift check through the UI and confirm real findings/assessments persist · API-03/07, LLM-01/10
+- [x] API → DATA · `publications` table and repository methods; `getStore()` now uses SQLite · Done (D-90)
 - [ ] FE → DOCS/Harsimran · Supply the official BaniDB logo for `public/` (footer shows a text badge) · FE-01, FR-21
