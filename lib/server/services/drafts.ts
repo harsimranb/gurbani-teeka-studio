@@ -3,7 +3,7 @@ import type { Draft } from "../../contracts/domain";
 import { getSourceStatus, getStore, nowIso, nextId } from "./context";
 import { demoSabadSummaries } from "./context";
 import { ServiceError, type ParsedRequest } from "./http";
-import { clearFindings, currentFindings, currentRuleset, currentRuns, sabadDrafts } from "./state";
+import { clearFindings, currentFindings, currentRuleset, currentRuns, invalidateSabadScopedSiblings, sabadDrafts } from "./state";
 
 const sameList = (a: string[], b: string[]) => a.length === b.length && a.every((id, index) => id === b[index]);
 
@@ -55,6 +55,7 @@ export function saveDraft(req: ParsedRequest<"saveDraft">): ApiResponse<"saveDra
       clearFindings(tx, (finding) => gone.has(finding.draft_id), at, gone);
       for (const id of gone) tx.deleteDraft(id);
       tx.saveDraft(draft);
+      invalidateSabadScopedSiblings(tx, draft, at);
     });
     return { draft };
   }
@@ -75,6 +76,8 @@ export function saveDraft(req: ParsedRequest<"saveDraft">): ApiResponse<"saveDra
   store.transaction((tx) => {
     tx.saveDraft(updated);
     clearFindings(tx, (finding) => finding.draft_id === existing.id, at, [existing.id]);
+    // Siblings' Sabad-scoped findings (first use, TERM-02) depend on this unit, so they go stale in the same unit.
+    invalidateSabadScopedSiblings(tx, updated, at);
   });
   return { draft: updated };
 }

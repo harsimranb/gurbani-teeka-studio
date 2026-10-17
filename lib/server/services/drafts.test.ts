@@ -6,9 +6,10 @@ import { GET as getSabadRoute } from "../../../app/api/sabads/[shabad_id]/route"
 import { POST as saveDraftRoute } from "../../../app/api/drafts/route";
 import { GET as reportRoute } from "../../../app/api/drafts/[draft_id]/report/route";
 import { __setSourceForTests, __setStoreForTests, getStore } from "./context";
+import { runCodeChecks } from "./checks";
 import { saveDraft as saveDraftService } from "./drafts";
 import type { AppStore } from "./memory-repo";
-import { currentRuns } from "./state";
+import { computeGate, currentRuns } from "./state";
 import { makeFinding, makeRun, TEST_AT, testSabad } from "./testing";
 import type { Draft, Finding } from "../../contracts/domain";
 
@@ -172,6 +173,95 @@ describe("saveDraft atomicity", () => {
     expect(() => saveDraftService(request({ draft_id: draft.id, expected_version: 1, text: "SYNTHETIC TEST: edited" }))).toThrow("injected write failure");
     expect(base.getDraft(draft.id)).toEqual(draft);
     expect(base.getFinding("f1")?.state).toBe("current");
+  });
+});
+
+describe("saveDraft and sibling units' Sabad-scoped state (API-03)", () => {
+  // SYNTHETIC English: a first use of IkOankar without a gloss raises TERM-03 on its unit (Sabad-scoped rule).
+  const NO_GLOSS = "IkOankar pervades everything.";
+  const SABAD_SCOPED = ["TERM-03", "TERM-07"];
+  const codeCheck = (draft: Draft) => runCodeChecks({ draft_id: draft.id, draft_version: draft.version, ruleset_version: 1, changed_line_ids: draft.line_ids });
+  const current = (id: string) => getStore().listFindingsForDraft(id).filter((finding) => finding.state === "current");
+  const sabadScopedCurrent = (id: string) => current(id).filter((finding) => SABAD_SCOPED.includes(finding.rule_id));
+  const gateBlockers = (draftId: string) => computeGate(getStore(), getStore().getDraft(draftId)!).blockers;
+  const codeRun = (id: string) => getStore().listCheckRunsForDraft(id).find((run) => run.phase === "code");
+  const edit = async (draft: Draft, text: string, author = "Writer") =>
+    (await ok("saveDraft", await save({ draft_id: draft.id, expected_version: draft.version, line_ids: draft.line_ids, text, author }))).draft;
+
+  async function twoCheckedUnits() {
+    const a = (await ok("saveDraft", await save({ line_ids: [L(1)], text: NO_GLOSS }))).draft;
+    const b = (await ok("saveDraft", await save({ line_ids: [L(2)], text: NO_GLOSS }))).draft;
+    await codeCheck(a);
+    await codeCheck(b);
+    return { a, b };
+  }
+
+  it("clears a sibling's Sabad-scoped code findings and blocks its gate when another unit is edited", async () => {
+    const { a, b } = await twoCheckedUnits();
+    const scopedCount = sabadScopedCurrent(a.id).length;
+    expect(scopedCount).toBeGreaterThan(0); // the premise: the sibling holds a Sabad-scoped finding
+    const ownOnly = current(a.id).filter((finding) => !SABAD_SCOPED.includes(finding.rule_id));
+    expect(codeRun(a.id)?.status).toBe("succeeded");
+
+    await edit(b, "SYNTHETIC TEST: edited");
+
+    expect(sabadScopedCurrent(a.id)).toEqual([]);
+    expect(current(a.id)).toEqual(ownOnly); // rules that depend only on the unit itself stay
+    expect(getStore().listFindingsForDraft(a.id).filter((finding) => finding.state === "cleared")).toHaveLength(scopedCount);
+    expect(codeRun(a.id)).toMatchObject({ status: "failed", draft_version: 1 });
+    expect(gateBlockers(a.id)).toContainEqual({ kind: "check_phase", draft_id: a.id, phase: "code", status: "failed" });
+  });
+
+  it("refreshes the sibling on the next code check of the edited unit, which clears the code blocker", async () => {
+    const { a, b } = await twoCheckedUnits();
+    const edited = await edit(b, NO_GLOSS + " More.");
+    const response = await codeCheck(edited);
+    expect(response.affected_drafts.map((unit) => unit.id)).toContain(a.id);
+    expect(codeRun(a.id)?.status).toBe("succeeded");
+    expect(gateBlockers(a.id).filter((blocker) => blocker.kind === "check_phase" && blocker.phase === "code")).toEqual([]);
+  });
+
+  it("does the same when a new unit is added or lines are regrouped", async () => {
+    const { a } = await twoCheckedUnits();
+    await ok("saveDraft", await save({ line_ids: [L(4)], text: "SYNTHETIC TEST: four" }));
+    expect(codeRun(a.id)?.status).toBe("failed");
+    await codeCheck(getStore().getDraft(a.id)!);
+    expect(codeRun(a.id)?.status).toBe("succeeded");
+    await ok("saveDraft", await save({ line_ids: [L(2), L(3)], text: "SYNTHETIC TEST: group" })); // replaces the unit on L2
+    expect(codeRun(a.id)?.status).toBe("failed");
+    expect(sabadScopedCurrent(a.id)).toEqual([]);
+  });
+
+  it("clears a sibling's Sabad-scoped model findings (TERM-02) and its llm run, but keeps its other model findings", async () => {
+    const { a, b } = await twoCheckedUnits();
+    const store = getStore();
+    store.saveFinding(makeFinding({ id: "m-term02", draft_id: a.id, rule_id: "TERM-02", model: "test-model" }));
+    store.saveFinding(makeFinding({ id: "m-other", draft_id: a.id, rule_id: "TERM-01", model: "test-model" }));
+    store.saveCheckRun(makeRun({ id: "llm-a", draft_id: a.id, phase: "llm" }));
+    await edit(b, "SYNTHETIC TEST: edited");
+    expect(store.getFinding("m-term02")?.state).toBe("cleared");
+    expect(store.getFinding("m-other")?.state).toBe("current");
+    expect(store.getCheckRun("llm-a")).toMatchObject({ status: "failed" });
+    expect(gateBlockers(a.id)).toContainEqual({ kind: "check_phase", draft_id: a.id, phase: "llm", status: "failed" });
+  });
+
+  it("leaves siblings alone when the save changes nothing", async () => {
+    const { a, b } = await twoCheckedUnits();
+    await edit(b, NO_GLOSS, "Someone else");
+    expect(codeRun(a.id)?.status).toBe("succeeded");
+    expect(sabadScopedCurrent(a.id).length).toBeGreaterThan(0);
+  });
+
+  it("rolls the sibling clearing back with the save when a write fails", async () => {
+    const base = getStore();
+    const { a, b } = await twoCheckedUnits();
+    __setStoreForTests(failingStore(base, "saveCheckRun"));
+    expect(() => saveDraftService({
+      draft_id: b.id, expected_version: 1, shabad_id: SABAD, line_ids: [L(2)], text: "SYNTHETIC TEST: edited", author: "Writer",
+    } as Parameters<typeof saveDraftService>[0])).toThrow("injected write failure");
+    expect(base.getDraft(b.id)).toEqual(b);
+    expect(base.listCheckRunsForDraft(a.id).find((run) => run.phase === "code")?.status).toBe("succeeded");
+    expect(base.listFindingsForDraft(a.id).some((finding) => finding.state === "current" && SABAD_SCOPED.includes(finding.rule_id))).toBe(true);
   });
 });
 

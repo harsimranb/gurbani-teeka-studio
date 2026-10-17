@@ -1,4 +1,5 @@
-import type { CheckRun, Draft, Finding, PublishGate, Rule } from "../../contracts/domain";
+import type { CheckInput, CheckRun, Draft, Finding, PublishGate, Rule } from "../../contracts/domain";
+import { codePhaseScope, isCodeFinding, llmPhaseScope } from "../../engine/index";
 import type { Repository } from "../db/repo";
 
 /** Shared pure domain helpers over a repository/store. They never write except `clearFindings`. */
@@ -84,6 +85,38 @@ export function clearFindings(
     }
   }
   return cleared;
+}
+
+const SIBLING_STALE_MESSAGE = "Out of date: another unit of this Sabad was saved, so this result must be re-checked.";
+
+/**
+ * API-03: after a unit was added, edited or regrouped, its siblings' Sabad-scoped results are stale. Call inside the
+ * save transaction, after the write. For every other unit of the Sabad this (a) clears current findings of the rules
+ * the engine says depend on other units (`codePhaseScope`/`llmPhaseScope` `.ruleIds`, e.g. TERM-03, TERM-07, TERM-02),
+ * keeping each phase to its own findings (`isCodeFinding`), and (b) turns the sibling's succeeded run of that phase
+ * into a failed "out of date" run for its current version. The publish gate then blocks the sibling, and the next check
+ * (which re-checks any unit without a succeeded run, D-54) refreshes it. A phase with no Sabad-scoped rule is left alone.
+ */
+export function invalidateSabadScopedSiblings(store: Store, saved: Draft, at: string): void {
+  const siblings = sabadDrafts(store, saved.shabad_id).filter((unit) => unit.id !== saved.id);
+  const sabad = store.getSabad(saved.shabad_id);
+  if (siblings.length === 0 || !sabad) return;
+  const { version, rules } = currentRuleset(store);
+  const input: CheckInput = {
+    sabad, draft: saved, sabadDrafts: [...siblings, saved], changedLineIds: saved.line_ids,
+    rules, rulesetVersion: version, references: [],
+  };
+  const scopes: Record<CheckRun["phase"], string[]> = { code: codePhaseScope(input).ruleIds, llm: llmPhaseScope(input).ruleIds };
+  const siblingIds = siblings.map((unit) => unit.id);
+  for (const phase of ["code", "llm"] as const) {
+    const ruleIds = scopes[phase];
+    if (ruleIds.length === 0) continue;
+    clearFindings(store, (finding) => isCodeFinding(finding) === (phase === "code") && ruleIds.includes(finding.rule_id), at, siblingIds);
+    for (const unit of siblings) {
+      const run = latestRun(store, unit, phase, version);
+      if (run?.status === "succeeded") store.saveCheckRun({ ...run, status: "failed", completed_at: at, error: SIBLING_STALE_MESSAGE });
+    }
+  }
 }
 
 /** A Sabad's drafts in source line order (by each draft's earliest covered line). */
