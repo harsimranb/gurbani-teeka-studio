@@ -23,7 +23,7 @@ Mark a feature complete only when its acceptance paragraph in [`_docs/10-feature
 
 | Feature | Status | Evidence / next dependency |
 |---|---|---|
-| **F0 · Foundation, contracts and source data** | In progress | C-01/C-02/C-04 complete; C-03 local SQLite source assessment in progress. C-05 Mac privacy checks and DATA/API foundation remain; Windows validation deferred by Harsimran. |
+| **F0 · Foundation, contracts and source data** | In progress | C-01/C-02/C-04 and DATA-01 complete; C-03 local SQLite source assessment in progress. C-05 Mac privacy checked; Windows validation deferred by Harsimran. DATA repository/ingest/seeds and API skeletons remain. |
 | **F1 · Workspace** | Not started | Needs F0 contracts, data and API. |
 | **F2 · Checks and report card** | Not started | Needs C-02 contracts and C-03 BaniDB fixture. |
 | **F3 · Reference and style evidence** | Not started | Eko-published references can exercise mechanics; SikhRI sample and term mappings remain pending. |
@@ -202,7 +202,7 @@ Related folders: `lib/server/db/`, `lib/server/ingest/`, `scripts/app/`, `data/b
 - _(none)_
 
 ### Next
-- [ ] **DATA-01** Drizzle schema + first migration: lines, drafts, findings, check runs, decisions, rules (versioned), proposals, drift results, references. No engine-private tables · Needs: C-02
+- [x] **DATA-01** Drizzle schema + first migration: lines, drafts, findings, check runs, decisions, versioned rules, proposals, drift results and references. Empty-file migration verified on Mac; focused and full tests (37) plus TypeScript pass (2026-10-16)
 - [ ] **DATA-02** Repository functions in `lib/server/db/repo.ts` for the services
 - [ ] **DATA-03** BaniDB ingest (`pnpm ingest`): mysql2 → lines with ang, raag, writer, Rahao, NFC Gurmukhi; demo Sabads first, full text if P-05 confirms · FR-01 · Needs: C-03 · **Provides S2**
 - [ ] **DATA-04** Rules seed from `_docs/rules/rules.resolved.json` as version 1

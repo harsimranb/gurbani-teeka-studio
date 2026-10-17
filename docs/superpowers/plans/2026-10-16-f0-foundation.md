@@ -55,9 +55,9 @@
 
 **Interfaces:** Tables persist the contract records named in `_docs/03-architecture.md#core-records`: lines, drafts, findings, check runs, decisions, versioned rules, proposals, drift results, and references. Eval output remains a file.
 
-- [ ] Write a migration test that opens an empty temporary SQLite file, applies the first migration, and checks all expected tables and keys.
-- [ ] Define the narrow Drizzle schema and generate the migration; keep JSON-backed arrays/objects behind contract validation rather than duplicating engine structures.
-- [ ] Run the migration test and typecheck.
+- [x] Write a migration test that opens an empty temporary SQLite database, applies the first migration, and checks all expected tables and keys; additionally apply through the client to a temporary file.
+- [x] Define the narrow Drizzle schema and generate the migration; keep JSON-backed arrays/objects behind contract validation rather than duplicating engine structures.
+- [x] Run the migration test and typecheck.
 
 ### Task 4: DATA-02 — repository round trips
 
