@@ -98,7 +98,7 @@ Full detail and the dependency map: [`_docs/06-team-workflow.md`](_docs/06-team-
 
 | If you need… | And it isn't ready, use… |
 |---|---|
-| The engine model phase or drift (`runChecks(…, 'llm')`, `runDriftCheck`) | `runChecks` code phase is real (D-77); the model phase reports `notEvaluable` until LLM-01 supplies a judge, and `runDriftCheck` is still a fixture stub reporting `not_evaluable` |
+| The engine model phase or drift (`runChecks(…, 'llm')`, `runDriftCheck`) | Both are real (D-79–D-85). Without `ANTHROPIC_API_KEY` (or `createEngine({ client: null })`) model checks report `notEvaluable` and drift reports `not_evaluable`, never a pass |
 | The API, from the UI | `lib/client` mock mode: `NEXT_PUBLIC_USE_MOCKS=1` |
 | A Sabad with Gurmukhi | Local, git-ignored `lib/contracts/fixtures/sabad.demo.json` exported from BaniDB; provision it privately in each clone |
 | SikhRI references or corrections | `fixtures/references.json`, `fixtures/corrections.json` (test data, labelled) |
@@ -133,7 +133,7 @@ _docs/                  documentation; rules/ holds the ruleset          DOCS
 
 ## Commands
 
-The scaffold and F0 ingest commands run now. Evaluation and bake-off scripts remain reserved for their later workstreams; their target files do not exist yet.
+The scaffold, F0 ingest and LLM-02 bake-off commands run now. The evaluation script remains reserved for EVAL; its target file does not exist yet.
 
 | Command | Does |
 |---|---|
@@ -146,7 +146,7 @@ The scaffold and F0 ingest commands run now. Evaluation and bake-off scripts rem
 | `pnpm typecheck` | Generate Next route types, then run `tsc --noEmit` |
 | `pnpm build` | Production build using webpack |
 | `pnpm eval` | Planned EVAL-02: backtest held-back drafts → `data/eval/latest.json` |
-| `pnpm bakeoff` | Planned LLM-02: compare LLMs on minimal pairs |
+| `node --env-file=.env.local --import tsx scripts/engine/bakeoff.ts` (or `pnpm bakeoff` with `ANTHROPIC_API_KEY` set) | LLM-02: compare Claude models on synthetic minimal pairs → `data/cache/bakeoff/latest.json` (D-83) |
 | `python3 _docs/rules/resolve.py` (macOS), `py -3 _docs/rules/resolve.py` (Windows) | Regenerate `rules.resolved.json` from the seed and decisions |
 
 ## Rules: how to change one

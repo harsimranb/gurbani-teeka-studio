@@ -1,28 +1,46 @@
 import { z } from "zod";
-import { CheckInputSchema, CheckPhaseSchema, DriftContextSchema, DriftResultSchema, ProposalSchema, ReferenceSchema } from "../contracts/domain";
-import { driftFixtures } from "../contracts/fixtures";
+import { CheckInputSchema, CheckPhaseSchema, DriftContextSchema, ProposalSchema, ReferenceSchema } from "../contracts/domain";
 import type { Engine } from "../contracts/ports";
 import { runCodePhase, runLlmPhase } from "./checks/pipeline";
 import type { LlmJudge } from "./checks/pipeline";
+import { runDrift } from "./drift";
+import { createLlmClient } from "./llm/adapter";
+import type { LlmClient } from "./llm/adapter";
+import { createLlmJudge } from "./llm/judge";
+import { createReferenceIndex } from "./retrieval";
+import type { ReferenceIndex } from "./retrieval";
 
-export { codePhaseScope, isCodeFinding } from "./checks/pipeline";
+export { codePhaseScope, isCodeFinding, llmPhaseScope } from "./checks/pipeline";
 export type { CodePhaseScope, LlmJudge, LlmPacket } from "./checks/pipeline";
+export { createLlmClient, DEFAULT_MODEL } from "./llm/adapter";
+export type { LlmClient } from "./llm/adapter";
 
-/** Real code phase (CHK-10) and model phase (CHK-11). Drift and reference indexing remain stubs. */
-export function createEngine(options: { judge?: LlmJudge } = {}): Engine {
+export interface EngineOptions {
+  /** Defaults to the Anthropic client from `ANTHROPIC_API_KEY`/`EKO_LLM_MODEL`; `null` disables model checks. */
+  client?: LlmClient | null;
+  /** Overrides the judge built from `client` (tests). */
+  judge?: LlmJudge;
+  index?: ReferenceIndex;
+}
+
+/** Real code phase, model phase, drift check and reference index. Without a model, model checks report not evaluable. */
+export function createEngine(options: EngineOptions = {}): Engine {
+  let client: LlmClient | null | undefined = options.client;
+  // Read the environment on first use, not at import, so the app can load `.env*` first.
+  const getClient = () => (client === undefined ? (client = createLlmClient()) : client);
+  const getJudge = () => options.judge ?? (getClient() ? createLlmJudge(getClient()!) : undefined);
+  const index = options.index ?? createReferenceIndex();
   return {
     async runChecks(rawInput, rawPhase) {
       const input = CheckInputSchema.parse(rawInput);
-      return CheckPhaseSchema.parse(rawPhase) === "code" ? runCodePhase(input).result : runLlmPhase(input, options.judge);
+      return CheckPhaseSchema.parse(rawPhase) === "code" ? runCodePhase(input).result : runLlmPhase(input, getJudge(), { index });
     },
-    // C-02 SYNTHETIC FIXTURE STUB until LLM-10: reports unavailable subchecks, never a pass.
     async runDriftCheck(rawProposal, rawContext) {
-      const proposal = ProposalSchema.parse(rawProposal);
-      DriftContextSchema.parse(rawContext);
-      return driftFixtures.map((result) => DriftResultSchema.parse({ ...result, id: `synthetic-stub:${proposal.id}:${result.assessment.check}`, proposal_id: proposal.id }));
+      return runDrift(ProposalSchema.parse(rawProposal), DriftContextSchema.parse(rawContext), { client: getClient() });
     },
     async indexReferences(references) {
-      z.array(ReferenceSchema).parse(references); // Validating no-op; each check receives its current snapshot.
+      // Warming only: every check still receives its current reference snapshot.
+      await index.warm(z.array(ReferenceSchema).parse(references));
     },
   };
 }
