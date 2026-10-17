@@ -165,38 +165,160 @@ const cases: Array<[string, (repo: Repository) => void]> = [
     expect(repo.listDecisionsForDraft("draft-keep")).toHaveLength(1);
     expect(() => repo.deleteDraft("never-existed")).not.toThrow();
   }],
+  ["files publications by Sabad, oldest first, and returns independent copies", (repo) => {
+    const gate = { draft_id: "draft-t1", draft_version: 1, ruleset_version: 1, can_publish: true, blockers: [], warning_ids: [] };
+    const publication = (id: string, draftId: string, at = TEST_AT): Publication => ({
+      reference: { ...reference, id }, draft_id: draftId, approver: "Approver", at, gate: { ...gate, draft_id: draftId },
+    });
+    repo.saveDraft(makeDraft());
+    repo.saveDraft(makeDraft({ id: "draft-b", shabad_id: "OTHER" }));
+    // Explicit Sabad ID, inferred from the draft, and inferred from the first covered source line.
+    repo.savePublication(publication("PUB-0002", "draft-t1", "2026-10-16T12:00:05.000Z"), "TEST-SABAD");
+    repo.savePublication(publication("PUB-0001", "draft-t1", "2026-10-16T12:00:05.000Z"));
+    repo.savePublication(publication("PUB-0003", "draft-b"), "OTHER");
+    repo.saveSabad(sabad);
+    repo.savePublication(publication("PUB-0004", "no-such-draft", "2026-10-16T12:00:01.000Z"));
+    repo.savePublication(publication("PUB-0002", "draft-t1", "2026-10-16T12:00:05.000Z"), "TEST-SABAD"); // upsert
+    expect(repo.listPublicationsForSabad("TEST-SABAD").map((p) => p.reference.id)).toEqual(["PUB-0001", "PUB-0002"]);
+    expect(repo.listPublicationsForSabad("OTHER").map((p) => p.reference.id)).toEqual(["PUB-0003"]);
+    expect(repo.listPublicationsForSabad("9001").map((p) => p.reference.id)).toEqual(["PUB-0004"]);
+    expect(repo.listPublicationsForSabad("none")).toEqual([]);
+    repo.listPublicationsForSabad("OTHER")[0].approver = "MUTATED";
+    expect(repo.listPublicationsForSabad("OTHER")[0].approver).toBe("Approver");
+    repo.savePublication(publication("PUB-0000", "draft-t1", "2026-10-16T11:00:00.000Z"));
+    expect(repo.listPublicationsForSabad("TEST-SABAD").map((p) => p.reference.id)).toEqual(["PUB-0000", "PUB-0001", "PUB-0002"]);
+    // Invalid or unplaceable publications are rejected and not stored; publications outlive their draft.
+    expect(() => repo.savePublication({ ...publication("PUB-0009", "draft-t1"), approver: " " })).toThrow();
+    expect(() => repo.savePublication({ ...publication("PUB-0009", "unknown-draft"), reference: { ...reference, id: "PUB-0009", line_ids: ["404"] } })).toThrow("unknown");
+    expect(repo.listPublicationsForSabad("TEST-SABAD")).toHaveLength(3);
+    repo.deleteDraft("draft-t1");
+    expect(repo.listPublicationsForSabad("TEST-SABAD")).toHaveLength(3);
+  }],
+  ["nextSequence counts from 1, per kind, and keeps counting", (repo) => {
+    expect([repo.nextSequence("draft"), repo.nextSequence("draft"), repo.nextSequence("draft")]).toEqual([1, 2, 3]);
+    expect(repo.nextSequence("run")).toBe(1);
+    expect(repo.nextSequence("draft")).toBe(4);
+    expect(repo.nextSequence("PUB")).toBe(1);
+    expect(() => repo.nextSequence("")).toThrow();
+    expect(() => repo.nextSequence("  ")).toThrow();
+    expect(repo.nextSequence("draft")).toBe(5);
+  }],
+  ["listDrafts returns every draft in first-save order", (repo) => {
+    expect(repo.listDrafts()).toEqual([]);
+    repo.saveDraft(makeDraft({ id: "draft-b", shabad_id: "S2" }));
+    repo.saveDraft(makeDraft({ id: "draft-a" }));
+    repo.saveDraft(makeDraft({ id: "draft-c", shabad_id: "S2" }));
+    repo.saveDraft(makeDraft({ id: "draft-b", shabad_id: "S2", text: "v2", version: 2 }));
+    expect(repo.listDrafts().map((d) => d.id)).toEqual(["draft-b", "draft-a", "draft-c"]);
+    expect(repo.listDrafts()[0]).toMatchObject({ text: "v2", version: 2 });
+    repo.deleteDraft("draft-a");
+    expect(repo.listDrafts().map((d) => d.id)).toEqual(["draft-b", "draft-c"]);
+  }],
+  ["transaction commits what it wrote and returns its result", (repo) => {
+    const decision = { id: "dec-1", finding_id: "finding-t1", draft_id: "draft-t1", draft_version: 1, ruleset_version: 1, action: "accept" as const, reason: "Because.", reviewer: "R", at: TEST_AT };
+    const result = repo.transaction((store) => {
+      store.saveDraft(makeDraft());
+      store.saveFinding(makeFinding());
+      store.saveDecision(decision);
+      expect(store.getDraft("draft-t1")).toBeDefined(); // reads inside see the writes
+      return store.nextSequence("draft");
+    });
+    expect(result).toBe(1);
+    expect(repo.getDraft("draft-t1")).toBeDefined();
+    expect(repo.getFinding("finding-t1")).toBeDefined();
+    expect(repo.getDecision("dec-1")).toEqual(decision);
+    expect(repo.nextSequence("draft")).toBe(2);
+  }],
+  ["transaction rolls back every write when the callback throws", (repo) => {
+    repo.saveSabad(sabad);
+    repo.saveRuleset(1, rulesFixture);
+    repo.saveDraft(makeDraft({ id: "draft-before" }));
+    repo.nextSequence("draft");
+    expect(() => repo.transaction((store) => {
+      store.saveDraft(makeDraft());
+      store.deleteDraft("draft-before");
+      store.saveFinding(makeFinding());
+      store.saveCheckRun(makeRun());
+      store.saveProposal(proposalFixture);
+      store.saveReference(reference);
+      store.saveRuleset(2, rulesFixture.slice(0, 2));
+      store.nextSequence("draft");
+      store.nextSequence("run");
+      throw new Error("boom");
+    })).toThrow("boom");
+    expect(repo.listDrafts().map((d) => d.id)).toEqual(["draft-before"]);
+    expect(repo.getFinding("finding-t1")).toBeUndefined();
+    expect(repo.listCheckRunsForDraft("draft-t1")).toEqual([]);
+    expect(repo.listProposals()).toEqual([]);
+    expect(repo.listReferences()).toEqual([]);
+    expect(repo.getLatestRulesetVersion()).toBe(1);
+    expect(repo.nextSequence("draft")).toBe(2);
+    expect(repo.nextSequence("run")).toBe(1);
+    expect(repo.getSabad("9001")).toEqual(sabad);
+    // A validation error thrown by a write inside the transaction also undoes the earlier writes.
+    expect(() => repo.transaction((store) => {
+      store.saveDraft(makeDraft());
+      store.saveDraft({ ...makeDraft({ id: "draft-bad" }), author: " " });
+    })).toThrow();
+    expect(repo.getDraft("draft-t1")).toBeUndefined();
+  }],
+  ["nested transactions roll back only the inner work unless the error escapes", (repo) => {
+    // Inner throw caught by the outer callback: the outer work survives.
+    repo.transaction((outer) => {
+      outer.saveDraft(makeDraft({ id: "draft-outer" }));
+      expect(() => outer.transaction((inner) => {
+        inner.saveDraft(makeDraft({ id: "draft-inner" }));
+        inner.nextSequence("draft");
+        throw new Error("inner boom");
+      })).toThrow("inner boom");
+      outer.transaction((inner) => inner.saveDraft(makeDraft({ id: "draft-inner-ok" })));
+    });
+    expect(repo.listDrafts().map((d) => d.id)).toEqual(["draft-outer", "draft-inner-ok"]);
+    expect(repo.nextSequence("draft")).toBe(1);
+    // An inner error that escapes the outer callback undoes everything, including a committed inner block.
+    expect(() => repo.transaction((outer) => {
+      outer.transaction((inner) => inner.saveDraft(makeDraft({ id: "draft-committed-inner" })));
+      outer.transaction(() => { throw new Error("escapes"); });
+    })).toThrow("escapes");
+    expect(repo.getDraft("draft-committed-inner")).toBeUndefined();
+    expect(repo.listDrafts()).toHaveLength(2);
+  }],
+  ["transaction rejects an async callback and rolls it back", (repo) => {
+    expect(() => repo.transaction(async (store) => { store.saveDraft(makeDraft()); })).toThrow("synchronous");
+    expect(repo.getDraft("draft-t1")).toBeUndefined();
+  }],
+  ["resetAppData clears app data but keeps source lines and ruleset v1", (repo) => {
+    repo.saveSabad(sabad);
+    repo.saveRuleset(1, rulesFixture);
+    repo.saveRuleset(2, rulesFixture.slice(0, 2));
+    repo.saveDraft(makeDraft());
+    repo.saveFinding(makeFinding());
+    repo.saveCheckRun(makeRun());
+    repo.saveDecision({ id: "dec-1", finding_id: "finding-t1", draft_id: "draft-t1", draft_version: 1, ruleset_version: 1, action: "accept", reason: "Because.", reviewer: "R", at: TEST_AT });
+    repo.saveReference(reference);
+    repo.saveProposal(proposalFixture);
+    repo.saveDriftResult(driftFixtures[0]);
+    repo.savePublication({ reference, draft_id: "draft-t1", approver: "Approver", at: TEST_AT,
+      gate: { draft_id: "draft-t1", draft_version: 1, ruleset_version: 1, can_publish: true, blockers: [], warning_ids: [] } }, "TEST-SABAD");
+    repo.nextSequence("draft"); repo.nextSequence("draft");
+    repo.resetAppData();
+    expect(repo.getSabad("9001")).toEqual(sabad);
+    expect(repo.getRuleset(1)).toHaveLength(rulesFixture.length);
+    expect(repo.getRuleset(2)).toEqual([]);
+    expect(repo.getLatestRulesetVersion()).toBe(1);
+    expect(repo.listDrafts()).toEqual([]);
+    expect(repo.getFinding("finding-t1")).toBeUndefined();
+    expect(repo.listCheckRunsForDraft("draft-t1")).toEqual([]);
+    expect(repo.listDecisionsForDraft("draft-t1")).toEqual([]);
+    expect(repo.listReferences()).toEqual([]);
+    expect(repo.listProposals()).toEqual([]);
+    expect(repo.listDriftResultsForProposal(proposalFixture.id)).toEqual([]);
+    expect(repo.listPublicationsForSabad("TEST-SABAD")).toEqual([]);
+    expect(repo.nextSequence("draft")).toBe(1);
+    expect(() => repo.resetAppData()).not.toThrow();
+  }],
 ];
 
 describe.each(backends)("repository behaviour: $name", (backend) => {
   it.each(cases)("%s", async (_name, body) => backend.run(body));
-});
-
-describe("memory repository publications", () => {
-  const gate = { draft_id: "draft-t1", draft_version: 1, ruleset_version: 1, can_publish: true, blockers: [], warning_ids: [] };
-  const publication = (id: string, draftId: string): Publication => ({
-    reference: { ...reference, id }, draft_id: draftId, approver: "Approver", at: TEST_AT, gate: { ...gate, draft_id: draftId },
-  });
-
-  it("files publications by the draft's Sabad and returns independent copies", () => {
-    const repo = createMemoryRepository();
-    repo.saveDraft(makeDraft());
-    repo.saveDraft(makeDraft({ id: "draft-b", shabad_id: "OTHER" }));
-    repo.savePublication(publication("PUB-0001", "draft-t1"));
-    repo.savePublication(publication("PUB-0002", "draft-b"));
-    repo.savePublication(publication("PUB-0001", "draft-t1"));
-    expect(repo.listPublicationsForSabad("TEST-SABAD").map((p) => p.reference.id)).toEqual(["PUB-0001"]);
-    expect(repo.listPublicationsForSabad("OTHER").map((p) => p.reference.id)).toEqual(["PUB-0002"]);
-    expect(repo.listPublicationsForSabad("none")).toEqual([]);
-    repo.listPublicationsForSabad("TEST-SABAD")[0].approver = "MUTATED";
-    expect(repo.listPublicationsForSabad("TEST-SABAD")[0].approver).toBe("Approver");
-  });
-  it("validates publications and keeps them when their draft is deleted", () => {
-    const repo = createMemoryRepository();
-    repo.saveDraft(makeDraft());
-    expect(() => repo.savePublication({ ...publication("PUB-0001", "draft-t1"), approver: " " })).toThrow();
-    expect(() => repo.savePublication(publication("PUB-0009", "unknown-draft"))).toThrow("unknown");
-    repo.savePublication(publication("PUB-0001", "draft-t1"));
-    repo.deleteDraft("draft-t1");
-    expect(repo.listPublicationsForSabad("TEST-SABAD")).toHaveLength(1);
-  });
 });

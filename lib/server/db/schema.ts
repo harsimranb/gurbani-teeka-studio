@@ -67,3 +67,18 @@ export const references = sqliteTable("references", {
   source: text("source").notNull(),
   payload: text("payload").notNull(),
 });
+
+/** Published records, filed under the published draft's Sabad. `payload` is the JSON of a `Publication`. */
+export const publications = sqliteTable("publications", {
+  referenceId: text("reference_id").primaryKey(),
+  shabadId: text("shabad_id").notNull(),
+  draftId: text("draft_id").notNull(),
+  at: text("at").notNull(),
+  payload: text("payload").notNull(),
+}, (table) => [index("publications_shabad_idx").on(table.shabadId)]);
+
+/** Persistent counters behind the visible IDs (draft-N, run-N, PUB-0001, ...). */
+export const sequences = sqliteTable("sequences", {
+  kind: text("kind").primaryKey(),
+  value: integer("value").notNull(),
+});

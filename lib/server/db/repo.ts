@@ -1,19 +1,96 @@
-import { and, eq, max } from "drizzle-orm";
+import { asc, eq, gt, max, sql } from "drizzle-orm";
 import {
   CheckRunSchema, DecisionSchema, DraftSchema, DriftResultSchema, FindingSchema,
-  LineSchema, ProposalSchema, ReferenceSchema, RuleSchema, SabadSchema, VersionSchema,
+  LineSchema, ProposalSchema, PublicationSchema, ReferenceSchema, RuleSchema, SabadSchema, VersionSchema,
   type CheckRun, type Decision, type Draft, type DriftResult, type Finding,
-  type Proposal, type Reference, type Rule, type Sabad,
+  type Proposal, type Publication, type Reference, type Rule, type Sabad,
 } from "../../contracts/domain";
 import type { AppDb } from "./client";
-import { checkRuns, decisions, drafts, driftResults, findings, lines, proposals, references, rules } from "./schema";
+import {
+  checkRuns, decisions, drafts, driftResults, findings, lines, proposals, publications, references, rules, sequences,
+} from "./schema";
 
 const encode = (value: unknown) => JSON.stringify(value);
 const decode = (value: string) => JSON.parse(value) as unknown;
 
 type Tx = Parameters<Parameters<AppDb["transaction"]>[0]>[0];
+/** The database itself or an open transaction/savepoint; both expose the same query and `transaction` API. */
+type Exec = AppDb | Tx;
 
-function saveSabadIn(tx: Tx, sabad: Sabad): void {
+/**
+ * App-owned storage. The SQLite implementation (`createRepository`) and the in-memory test double
+ * (`createMemoryRepository`) both implement this interface with the same semantics.
+ */
+export interface Repository {
+  saveSabad(raw: Sabad): void;
+  /** All-or-nothing bulk load; each Sabad keeps the same refuse-silent-replacement checks as saveSabad. */
+  saveSabads(raws: Sabad[]): void;
+  getSabad(shabadId: string): Sabad | undefined;
+  listSabads(): { shabad_id: string; ang: number; raag: string; writer: string }[];
+  saveDraft(raw: Draft): void;
+  getDraft(id: string): Draft | undefined;
+  /** Every draft, in insertion order (order of first save; re-saving an ID keeps its place). */
+  listDrafts(): Draft[];
+  listDraftsForSabad(shabadId: string): Draft[];
+  /** Removes the draft with its findings, check runs and decisions (all-or-nothing). Publications are kept. */
+  deleteDraft(id: string): void;
+  saveFinding(raw: Finding): void;
+  getFinding(id: string): Finding | undefined;
+  listFindingsForDraft(draftId: string): Finding[];
+  saveCheckRun(raw: CheckRun): void;
+  getCheckRun(id: string): CheckRun | undefined;
+  listCheckRunsForDraft(draftId: string): CheckRun[];
+  saveDecision(raw: Decision): void;
+  getDecision(id: string): Decision | undefined;
+  listDecisionsForDraft(draftId: string): Decision[];
+  saveRuleset(rawVersion: number, rawRules: Rule[]): void;
+  getRuleset(version: number): Rule[];
+  getLatestRulesetVersion(): number | undefined;
+  saveProposal(raw: Proposal): void;
+  getProposal(id: string): Proposal | undefined;
+  listProposals(): Proposal[];
+  saveDriftResult(raw: DriftResult): void;
+  getDriftResult(id: string): DriftResult | undefined;
+  listDriftResultsForProposal(proposalId: string): DriftResult[];
+  saveReference(raw: Reference): void;
+  getReference(id: string): Reference | undefined;
+  listReferences(): Reference[];
+  /**
+   * Files a publication (upsert by `reference.id`) under a Sabad. Pass `shabadId` explicitly; when omitted it
+   * is taken from the published draft's Sabad, else from the first covered source line, and the call throws
+   * if neither is known. Publications survive `deleteDraft`.
+   */
+  savePublication(raw: Publication, shabadId?: string): void;
+  /** Oldest first by `at`, then `reference.id`. */
+  listPublicationsForSabad(shabadId: string): Publication[];
+  /**
+   * Atomic persistent counter: the first call for a `kind` returns 1, then 2, 3, ... independently per kind.
+   * Inside `transaction` the increment commits or rolls back with it (a rolled-back number is handed out again).
+   */
+  nextSequence(kind: string): number;
+  /**
+   * Runs `fn` atomically against a repository bound to the transaction: commits when `fn` returns, rolls back
+   * every write and rethrows when `fn` throws. `fn` must be synchronous; a returned promise is rejected (and
+   * rolled back) because the transaction would end before the promise settled, so do async work first.
+   * Nested calls (on the repository passed to `fn`) use a SAVEPOINT: an inner throw undoes only the inner
+   * work and the outer function may catch it and carry on; an outer throw still undoes everything.
+   */
+  transaction<T>(fn: (store: Repository) => T): T;
+  /**
+   * Dev reset: deletes drafts, findings, check runs, decisions, references, publications, proposals, drift
+   * results, rulesets above version 1, and sequences. Keeps source lines and ruleset v1. Atomic.
+   */
+  resetAppData(): void;
+}
+
+/** Shared by both backends so a misused async callback fails identically everywhere. */
+export function assertSyncTransactionResult(result: unknown): void {
+  if (typeof (result as { then?: unknown } | null | undefined)?.then === "function") {
+    throw new Error("Repository.transaction callbacks must be synchronous; do async work before the transaction.");
+  }
+}
+
+function saveSabadIn(tx: Exec, sabad: Sabad): void {
   const existingIds = tx.select({ id: lines.id }).from(lines).where(eq(lines.shabadId, sabad.shabad_id)).all();
   const incomingIds = new Set(sabad.lines.map((line) => line.line_id));
   if (existingIds.length && (existingIds.length !== incomingIds.size || existingIds.some((row) => !incomingIds.has(row.id)))) {
@@ -31,13 +108,17 @@ function saveSabadIn(tx: Tx, sabad: Sabad): void {
   }
 }
 
-/** App-owned storage. Contract schemas validate both writes and reads. */
-export function createRepository(db: AppDb) {
-  return {
+/** App-owned storage on SQLite. Contract schemas validate both writes and reads. */
+export function createRepository(db: AppDb): Repository {
+  return buildRepository(db);
+}
+
+function buildRepository(db: Exec): Repository {
+  const repo: Repository = {
     saveSabad(raw: Sabad): void {
-      db.transaction((tx) => saveSabadIn(tx, SabadSchema.parse(raw)));
+      const sabad = SabadSchema.parse(raw);
+      db.transaction((tx) => saveSabadIn(tx, sabad));
     },
-    /** All-or-nothing bulk load; each Sabad keeps the same refuse-silent-replacement checks as saveSabad. */
     saveSabads(raws: Sabad[]): void {
       const sabads = raws.map((raw) => SabadSchema.parse(raw));
       db.transaction((tx) => { for (const sabad of sabads) saveSabadIn(tx, sabad); });
@@ -69,6 +150,11 @@ export function createRepository(db: AppDb) {
     getDraft(id: string): Draft | undefined {
       const row = db.select().from(drafts).where(eq(drafts.id, id)).get();
       return row ? DraftSchema.parse(decode(row.payload)) : undefined;
+    },
+    listDrafts(): Draft[] {
+      // rowid is assigned on first insert and kept by the upsert, so this is first-save order.
+      return db.select().from(drafts).orderBy(asc(sql`rowid`)).all()
+        .map((row) => DraftSchema.parse(decode(row.payload)));
     },
     listDraftsForSabad(shabadId: string): Draft[] {
       return db.select().from(drafts).where(eq(drafts.shabadId, shabadId)).all()
@@ -189,7 +275,49 @@ export function createRepository(db: AppDb) {
     listReferences(): Reference[] {
       return db.select().from(references).all().map((row) => ReferenceSchema.parse(decode(row.payload)));
     },
+    savePublication(raw: Publication, shabadId?: string): void {
+      const publication = PublicationSchema.parse(raw);
+      const resolved = shabadId ?? repo.getDraft(publication.draft_id)?.shabad_id
+        ?? db.select({ shabadId: lines.shabadId }).from(lines).where(eq(lines.id, publication.reference.line_ids[0])).get()?.shabadId;
+      if (!resolved) throw new Error(`Cannot file publication ${publication.reference.id}: its draft and source lines are unknown.`);
+      const row = { referenceId: publication.reference.id, shabadId: resolved, draftId: publication.draft_id,
+        at: publication.at, payload: encode(publication) };
+      db.insert(publications).values(row).onConflictDoUpdate({ target: publications.referenceId, set: row }).run();
+    },
+    listPublicationsForSabad(shabadId: string): Publication[] {
+      return db.select().from(publications).where(eq(publications.shabadId, shabadId))
+        .orderBy(asc(publications.at), asc(publications.referenceId)).all()
+        .map((row) => PublicationSchema.parse(decode(row.payload)));
+    },
+    nextSequence(kind: string): number {
+      if (typeof kind !== "string" || !kind.trim()) throw new Error("Sequence kind must be a non-blank string.");
+      const row = db.insert(sequences).values({ kind, value: 1 })
+        .onConflictDoUpdate({ target: sequences.kind, set: { value: sql`${sequences.value} + 1` } })
+        .returning({ value: sequences.value }).get();
+      return row.value;
+    },
+    transaction<T>(fn: (store: Repository) => T): T {
+      // Top level: BEGIN/COMMIT. Already inside a transaction: drizzle issues SAVEPOINT / RELEASE / ROLLBACK TO.
+      return db.transaction((tx) => {
+        const result = fn(buildRepository(tx));
+        assertSyncTransactionResult(result);
+        return result;
+      });
+    },
+    resetAppData(): void {
+      db.transaction((tx) => {
+        tx.delete(findings).run();
+        tx.delete(checkRuns).run();
+        tx.delete(decisions).run();
+        tx.delete(drafts).run();
+        tx.delete(references).run();
+        tx.delete(publications).run();
+        tx.delete(proposals).run();
+        tx.delete(driftResults).run();
+        tx.delete(rules).where(gt(rules.rulesetVersion, 1)).run();
+        tx.delete(sequences).run();
+      });
+    },
   };
+  return repo;
 }
-
-export type Repository = ReturnType<typeof createRepository>;

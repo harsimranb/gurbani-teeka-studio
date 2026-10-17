@@ -131,3 +131,34 @@ describe("app repository", () => {
       ang: privateSabad!.lines[0].ang, raag: privateSabad!.lines[0].raag, writer: privateSabad!.lines[0].writer }]);
   }));
 });
+
+describe("app repository (SQLite specifics)", () => {
+  it("keeps sequences and publications across closing and reopening the database file", async () => {
+    const { createRepository } = await import("./repo");
+    const dir = mkdtempSync(join(tmpdir(), "eko-repo-reopen-"));
+    const file = join(dir, "app.sqlite");
+    try {
+      const first = openAppDb(file);
+      migrateAppDb(first.db);
+      const repo = createRepository(first.db);
+      repo.saveDraft(draftFixture);
+      expect([repo.nextSequence("draft"), repo.nextSequence("draft")]).toEqual([1, 2]);
+      const publication = { reference: { id: "PUB-0001", line_ids: [draftFixture.line_ids[0]], english: "SYNTHETIC REFERENCE MARKER", source: "published" as const, exceptions: [] },
+        draft_id: draftFixture.id, approver: "Approver", at: draftFixture.updated_at,
+        gate: { draft_id: draftFixture.id, draft_version: 1, ruleset_version: 1, can_publish: true, blockers: [], warning_ids: [] } };
+      repo.savePublication(publication, draftFixture.shabad_id);
+      first.sqlite.close();
+
+      const second = openAppDb(file);
+      migrateAppDb(second.db); // reopening an already-migrated file is a no-op
+      const reopened = createRepository(second.db);
+      expect(reopened.nextSequence("draft")).toBe(3);
+      expect(reopened.listPublicationsForSabad(draftFixture.shabad_id)).toEqual([publication]);
+      const row = second.sqlite.prepare("SELECT reference_id, shabad_id, draft_id, at FROM publications").get();
+      expect(row).toEqual({ reference_id: "PUB-0001", shabad_id: draftFixture.shabad_id, draft_id: draftFixture.id, at: draftFixture.updated_at });
+      second.sqlite.close();
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+});

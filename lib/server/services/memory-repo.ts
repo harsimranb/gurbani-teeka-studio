@@ -4,17 +4,10 @@ import {
   type CheckRun, type Decision, type Draft, type DriftResult, type Finding, type Line,
   type Proposal, type Publication, type Reference, type Rule, type Sabad,
 } from "../../contracts/domain";
-import type { Repository } from "../db/repo";
+import { assertSyncTransactionResult, type Repository } from "../db/repo";
 
-/**
- * Repository plus published records. SQLite has no `publications` table yet
- * (DATA follow-up: add one keyed by reference id with the Sabad id alongside), so only the
- * in-memory store offers these two methods for now.
- */
-export type AppStore = Repository & {
-  savePublication(publication: Publication): void;
-  listPublicationsForSabad(shabadId: string): Publication[];
-};
+/** The store type the services use: just the repository (it owns publications, sequences and transactions). */
+export type AppStore = Repository;
 
 // Everything is stored as JSON text (like the SQLite payload columns), so callers can never
 // mutate stored state and every read is re-validated against the contract schema.
@@ -22,7 +15,7 @@ const encode = (value: unknown) => JSON.stringify(value);
 const decode = (value: string) => JSON.parse(value) as unknown;
 
 /** In-memory implementation of the SQLite repository interface, with the same semantics. */
-export function createMemoryRepository(): AppStore {
+export function createMemoryRepository(): Repository {
   const lineRows = new Map<string, string>();            // line_id -> Line JSON
   const sabadLineIds = new Map<string, string[]>();      // shabad_id -> line IDs in source order
   const draftRows = new Map<string, string>();
@@ -33,7 +26,25 @@ export function createMemoryRepository(): AppStore {
   const proposalRows = new Map<string, string>();
   const driftRows = new Map<string, string>();
   const referenceRows = new Map<string, string>();
-  const publicationRows = new Map<string, { shabad_id: string; payload: string }>();
+  const publicationRows = new Map<string, { shabad_id: string; at: string; payload: string }>();
+  const sequenceRows = new Map<string, number>();
+
+  // Transactions snapshot every table and restore on throw (nested calls snapshot again, like a SAVEPOINT).
+  // Row values are immutable strings/objects that are replaced, never mutated, so shallow map copies suffice.
+  const snapshot = () => ({
+    lines: new Map(lineRows), sabadIds: new Map(sabadLineIds), drafts: new Map(draftRows), findings: new Map(findingRows),
+    checkRuns: new Map(checkRunRows), decisions: new Map(decisionRows),
+    rulesets: new Map([...rulesetRows].map(([version, rows]) => [version, new Map(rows)] as const)),
+    proposals: new Map(proposalRows), drift: new Map(driftRows), references: new Map(referenceRows),
+    publications: new Map(publicationRows), sequences: new Map(sequenceRows),
+  });
+  const restore = (snap: ReturnType<typeof snapshot>) => {
+    const replace = <K, V>(target: Map<K, V>, source: Map<K, V>) => { target.clear(); for (const [key, value] of source) target.set(key, value); };
+    replace(lineRows, snap.lines); replace(sabadLineIds, snap.sabadIds); replace(draftRows, snap.drafts);
+    replace(findingRows, snap.findings); replace(checkRunRows, snap.checkRuns); replace(decisionRows, snap.decisions);
+    replace(rulesetRows, snap.rulesets); replace(proposalRows, snap.proposals); replace(driftRows, snap.drift);
+    replace(referenceRows, snap.references); replace(publicationRows, snap.publications); replace(sequenceRows, snap.sequences);
+  };
 
   const readAll = <T>(rows: Iterable<string>, schema: { parse(value: unknown): T }, keep: (value: T) => boolean = () => true): T[] =>
     [...rows].map((payload) => schema.parse(decode(payload))).filter(keep);
@@ -64,15 +75,7 @@ export function createMemoryRepository(): AppStore {
     /** All-or-nothing bulk load; each Sabad keeps the same refuse-silent-replacement checks as saveSabad. */
     saveSabads(raws: Sabad[]): void {
       const sabads = raws.map((raw) => SabadSchema.parse(raw));
-      const lineSnapshot = new Map(lineRows);
-      const idsSnapshot = new Map(sabadLineIds);
-      try {
-        for (const sabad of sabads) saveSabadIn(sabad);
-      } catch (error) {
-        lineRows.clear(); for (const [key, value] of lineSnapshot) lineRows.set(key, value);
-        sabadLineIds.clear(); for (const [key, value] of idsSnapshot) sabadLineIds.set(key, value);
-        throw error;
-      }
+      repo.transaction(() => { for (const sabad of sabads) saveSabadIn(sabad); });
     },
     getSabad(shabadId: string): Sabad | undefined {
       const ids = sabadLineIds.get(shabadId);
@@ -92,14 +95,19 @@ export function createMemoryRepository(): AppStore {
     getDraft(id: string): Draft | undefined {
       return readOne(draftRows.get(id), DraftSchema);
     },
+    listDrafts(): Draft[] {
+      return readAll(draftRows.values(), DraftSchema);
+    },
     listDraftsForSabad(shabadId: string): Draft[] {
       return readAll(draftRows.values(), DraftSchema, (draft) => draft.shabad_id === shabadId);
     },
     deleteDraft(id: string): void {
-      for (const [key, payload] of findingRows) if (FindingSchema.parse(decode(payload)).draft_id === id) findingRows.delete(key);
-      for (const [key, payload] of checkRunRows) if (CheckRunSchema.parse(decode(payload)).draft_id === id) checkRunRows.delete(key);
-      for (const [key, payload] of decisionRows) if (DecisionSchema.parse(decode(payload)).draft_id === id) decisionRows.delete(key);
-      draftRows.delete(id);
+      repo.transaction(() => {
+        for (const [key, payload] of findingRows) if (FindingSchema.parse(decode(payload)).draft_id === id) findingRows.delete(key);
+        for (const [key, payload] of checkRunRows) if (CheckRunSchema.parse(decode(payload)).draft_id === id) checkRunRows.delete(key);
+        for (const [key, payload] of decisionRows) if (DecisionSchema.parse(decode(payload)).draft_id === id) decisionRows.delete(key);
+        draftRows.delete(id);
+      });
     },
     saveFinding(raw: Finding): void {
       const finding = FindingSchema.parse(raw);
@@ -189,22 +197,43 @@ export function createMemoryRepository(): AppStore {
     listReferences(): Reference[] {
       return readAll(referenceRows.values(), ReferenceSchema);
     },
-  };
-
-  return {
-    ...repo,
-    savePublication(raw: Publication): void {
+    savePublication(raw: Publication, shabadId?: string): void {
       const publication = PublicationSchema.parse(raw);
-      // Keyed by the published draft's Sabad; fall back to the first covered source line.
-      const draft = repo.getDraft(publication.draft_id);
       const fallbackLine = lineRows.get(publication.reference.line_ids[0]);
-      const shabadId = draft?.shabad_id ?? (fallbackLine ? LineSchema.parse(decode(fallbackLine)).shabad_id : undefined);
-      if (!shabadId) throw new Error(`Cannot file publication ${publication.reference.id}: its draft and source lines are unknown.`);
-      publicationRows.set(publication.reference.id, { shabad_id: shabadId, payload: encode(publication) });
+      const resolved = shabadId ?? repo.getDraft(publication.draft_id)?.shabad_id
+        ?? (fallbackLine ? LineSchema.parse(decode(fallbackLine)).shabad_id : undefined);
+      if (!resolved) throw new Error(`Cannot file publication ${publication.reference.id}: its draft and source lines are unknown.`);
+      publicationRows.set(publication.reference.id, { shabad_id: resolved, at: publication.at, payload: encode(publication) });
     },
     listPublicationsForSabad(shabadId: string): Publication[] {
-      return [...publicationRows.values()].filter((row) => row.shabad_id === shabadId)
-        .map((row) => PublicationSchema.parse(decode(row.payload)));
+      return [...publicationRows.entries()].filter(([, row]) => row.shabad_id === shabadId)
+        .sort(([idA, a], [idB, b]) => (a.at < b.at ? -1 : a.at > b.at ? 1 : idA < idB ? -1 : idA > idB ? 1 : 0))
+        .map(([, row]) => PublicationSchema.parse(decode(row.payload)));
+    },
+    nextSequence(kind: string): number {
+      if (typeof kind !== "string" || !kind.trim()) throw new Error("Sequence kind must be a non-blank string.");
+      const value = (sequenceRows.get(kind) ?? 0) + 1;
+      sequenceRows.set(kind, value);
+      return value;
+    },
+    transaction<T>(fn: (store: Repository) => T): T {
+      const snap = snapshot();
+      try {
+        const result = fn(repo);
+        assertSyncTransactionResult(result);
+        return result;
+      } catch (error) {
+        restore(snap);
+        throw error;
+      }
+    },
+    resetAppData(): void {
+      repo.transaction(() => {
+        for (const rows of [findingRows, checkRunRows, decisionRows, draftRows, referenceRows, publicationRows, proposalRows, driftRows, sequenceRows]) rows.clear();
+        for (const version of [...rulesetRows.keys()]) if (version > 1) rulesetRows.delete(version);
+      });
     },
   };
+
+  return repo;
 }
