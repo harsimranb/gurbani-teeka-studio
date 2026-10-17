@@ -1,0 +1,78 @@
+"use client";
+
+import { Lock } from "lucide-react";
+import { useSearchParams } from "next/navigation";
+import { P1Placeholder, PageHeader, StatusPill, Unavailable } from "@/components/ui";
+import { useApi } from "@/lib/client/hooks";
+import type { Draft, Sabad } from "@/lib/contracts/domain";
+import { SabadEditor } from "./SabadEditor";
+import { SabadList } from "./SabadList";
+
+const unique = (values: string[]) => [...new Set(values)].join(" / ");
+
+function eyebrow(sabad: Sabad): string {
+  const angs = sabad.lines.map((l) => l.ang);
+  const first = Math.min(...angs);
+  const last = Math.max(...angs);
+  const rahao = sabad.lines.flatMap((line, i) => (line.is_rahao ? [i + 1] : []));
+  return [
+    first === last ? `Ang ${first}` : `Ang ${first}–${last}`,
+    unique(sabad.lines.map((l) => l.writer)),
+    `Raag: ${unique(sabad.lines.map((l) => l.raag))}`,
+    rahao.length > 0 ? `Rahao: line ${rahao.join(", ")}` : "Rahao: none in this Sabad",
+  ].join(" · ");
+}
+
+function Center({ shabadId, focus }: { shabadId: string; focus: string | null }) {
+  const { data, error, refetch } = useApi("getSabad", { shabad_id: shabadId });
+  if (error) return <Unavailable title="The Sabad could not be loaded" reason={error.message} />;
+  if (!data) return <p className="m-0 text-sm text-muted" role="status">Loading Sabad {shabadId}…</p>;
+  if (data.status === "unavailable") return <Unavailable title="Sabad unavailable" reason={data.reason} />;
+  const { sabad, drafts } = data;
+  return <CenterAvailable sabad={sabad} drafts={drafts} focus={focus} refetch={refetch} />;
+}
+
+function CenterAvailable({ sabad, drafts, focus, refetch }: { sabad: Sabad; drafts: Draft[]; focus: string | null; refetch: () => void }) {
+  const maxVersion = drafts.reduce((max, d) => Math.max(max, d.version), 0);
+  return (
+    <>
+      <PageHeader
+        eyebrow={eyebrow(sabad)}
+        title={`Sabad ${sabad.shabad_id}`}
+        badge={<StatusPill className="px-2.5 py-0.5 text-[13px] text-body">{maxVersion > 0 ? `Transcreation · draft v${maxVersion}` : "Transcreation · no draft yet"}</StatusPill>}
+        actions={
+          <span className="flex items-center gap-2 rounded-lg bg-ok-bg px-3 py-1.5 text-[13px] text-ok">
+            <Lock className="size-[15px]" aria-hidden="true" />Gurmukhi from BaniDB · read-only
+          </span>
+        }
+      />
+      <SabadEditor sabad={sabad} drafts={drafts} focusDraftId={focus} refetch={refetch} />
+    </>
+  );
+}
+
+export function WorkspaceView() {
+  const params = useSearchParams();
+  const { data, error } = useApi("listSabads", {});
+  const sabads = data?.sabads ?? [];
+  const requested = params.get("sabad");
+  const selected = sabads.find((s) => s.shabad_id === requested) ?? sabads[0] ?? null;
+
+  return (
+    <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[240px_minmax(0,1fr)] xl:grid-cols-[240px_minmax(0,1fr)_300px]">
+      <aside aria-label="Browse the Guru Granth Sahib" className="min-w-0">
+        <SabadList sabads={sabads} selectedId={selected?.shabad_id ?? null} />
+      </aside>
+      <section aria-label="Transcreation" className="flex min-w-0 flex-col gap-3.5">
+        {error ? <Unavailable title="Sabads could not be loaded" reason={error.message} />
+          : !data ? <p className="m-0 text-sm text-muted" role="status">Loading…</p>
+          : !selected ? <Unavailable title="No Sabad available" reason="No Sabad has been exported from BaniDB yet." />
+          : <Center key={selected.shabad_id} shabadId={selected.shabad_id} focus={params.get("focus")} />}
+      </section>
+      <aside aria-label="Translator utilities" className="flex min-w-0 flex-col gap-3.5 lg:col-span-2 xl:col-span-1">
+        <P1Placeholder title="Word lookup">Occurrences, prior renderings and similar lines will appear here once the reference data is loaded. Read-only; never a suggested translation.</P1Placeholder>
+        <P1Placeholder title="Grammar hints">A free transcreation doesn&apos;t map word for word onto the line, so hints from the ending matra wait.</P1Placeholder>
+      </aside>
+    </div>
+  );
+}
