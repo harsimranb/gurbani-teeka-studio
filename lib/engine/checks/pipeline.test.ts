@@ -7,7 +7,9 @@ import { codePhaseScope, createEngine } from "../index";
 import type { EngineOptions } from "../index";
 import { createReferenceIndex } from "../retrieval";
 import type { ReferenceIndex } from "../retrieval/types";
-import { llmPackets, llmPhaseScope, runLlmPhase } from "./pipeline";
+import { allowedQuotes, llmPackets, llmPhaseScope, runLlmPhase } from "./pipeline";
+import { passesReviewGuards } from "../llm/guards";
+import { tokenize } from "../gurmukhi";
 import type { LlmPacket } from "./pipeline";
 import { syntheticInput } from "./test-helpers";
 
@@ -207,6 +209,20 @@ try { sabad = SabadSchema.parse(JSON.parse(readFileSync(sourcePath, "utf8"))); }
     const enough = packets[0].sabad!.distinctFamilies >= 3;
     expect(packets.length === drafts.length || !enough).toBe(true); // 3+ families: every unit gets a packet
     expect(packets.every((packet) => enough || packet.divineNames.length > 0)).toBe(true);
+  });
+
+  it("lets a collapse explanation name another unit's Divine name, copied from BaniDB, but nothing else", async () => {
+    const drafts = sabad!.lines.map((line, index) => ({ id: `local-${index}`, shabad_id: sabad!.shabad_id, line_ids: [line.line_id], layer: "transcreation" as const, text: "SYNTHETIC ENGLISH TEST MARKER", author: "Synthetic test author", status: "draft" as const, version: 1, updated_at: "2026-10-16T12:00:00.000Z" }));
+    const input = CheckInputSchema.parse({ sabad, draft: drafts[0], sabadDrafts: drafts, changedLineIds: sabad!.lines.map((line) => line.line_id), rules: rulesFixture, rulesetVersion: 1, references: [] });
+    const packet = (await llmPackets(input)).find((entry) => entry.rule.id === "TERM-02")!;
+    // A word from a line outside this packet's unit stands in for another unit's Divine-name hit.
+    const other = sabad!.lines.find((line) => !packet.draft.line_ids.includes(line.line_id))!;
+    const token = tokenize(other.gurmukhi).find((entry) => !packet.lines.some((line) => tokenize(line.gurmukhi).some((own) => own.surface === entry.surface)))!;
+    const explanation = `The Sabad's names ${token.surface} and others are rendered by one English word.`;
+    const withoutHit = { ...packet, sabad: { ...packet.sabad!, divineNames: [] } };
+    const withHit = { ...packet, sabad: { ...packet.sabad!, divineNames: [{ line_id: other.line_id, family: "synthetic", token }] } };
+    expect(passesReviewGuards(explanation, allowedQuotes(withoutHit))).toBe(false);
+    expect(passesReviewGuards(explanation, allowedQuotes(withHit))).toBe(true);
   });
 });
 

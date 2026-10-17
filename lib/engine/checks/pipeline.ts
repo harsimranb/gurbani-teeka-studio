@@ -178,7 +178,9 @@ export async function runLlmPhase(input: CheckInput, judge?: LlmJudge, options: 
       // Placeholder IDs repeat within a batch, so validate one at a time; real IDs are deduped below.
       const valid = batch.data.findings.flatMap((finding) => validateFindings([finding], input))
         .filter((finding) => finding.rule_id === packet.rule.id && finding.draft_id === packet.draft.id && finding.model !== CODE_MODEL);
-      const own = valid.filter((finding) => passesReviewGuards(finding.explanation, quotes)).map((finding) => ownModelFinding(finding, packet.rule, input));
+      const own = valid.filter((finding) => passesReviewGuards(finding.explanation, quotes))
+        // A free-text rule is arbitrary, so the model's explanation could describe the source's meaning; Eko writes it (hard rule 1).
+        .map((finding) => ownModelFinding(packet.kind === "free_text" ? { ...finding, explanation: `The draft differs from rule ${packet.rule.id}.` } : finding, packet.rule, input));
       findings.push(...own);
       const invalid = batch.data.findings.length - valid.length;
       if (invalid > 0) note(packet, `${invalid} model finding(s) failed evidence validation and were dropped.`);
@@ -196,8 +198,11 @@ const MAX_REASON = 300;
 const REASON_WITHHELD = "model reported this unit not evaluable; its reason was withheld by the review guards.";
 
 /** Text a model explanation may quote: this unit's draft, the rule and its application, and the source lines. */
-function allowedQuotes(packet: LlmPacket): string[] {
-  return [packet.draft.text, packet.rule.text, packet.rule.resolution.decision ?? "", ...packet.lines.map((line) => line.gurmukhi)];
+/** Text a model explanation may quote: the packet evidence (exported for tests). */
+export function allowedQuotes(packet: LlmPacket): string[] {
+  // A Sabad-wide packet (TERM-02 collapse) also shows the model other units' Divine-name surfaces from BaniDB.
+  const sabadNames = packet.sabad?.divineNames.map((hit) => hit.token.surface) ?? [];
+  return [packet.draft.text, packet.rule.text, packet.rule.resolution.decision ?? "", ...packet.lines.map((line) => line.gurmukhi), ...sabadNames];
 }
 
 const SEVERITY_RANK = { hint: 0, warning: 1, flag: 2, error: 3 } as const;
